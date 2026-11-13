@@ -2,6 +2,7 @@ package dev.atomix.launcher.livetv.player
 
 import dev.atomix.launcher.livetv.source.FakeLiveClient
 import dev.atomix.launcher.livetv.source.PlayCaps
+import dev.atomix.launcher.data.AuthExpiredException
 import dev.atomix.launcher.livetv.source.PlayReply
 import dev.atomix.launcher.livetv.source.tv
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -152,6 +153,15 @@ class PlayerSessionTest {
         advanceTimeBy(45_000); runCurrent()
         assertEquals(SessionState.Playing(a, dash("s0")), s.state.value)
         assertEquals(1, plays().size)
+    }
+
+    @Test fun signInExpired_saysSo_andDoesNotRetry() = runTest {
+        client.playFailure = AuthExpiredException()
+        val s = session()
+        s.tune(a); runCurrent()
+        assertEquals(SessionState.Failed(a, PlayerSession.SIGNED_OUT), s.state.value)
+        advanceTimeBy(30_000); runCurrent()
+        assertEquals("no retry ladder for an expired sign-in", 1, plays().size)
     }
 
     @Test fun drmUnsupported_isFailedWithMessage() = runTest {

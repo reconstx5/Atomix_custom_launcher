@@ -86,7 +86,9 @@ class LiveRepository(
      * channels the launcher doesn't show) goes after the TV ones in its existing order.
      */
     suspend fun saveOrder(tvIds: List<String>) {
-        val order = tvIds + favouriteIds.filter { !isTv(it) }
+        // distinct(): with no channel list loaded nothing counts as TV, so a favourite would otherwise appear in
+        // both halves and be sent twice.
+        val order = (tvIds + favouriteIds.filter { !isTv(it) }).distinct()
         change(order) { it.setFavouriteOrder(order) }
     }
 
@@ -95,14 +97,22 @@ class LiveRepository(
         val api = client() ?: return
         val before = favouriteIds
         favouriteIds = next.distinct()
-        publish()
+        publishIfReady()
         try {
             call(api)
             store.cachedFavouriteIds = favouriteIds
         } catch (e: Exception) {
             favouriteIds = before
-            publish()
+            publishIfReady()
             throw e
         }
+    }
+
+    /**
+     * Only Ready is republished from the channels held in memory: an offline or signed-out screen must not turn back
+     * into a playable one because a pin changed.
+     */
+    private fun publishIfReady() {
+        if (_state.value is LiveState.Ready) publish()
     }
 }

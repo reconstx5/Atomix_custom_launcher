@@ -30,6 +30,7 @@ import dev.atomix.launcher.apps.liveTvIntent
 import dev.atomix.launcher.apps.safeStart
 import dev.atomix.launcher.atomix.ROUTE_LIVE_SETTINGS
 import dev.atomix.launcher.atomix.atomixIntent
+import dev.atomix.launcher.atomix.stopAtomixProcess
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.livetv.player.PlayerActivity
@@ -82,7 +83,7 @@ class HomeActivity : ComponentActivity() {
     private val appsTabMemory by lazy { FocusMemory(graph.prefs, "appsTab") }
 
     /** Where the playing channel was started from: Back from playback restores focus there. */
-    private var playedFrom = Tab.Home
+    private var playedFrom: Tab? = Tab.Home
 
     /** Bumped on every return to Home; the visible screen restores its remembered focus. */
     private val restoreTick = mutableIntStateOf(0)
@@ -106,6 +107,12 @@ class HomeActivity : ComponentActivity() {
     private val player = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val id = result.data?.getStringExtra(PlayerActivity.EXTRA_CHANNEL_ID) ?: return@registerForActivityResult
         val live = home.vm.ui.value.live
+        // null = opened from Settings' "Test a channel": that is not a card the user chose, so it must not become
+        // the one Home returns to.
+        if (playedFrom == null) {
+            restoreTick.intValue++
+            return@registerForActivityResult
+        }
         if (playedFrom == Tab.LiveTv) {
             val i = (live as? LiveState.Ready)?.all?.indexOfFirst { it.id == id } ?: -1
             if (i >= 0) liveTabMemory.remember(FocusTarget(ROW_CHANNELS, id, i))
@@ -141,7 +148,9 @@ class HomeActivity : ComponentActivity() {
                     } else {
                         val ui by home.vm.ui.collectAsState()
                         LaunchedEffect(ui.live) {
-                            if (ui.live == LiveState.SignedOut) { graph.store.clearAuth(); signedIn.value = false }
+                            if (ui.live == LiveState.SignedOut) {
+                                graph.store.clearAuth(); signedIn.value = false; stopAtomixProcess(this@HomeActivity)
+                            }
                         }
                         var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
                         var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
@@ -249,7 +258,7 @@ class HomeActivity : ComponentActivity() {
     /** Plays a channel from Settings; Back from the player returns to Settings. */
     private fun testChannel(id: String) {
         val pinned = (home.vm.ui.value.live as? LiveState.Ready)?.pinned.orEmpty().any { it.id == id }
-        playedFrom = Tab.Home
+        playedFrom = null
         player.launch(PlayerActivity.intent(this, id, if (pinned) ZapSource.Pinned else ZapSource.All))
     }
 
@@ -261,6 +270,7 @@ class HomeActivity : ComponentActivity() {
         graph.store.cachedChannelsJson = null
         graph.store.cachedFavouriteIds = null
         signedIn.value = false
+        stopAtomixProcess(this)
     }
 
     private fun versionName(): String =

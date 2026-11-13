@@ -86,7 +86,10 @@ fun LiveTvTab(
 
     Box(Modifier.fillMaxSize().background(AtomixColors.DeepSpace)) {
         if (all == null) {
-            EmptyState("Live TV isn't available right now", "Check Live TV in Settings.", emptyList(), Modifier.padding(start = px(116), top = px(200)))
+            // Loading is not a failure: saying so for the first half-second reads as one.
+            if (ui.live !is LiveState.Loading) {
+                EmptyState("Live TV isn't available right now", "Check Live TV in Settings.", emptyList(), Modifier.padding(start = px(116), top = px(200)))
+            }
             return@Box
         }
         // The list starts below the top menu (and is clipped there), so rows never scroll underneath it.

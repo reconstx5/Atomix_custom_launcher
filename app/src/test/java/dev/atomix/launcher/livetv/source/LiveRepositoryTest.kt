@@ -45,6 +45,22 @@ class LiveRepositoryTest {
         assertEquals(listOf("c", "b", "a", "z"), ready().all.map { it.id })
     }
 
+    @Test fun offlineStaysOffline_whenAPinIsChanged() = runTest {
+        repo.refresh()
+        fake.down = true
+        repo.refresh()
+        assertTrue(repo.state.value is LiveState.Offline)
+        runCatching { repo.pin("tv2") }
+        assertTrue("a refused change must not promote a dead server back to Ready", repo.state.value is LiveState.Offline)
+    }
+
+    @Test fun saveOrder_neverSendsTheSameChannelTwice() = runTest {
+        // No refresh: with no channel list nothing counts as TV, so every favourite lands in the "keep" half too.
+        fake.favourites = mutableListOf("tv1")
+        repo.saveOrder(listOf("tv1"))
+        assertEquals(listOf("tv1"), fake.lastOrder)
+    }
+
     @Test fun disabled_isNotConfigured() = runTest {
         fake.enabled = false
         repo.refresh()

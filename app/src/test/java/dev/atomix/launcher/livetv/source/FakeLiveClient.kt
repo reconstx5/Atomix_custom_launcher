@@ -24,6 +24,8 @@ class FakeLiveClient(
     var statusReply: LiveStatus? = null
     /** Thrown by [refreshSource] (e.g. a 403 for a non-admin profile). */
     var refreshFailure: Exception? = null
+    /** Thrown by [play] (e.g. a 401 once the sign-in has expired). */
+    var playFailure: Exception? = null
 
     private fun check() { if (down) throw IOException("down") }
     private fun checkWrite() { check(); if (failWrites) throw IOException("write failed") }
@@ -47,7 +49,7 @@ class FakeLiveClient(
         checkWrite(); lastOrder = ids; favourites = ids.toMutableList(); return ids
     }
     override suspend fun play(id: String, caps: PlayCaps, replaces: String?): PlayReply {
-        check(); calls += "play $id replaces=$replaces"; return playReplies.removeFirst()()
+        check(); calls += "play $id replaces=$replaces"; playFailure?.let { throw it }; return playReplies.removeFirst()()
     }
     override suspend fun ping(reply: PlayReply): Boolean { check(); calls += "ping ${reply.sessionId}"; return pingResult() }
     override suspend fun stop(reply: PlayReply) { calls += "stop ${reply.sessionId}" }

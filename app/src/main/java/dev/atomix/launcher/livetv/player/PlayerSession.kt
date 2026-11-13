@@ -1,5 +1,6 @@
 package dev.atomix.launcher.livetv.player
 
+import dev.atomix.launcher.data.AuthExpiredException
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.LiveClient
 import dev.atomix.launcher.livetv.source.PlayCaps
@@ -89,6 +90,12 @@ class PlayerSession(
                 client.play(ch.id, caps, replaces = current?.sessionId)
             } catch (e: CancellationException) {
                 throw e
+            } catch (e: AuthExpiredException) {
+                // Retrying can't help: Home returns to sign-in when the player closes.
+                onFailure(e)
+                _state.value = SessionState.Failed(ch, SIGNED_OUT)
+                stopCurrent()
+                return@launch
             } catch (e: Exception) {
                 onFailure(e)
                 scheduleRetry(ch)
@@ -148,6 +155,7 @@ class PlayerSession(
 
     companion object {
         const val UNAVAILABLE = "This channel isn't available right now."
+        const val SIGNED_OUT = "Your Atomix sign-in has expired. Go back to Home to sign in again."
         const val CANT_PLAY_HERE = "This channel can't play on this TV."
     }
 }

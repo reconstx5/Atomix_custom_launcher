@@ -35,7 +35,12 @@ class AtomixActivity : Activity() {
         val store = SessionStore(this)
         val server = store.serverUrl
         val token = store.token
-        if (server == null || token == null) { finish(); return }
+        if (server == null || token == null) {
+            // Silently vanishing looks like a crash; say what happened.
+            Toast.makeText(this, "Sign in to Atomix on Home first", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
         root = intent.getStringExtra(EXTRA_ROUTE)?.takeIf { it.startsWith("#/") } ?: "#/"
         val origin = server.toString().trimEnd('/')
 
