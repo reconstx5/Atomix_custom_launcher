@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.onAir
-import dev.atomix.launcher.ui.home.LogoPlate
+import dev.atomix.launcher.ui.kit.LogoPlate
 import dev.atomix.launcher.ui.home.clockText
 import dev.atomix.launcher.ui.home.timeRange
 import dev.atomix.launcher.ui.kit.ChipButton
@@ -131,7 +131,7 @@ fun PlayerOverlay(
 @Composable
 private fun Tuning(ch: Channel, loader: ImageLoader, url: (String?) -> String?, modifier: Modifier) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(px(24))) {
-        LogoPlate(ch, url(ch.logo), loader, Modifier.size(px(240), px(135)))
+        LogoPlate(ch, url(ch.logo), loader, widthPx = 240, heightPx = 135)
         BasicText("Tuning…", style = AtomixType.meta())
     }
 }
@@ -146,7 +146,7 @@ private fun ErrorCard(failed: SessionState.Failed, ch: Channel, loader: ImageLoa
         verticalArrangement = Arrangement.spacedBy(px(20)),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(24))) {
-            LogoPlate(ch, url(ch.logo), loader, Modifier.size(px(160), px(90)), logoMax = 128 to 60)
+            LogoPlate(ch, url(ch.logo), loader, widthPx = 160, heightPx = 90)
             BasicText(ch.name, style = AtomixType.rowHeader())
         }
         BasicText(failed.message, style = AtomixType.meta())
@@ -178,7 +178,7 @@ private fun Banner(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(28))) {
             BasicText(ch.number?.toString() ?: "", style = AtomixType.rowHeader())
-            LogoPlate(ch, url(ch.logo), loader, Modifier.size(px(160), px(90)), logoMax = 128 to 60)
+            LogoPlate(ch, url(ch.logo), loader, widthPx = 160, heightPx = 90)
             Column(Modifier.weight(1f)) {
                 BasicText(ch.name, style = AtomixType.small(), maxLines = 1)
                 BasicText(

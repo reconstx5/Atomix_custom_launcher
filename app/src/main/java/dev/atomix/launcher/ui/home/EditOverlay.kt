@@ -18,6 +18,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import dev.atomix.launcher.shell.EditSession
 import dev.atomix.launcher.ui.kit.ChipButton
+import dev.atomix.launcher.ui.kit.Hint
 import dev.atomix.launcher.ui.kit.HintBar
 import dev.atomix.launcher.ui.kit.LineIcon
 import dev.atomix.launcher.ui.theme.AtomixColors
@@ -44,9 +45,9 @@ fun EditableHeader(title: String, session: EditSession?, canEdit: Boolean, onEdi
 /** The always-visible remote hints while a row is in edit mode. */
 @Composable
 fun EditHints(session: EditSession, removeWord: String, modifier: Modifier = Modifier) {
-    val text = if (session.held != null) "◀ ▶ Move · OK Place · ▼ $removeWord · Back Cancel"
-    else "OK Pick up · ▼ $removeWord · Back Done"
-    HintBar(text, modifier.padding(bottom = px(40)))
+    val hints = if (session.held != null) listOf(Hint("◀ ▶", "Move"), Hint("OK", "Place"), Hint("▼", removeWord), Hint("Back", "Cancel"))
+    else listOf(Hint("OK", "Pick up"), Hint("▼", removeWord), Hint("Back", "Done"))
+    HintBar(hints, modifier.padding(bottom = px(40)))
 }
 
 /** The held item rides 12 px above its row, clear of the header text. */

@@ -38,7 +38,7 @@ import dev.atomix.launcher.livetv.source.onAir
 import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeUi
-import dev.atomix.launcher.ui.home.LogoPlate
+import dev.atomix.launcher.ui.kit.LogoPlate
 import dev.atomix.launcher.ui.home.onAirMeta
 import dev.atomix.launcher.ui.kit.ChipButton
 import dev.atomix.launcher.ui.kit.EmptyState
@@ -140,7 +140,7 @@ fun ChannelRow(ch: Channel, nowMs: Long, loader: ImageLoader, url: (String?) -> 
             horizontalArrangement = Arrangement.spacedBy(px(24)),
         ) {
             BasicText(ch.number?.toString() ?: "", Modifier.width(px(64)), style = AtomixType.small())
-            LogoPlate(ch, url(ch.logo), loader, Modifier.height(px(64)).width(px(128)), logoMax = 104 to 44)
+            LogoPlate(ch, url(ch.logo), loader, widthPx = 128, heightPx = 64)
             Column(Modifier.weight(1f)) {
                 BasicText(ch.name, style = AtomixType.cardTitle(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 BasicText(

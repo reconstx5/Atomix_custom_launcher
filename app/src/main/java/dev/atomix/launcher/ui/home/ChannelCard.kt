@@ -1,7 +1,5 @@
 package dev.atomix.launcher.ui.home
 
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -16,29 +14,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import coil.ImageLoader
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.OnAir
 import dev.atomix.launcher.ui.kit.LiveBadge
+import dev.atomix.launcher.ui.kit.LogoPlate
 import dev.atomix.launcher.ui.kit.tvFocus
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
@@ -54,39 +45,6 @@ fun clockText(ms: Long, is24: Boolean): String =
 fun onAirMeta(on: OnAir, is24: Boolean): String? {
     val p = on.programme ?: return null
     return "${timeRange(p.start, p.end, is24)} · ${on.minutesLeft} min left"
-}
-
-/** The channel's logo on a plate coloured from the logo (or from its name), readable with light text. */
-@Composable
-fun LogoPlate(channel: Channel, logoUrl: String?, loader: ImageLoader, modifier: Modifier = Modifier, logoMax: Pair<Int, Int> = 160 to 80) {
-    var plate by remember(channel.id) { mutableStateOf(Color(hashedPlate(channel.name))) }
-    // A logo that 404s or times out would otherwise leave an empty coloured rectangle with nothing in it.
-    var logoFailed by remember(logoUrl) { mutableStateOf(false) }
-    val context = LocalContext.current
-    Box(modifier.background(plate, RoundedCornerShape(px(10))).padding(px(10)), contentAlignment = Alignment.Center) {
-        if (logoUrl != null && !logoFailed) {
-            val request = remember(logoUrl) {
-                ImageRequest.Builder(context).data(logoUrl).size(320, 160).allowHardware(false)
-                    .listener(
-                        onSuccess = { _, result ->
-                            val bmp = (result.drawable as? BitmapDrawable)?.bitmap ?: return@listener
-                            plateFrom(bmp)?.let { plate = Color(it) }
-                        },
-                        onError = { _, _ -> logoFailed = true },
-                    ).build()
-            }
-            AsyncImage(request, imageLoader = loader, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.sizeIn(maxWidth = px(logoMax.first), maxHeight = px(logoMax.second)))
-        } else {
-            BasicText(channel.name, style = AtomixType.small().copy(color = AtomixColors.TextPrimary), maxLines = 2, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
-
-private fun plateFrom(bmp: Bitmap): Int? {
-    val small = Bitmap.createScaledBitmap(bmp, 24, 12, true)
-    val px = IntArray(24 * 12)
-    small.getPixels(px, 0, 24, 0, 0, 24, 12)
-    return averageOpaque(px)?.let(::plateForLogo)
 }
 
 /**
@@ -120,7 +78,7 @@ fun ChannelCard(
             .padding(px(24)),
     ) {
         Row(verticalAlignment = Alignment.Top) {
-            LogoPlate(channel, logoUrl, loader, Modifier.height(px(80)), logoMax = 140 to 60)
+            LogoPlate(channel, logoUrl, loader, widthPx = 142, heightPx = 80)
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(px(8))) {
                 channel.number?.let { BasicText(it.toString(), style = AtomixType.badge().copy(color = AtomixColors.TextSecondary)) }

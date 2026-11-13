@@ -44,6 +44,7 @@ import dev.atomix.launcher.livetv.source.OnAir
 import dev.atomix.launcher.ui.kit.Backdrop
 import dev.atomix.launcher.ui.kit.LiveBadge
 import dev.atomix.launcher.ui.kit.LocalEffects
+import dev.atomix.launcher.ui.kit.LogoPlate
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.px
@@ -136,7 +137,7 @@ fun Spotlight(channel: Channel?, on: OnAir?, logoUrl: String?, loader: ImageLoad
     if (channel == null) return
     Column(modifier.widthIn(max = px(1000)), verticalArrangement = Arrangement.spacedBy(px(14))) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(16))) {
-            LogoPlate(channel, logoUrl, loader, Modifier.height(px(56)), logoMax = 110 to 36)
+            LogoPlate(channel, logoUrl, loader, widthPx = 100, heightPx = 56)
             BasicText(listOfNotNull(channel.number?.toString(), channel.name).joinToString(" · ").uppercase(), style = AtomixType.eyebrow())
             // Nothing is live while the server can't be reached: the cards are dimmed and OK is disabled.
             if (live) LiveBadge()
