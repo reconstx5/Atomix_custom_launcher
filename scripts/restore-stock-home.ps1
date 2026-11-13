@@ -17,6 +17,17 @@ Tv shell pm enable $stock | Out-Null
 $list = 'D:\TV\disabled-by-us.txt'
 if (Test-Path $list) { (Get-Content $list) | Where-Object { $_ -ne $stock } | Set-Content $list }
 
+# Turn off Atomix's Home button override (accessibility service), keeping any other services as they are.
+$services = ((Tv shell settings get secure enabled_accessibility_services) -join '').Trim()
+if ($services -and $services -ne 'null') {
+    $kept = @($services -split ':' | Where-Object { $_ -and $_ -notlike 'dev.atomix.launcher/*' })
+    if ($kept.Count -ne @($services -split ':' | Where-Object { $_ }).Count) {
+        if ($kept.Count -gt 0) { Tv shell settings put secure enabled_accessibility_services ($kept -join ':') | Out-Null }
+        else { Tv shell settings delete secure enabled_accessibility_services | Out-Null }
+        'Turned off the Atomix Home button override'
+    }
+}
+
 Tv shell cmd package set-home-activity --user 0 $target
 $resolved = (Tv shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME |
     Select-Object -Last 1).Trim()

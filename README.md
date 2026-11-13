@@ -32,13 +32,17 @@ which allows that one run and changes no setting. The table shows the script par
 
 | What | Command (from `D:\atomix-launcher`) |
 | --- | --- |
-| Make Atomix the Home screen | `.\scripts\become-home.ps1 -Step 1` (backs up the current Home to `D:\TV\backup\launcher-<time>\home.txt`) |
+| Make the Home button open Atomix (this TV) | On the TV: Settings > Device Preferences > Accessibility > **Atomix Home button** > On. It only notices the Google TV home screen opening and never reads the screen. |
+| Make Atomix the Home screen (other TVs) | `.\scripts\become-home.ps1 -Step 1` (backs up the current Home to `D:\TV\backup\launcher-<time>\home.txt`) |
 | Check it survives a reboot | `.\scripts\become-home.ps1 -Step 2` |
 | Last resort if Home keeps reverting | `.\scripts\become-home.ps1 -Step 3` (disables the Google TV launcher, recorded in `D:\TV\disabled-by-us.txt`) |
-| Put the stock Home back | `.\scripts\restore-stock-home.ps1` (also part of `D:\TV\undo.ps1`; Atomix stays installed) |
+| Put the stock Home back | `.\scripts\restore-stock-home.ps1` (also turns off the Home button override; part of `D:\TV\undo.ps1`; Atomix stays installed) |
 | Live logs | `D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 logcat --pid=$(D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 shell pidof dev.atomix.launcher)` |
 | Screenshot | `. D:\TV\tvlib.ps1; Save-TvShot name` (saved to `D:\TV\logs\name.png`) |
 | Change the server address | `D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 shell pm clear dev.atomix.launcher`, then press Home. Setup runs again: it finds Atomix on the network, or you type the address. |
+
+On this VEON TV the firmware keeps the Google TV launcher as Home. `become-home.ps1` is accepted but ignored, and a
+disabled stock launcher is switched back on at boot. That is why the Home button override exists.
 
 ### Network notes
 
