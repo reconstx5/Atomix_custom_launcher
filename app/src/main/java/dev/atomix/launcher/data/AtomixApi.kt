@@ -14,19 +14,30 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import java.io.IOException
 
+/** What the launcher needs from an Atomix server. */
+interface AtomixClient {
+    suspend fun status(): Status
+    suspend fun quickConnectStart(): QuickConnectStart
+    suspend fun quickConnectPoll(poll: String): PollResult
+    suspend fun profiles(): List<Profile>
+    suspend fun selectProfile(id: Long, pin: String?)
+    suspend fun home(): HomeResponse
+    fun imageUrl(path: String?): HttpUrl?
+}
+
 class AtomixApi(
     private val baseUrl: HttpUrl,
     private val token: () -> String?,
     private val client: OkHttpClient,
-) {
+) : AtomixClient {
     private val jsonType = "application/json".toMediaType()
 
-    suspend fun status(): Status = AtomixJson.json.decodeFromString(get("/api/status").second)
+    override suspend fun status(): Status = AtomixJson.json.decodeFromString(get("/api/status").second)
 
-    suspend fun quickConnectStart(): QuickConnectStart =
+    override suspend fun quickConnectStart(): QuickConnectStart =
         AtomixJson.json.decodeFromString(post("/api/quickconnect", "{}").second)
 
-    suspend fun quickConnectPoll(poll: String): PollResult {
+    override suspend fun quickConnectPoll(poll: String): PollResult {
         val body = buildJsonObject { put("poll", poll) }.toString()
         val (resp, text) = post("/api/quickconnect/poll", body)
         val status = (AtomixJson.json.parseToJsonElement(text).jsonObject["status"] as? JsonPrimitive)?.content
@@ -42,16 +53,16 @@ class AtomixApi(
         }
     }
 
-    suspend fun profiles(): List<Profile> = AtomixJson.json.decodeFromString(get("/api/profiles").second)
+    override suspend fun profiles(): List<Profile> = AtomixJson.json.decodeFromString(get("/api/profiles").second)
 
-    suspend fun selectProfile(id: Long, pin: String?) {
+    override suspend fun selectProfile(id: Long, pin: String?) {
         val body = buildJsonObject { if (pin != null) put("pin", pin) }.toString()
         post("/api/profiles/$id/select", body)
     }
 
-    suspend fun home(): HomeResponse = AtomixJson.parseHome(get("/api/home").second)
+    override suspend fun home(): HomeResponse = AtomixJson.parseHome(get("/api/home").second)
 
-    fun imageUrl(path: String?): HttpUrl? = path?.takeIf { it.isNotBlank() }?.let { baseUrl.resolve(it) }
+    override fun imageUrl(path: String?): HttpUrl? = path?.takeIf { it.isNotBlank() }?.let { baseUrl.resolve(it) }
 
     private suspend fun get(path: String) = call(Request.Builder().url(baseUrl.resolve(path)!!).get())
 
