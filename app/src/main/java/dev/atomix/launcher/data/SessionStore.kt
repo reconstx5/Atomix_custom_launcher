@@ -50,13 +50,20 @@ class SessionStore(context: Context, encrypted: Boolean = true) {
     var cachedHomeJson: String?
         get() = str(K_HOME)
         set(v) = put(K_HOME, v)
+    /** Last channel list from the server, shown dimmed while it can't be reached. */
+    var cachedChannelsJson: String?
+        get() = str(K_CHANNELS)
+        set(v) = put(K_CHANNELS, v)
+    var cachedFavouriteIds: List<String>?
+        get() = str(K_FAVOURITES)?.let { s -> if (s.isEmpty()) emptyList() else s.split('\n') }
+        set(v) = put(K_FAVOURITES, v?.joinToString("\n"))
     var dock: List<String>?
         get() = str(K_DOCK)?.let { s -> if (s.isEmpty()) emptyList() else s.split('\n') }
         set(v) = put(K_DOCK, v?.joinToString("\n"))
 
     fun clearAuth() {
-        synchronized(memo) { listOf(K_TOKEN, K_PROFILE, K_PROFILE_NAME, K_HOME).forEach { memo[it] = null } }
-        prefs.edit().remove(K_TOKEN).remove(K_PROFILE).remove(K_PROFILE_NAME).remove(K_HOME).apply()
+        synchronized(memo) { listOf(K_TOKEN, K_PROFILE, K_PROFILE_NAME, K_HOME, K_CHANNELS, K_FAVOURITES).forEach { memo[it] = null } }
+        prefs.edit().remove(K_TOKEN).remove(K_PROFILE).remove(K_PROFILE_NAME).remove(K_HOME).remove(K_CHANNELS).remove(K_FAVOURITES).apply()
     }
 
     private fun put(key: String, v: String?) {
@@ -72,5 +79,7 @@ class SessionStore(context: Context, encrypted: Boolean = true) {
         const val K_PROFILE_NAME = "profile_name"
         const val K_HOME = "home_cache"
         const val K_DOCK = "dock"
+        const val K_CHANNELS = "channels_cache"
+        const val K_FAVOURITES = "favourite_channels_cache"
     }
 }

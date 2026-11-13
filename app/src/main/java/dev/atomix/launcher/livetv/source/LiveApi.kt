@@ -21,6 +21,8 @@ interface LiveClient {
     suspend fun channels(): List<Channel>
     /** Raw channel list, for caching as-is. */
     suspend fun channelsJson(): String
+    /** The profile's favourite channel ids, in their saved order. */
+    suspend fun favouriteIds(): List<String>
     suspend fun addFavourite(id: String)
     suspend fun removeFavourite(id: String)
     /** Sets the profile's favourite order; favourites missing from [ids] are removed by the server. */
@@ -44,6 +46,8 @@ class LiveApi(private val http: AtomixHttp) : LiveClient {
     override suspend fun channels(): List<Channel> = parseChannels(channelsJson())
 
     override suspend fun channelsJson(): String = http.get("/api/live/channels").second
+
+    override suspend fun favouriteIds(): List<String> = parseChannels(http.get("/api/live/channels?favourites=1").second).map { it.id }
 
     override suspend fun addFavourite(id: String) { http.post("/api/live/favourites/${enc(id)}") }
 

@@ -134,6 +134,12 @@ class LiveApiTest {
         assertEquals("/api/live/sources/iptv-simple%2Fplaylist/refresh", server.takeRequest().path)
     }
 
+    @Test fun favouriteIds_readsFavouritesOnlyListInOrder() = runTest {
+        server.enqueue(MockResponse().setBody("""[{"id":9,"name":"Nine"},{"id":2,"name":"Two"}]"""))
+        assertEquals(listOf("9", "2"), api.favouriteIds())
+        assertEquals("/api/live/channels?favourites=1", server.takeRequest().path)
+    }
+
     @Test fun url_resolvesRelativePaths() {
         assertEquals(server.url("/api/live/channels/1/logo"), api.url("/api/live/channels/1/logo"))
         assertNull(api.url(null))

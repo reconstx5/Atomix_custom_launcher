@@ -15,6 +15,7 @@ import dev.atomix.launcher.data.AtomixClient
 import dev.atomix.launcher.data.AtomixHttp
 import dev.atomix.launcher.livetv.source.LiveApi
 import dev.atomix.launcher.livetv.source.LiveClient
+import dev.atomix.launcher.livetv.source.LiveRepository
 import dev.atomix.launcher.data.OkHttpServerProbe
 import dev.atomix.launcher.data.ServerLocator
 import dev.atomix.launcher.data.SessionStore
@@ -56,7 +57,14 @@ class AppGraph private constructor(private val context: Context) {
 
     fun apiFor(url: HttpUrl): AtomixClient = AtomixApi(url, { store.token }, http)
     fun api(): AtomixClient? = store.serverUrl?.let(::apiFor)
-    fun live(): LiveClient? = store.serverUrl?.let { LiveApi(AtomixHttp(it, { store.token }, http)) }
+    fun liveClient(): LiveClient? = store.serverUrl?.let { LiveApi(AtomixHttp(it, { store.token }, http)) }
+
+    /** Channels and pins; when the server stops answering it is looked for again (its address may have changed). */
+    val live = LiveRepository(::liveClient, store, relocate = {
+        locator.locate(store.serverUrl, store.lastKnownUrl)?.let { found ->
+            if (found != store.serverUrl) { store.lastKnownUrl = store.serverUrl; store.serverUrl = found }
+        }
+    })
 
     /** Coil loader that sends the Atomix token only to the Atomix server; small caches for a 1.4 GB TV. */
     val imageLoader: ImageLoader by lazy {
