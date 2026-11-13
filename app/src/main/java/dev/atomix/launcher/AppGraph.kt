@@ -57,7 +57,9 @@ class AppGraph private constructor(private val context: Context) {
 
     fun apiFor(url: HttpUrl): AtomixClient = AtomixApi(url, { store.token }, http)
     fun api(): AtomixClient? = store.serverUrl?.let(::apiFor)
-    fun liveClient(): LiveClient? = store.serverUrl?.let { LiveApi(AtomixHttp(it, { store.token }, http)) }
+    /** Starting a channel can take 10 s or more while the server tunes or starts a remux. */
+    private val liveHttp: OkHttpClient by lazy { http.newBuilder().readTimeout(30, TimeUnit.SECONDS).build() }
+    fun liveClient(): LiveClient? = store.serverUrl?.let { LiveApi(AtomixHttp(it, { store.token }, liveHttp)) }
 
     /** Channels and pins; when the server stops answering it is looked for again (its address may have changed). */
     val live = LiveRepository(::liveClient, store, relocate = {
@@ -66,9 +68,9 @@ class AppGraph private constructor(private val context: Context) {
         }
     })
 
-    /** Coil loader that sends the Atomix token only to the Atomix server; small caches for a 1.4 GB TV. */
-    val imageLoader: ImageLoader by lazy {
-        val authed = http.newBuilder().addInterceptor { chain ->
+    /** HTTP that adds the Atomix token only on requests to the Atomix server (images, video, DRM licences). */
+    val authedHttp: OkHttpClient by lazy {
+        http.newBuilder().addInterceptor { chain ->
             val req = chain.request()
             val server = store.serverUrl
             val token = store.token
@@ -77,9 +79,13 @@ class AppGraph private constructor(private val context: Context) {
             } else {
                 chain.proceed(req)
             }
-        }.build()
+        }.readTimeout(20, TimeUnit.SECONDS).build()
+    }
+
+    /** Coil loader over [authedHttp]; small caches for a 1.4 GB TV. */
+    val imageLoader: ImageLoader by lazy {
         ImageLoader.Builder(context)
-            .okHttpClient(authed)
+            .okHttpClient(authedHttp)
             .memoryCache { MemoryCache.Builder(context).maxSizePercent(0.15).build() }
             .diskCache { DiskCache.Builder().directory(context.cacheDir.resolve("images")).maxSizeBytes(64L * 1024 * 1024).build() }
             .allowRgb565(true)

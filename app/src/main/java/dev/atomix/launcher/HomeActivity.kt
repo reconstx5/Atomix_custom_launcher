@@ -6,6 +6,7 @@ import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,13 +29,17 @@ import dev.atomix.launcher.apps.safeStart
 import dev.atomix.launcher.atomix.atomixIntent
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.LiveState
+import dev.atomix.launcher.livetv.player.PlayerActivity
+import dev.atomix.launcher.livetv.player.ZapSource
 import dev.atomix.launcher.shell.FocusMemory
+import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeViewModel
 import dev.atomix.launcher.shell.ShellScreen
 import dev.atomix.launcher.ui.apps.AppsScreen
 import dev.atomix.launcher.ui.apps.AppsScreenState
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
+import dev.atomix.launcher.ui.home.ROW_ON_NOW
 import dev.atomix.launcher.ui.home.InputsDialog
 import dev.atomix.launcher.ui.home.clockText
 import dev.atomix.launcher.ui.kit.Effects
@@ -66,6 +71,19 @@ class HomeActivity : ComponentActivity() {
     private val restoreTick = mutableIntStateOf(0)
     private val tab = mutableStateOf(Tab.Home)
     private val signedIn = mutableStateOf(false)
+
+    /** Playback returns the last channel watched; Home focuses its card (or keeps the card that started it). */
+    private val player = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val id = result.data?.getStringExtra(PlayerActivity.EXTRA_CHANNEL_ID) ?: return@registerForActivityResult
+        val pinned = when (val s = home.vm.ui.value.live) {
+            is LiveState.Ready -> s.pinned
+            is LiveState.Offline -> s.pinned
+            else -> emptyList()
+        }
+        val i = pinned.indexOfFirst { it.id == id }
+        if (i >= 0) homeMemory.remember(FocusTarget(ROW_ON_NOW, id, i))
+        restoreTick.intValue++
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -104,7 +122,7 @@ class HomeActivity : ComponentActivity() {
                                     memory = homeMemory,
                                     restoreTick = restoreTick.intValue,
                                     actions = HomeActions(
-                                        play = ::playChannel,
+                                        play = { playChannel(it, Tab.Home) },
                                         openApp = { launch(it.launch) },
                                         allApps = { tab.value = Tab.Apps },
                                         chooseChannels = { tab.value = Tab.LiveTv },
@@ -114,7 +132,7 @@ class HomeActivity : ComponentActivity() {
                                     ),
                                     onArt = { blurred = it },
                                 )
-                                Tab.LiveTv -> LiveTvTab(ui, graph.imageLoader, { graph.liveClient()?.url(it)?.toString() }, is24, ::playChannel)
+                                Tab.LiveTv -> LiveTvTab(ui, graph.imageLoader, { graph.liveClient()?.url(it)?.toString() }, is24) { playChannel(it, Tab.LiveTv) }
                                 Tab.Apps -> AppsScreen(
                                     state = appsState,
                                     loader = graph.imageLoader,
@@ -141,7 +159,11 @@ class HomeActivity : ComponentActivity() {
     // Settings arrives in a later stage; until then the gear opens Atomix's own settings.
     private fun openSettings() = launch(atomixIntent(this, "#/settings"))
 
-    private fun playChannel(channel: Channel) = toast("Playback arrives in the next update")
+    /** Zapping follows the list playback started from: pinned channels from Home, every channel from Live TV. */
+    private fun playChannel(channel: Channel, from: Tab) {
+        val source = if (from == Tab.LiveTv) ZapSource.All else ZapSource.Pinned
+        player.launch(PlayerActivity.intent(this, channel.id, source))
+    }
 
     /** Pressing Home while on another tab returns to the Home tab. */
     override fun onNewIntent(intent: Intent) {

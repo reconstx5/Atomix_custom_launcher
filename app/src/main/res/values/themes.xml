@@ -5,5 +5,8 @@
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowNoTitle">true</item>
     </style>
+    <style name="Theme.Atomix.Player" parent="Theme.Atomix">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
     <color name="deep_space">#05050C</color>
 </resources>

@@ -32,4 +32,15 @@ class PlateColorTest {
         assertNotEquals(hashedPlate("TVNZ 1"), hashedPlate("Three"))
         assertTrue(contrast(text, hashedPlate("Three")) >= 7.0)
     }
+
+    @Test fun darkLogo_getsALightPlateItStandsOutOn() {
+        val black = 0xFF101010.toInt()
+        val plate = plateForLogo(black)
+        assertTrue(contrast(black, plate) >= 7.0)
+    }
+
+    @Test fun colourfulLogo_getsItsDarkenedColour() {
+        val red = 0xFFE0102A.toInt()
+        assertEquals(darkenForText(red), plateForLogo(red))
+    }
 }

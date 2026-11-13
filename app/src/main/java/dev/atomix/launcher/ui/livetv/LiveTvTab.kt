@@ -58,7 +58,7 @@ fun LiveTvTab(ui: HomeUi, loader: ImageLoader, url: (String?) -> String?, is24: 
 }
 
 @Composable
-fun ChannelRow(ch: Channel, nowMs: Long, loader: ImageLoader, url: (String?) -> String?, is24: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
+fun ChannelRow(ch: Channel, nowMs: Long, loader: ImageLoader, url: (String?) -> String?, is24: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, focus: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val on = onAir(ch, nowMs)
@@ -69,6 +69,7 @@ fun ChannelRow(ch: Channel, nowMs: Long, loader: ImageLoader, url: (String?) -> 
     ) {
         Row(
             Modifier.weight(1f)
+                .then(focus)
                 .tvFocus(focused, scale = 1.02f, cornerPx = 16f)
                 .background(if (focused) AtomixColors.SolidPanel else Color.Transparent, RoundedCornerShape(px(16)))
                 .clickable(interaction, indication = null, onClick = onClick)

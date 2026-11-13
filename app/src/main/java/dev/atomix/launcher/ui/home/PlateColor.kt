@@ -38,6 +38,14 @@ fun averageOpaque(pixels: IntArray): Int? {
     return (0xFF shl 24) or ((r / n).toInt() shl 16) or ((g / n).toInt() shl 8) or (b / n).toInt()
 }
 
+/** Plate for a logo whose average colour is [average]: its colour darkened for text, or light when the logo is dark. */
+fun plateForLogo(average: Int): Int =
+    if (luminance(average) < DARK_LOGO) LIGHT_PLATE else darkenForText(average)
+
+/** Below this luminance a logo would vanish on a darkened plate (black wordmarks such as Bravo's). */
+private const val DARK_LOGO = 0.03
+private const val LIGHT_PLATE = 0xFFE8EAEF.toInt()
+
 private val PLATE_HUES = intArrayOf(0xFF2B4C7E.toInt(), 0xFF5B3A7A.toInt(), 0xFF1F5E5B.toInt(), 0xFF7A3B3B.toInt(), 0xFF3D5A2A.toInt(), 0xFF6B4E1F.toInt())
 
 /** A stable plate colour for a channel without a usable logo. */

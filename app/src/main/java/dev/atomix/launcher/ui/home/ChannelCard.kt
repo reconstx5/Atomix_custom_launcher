@@ -81,7 +81,7 @@ private fun plateFrom(bmp: Bitmap): Int? {
     val small = Bitmap.createScaledBitmap(bmp, 24, 12, true)
     val px = IntArray(24 * 12)
     small.getPixels(px, 0, 24, 0, 0, 24, 12)
-    return averageOpaque(px)?.let { darkenForText(it) }
+    return averageOpaque(px)?.let(::plateForLogo)
 }
 
 /**

@@ -65,6 +65,14 @@
             </intent-filter>
         </activity>
 
+        <!-- Live TV playback inside the launcher; Back returns to Home's restored focus. -->
+        <activity
+            android:name=".livetv.player.PlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard|navigation"
+            android:hardwareAccelerated="true"
+            android:theme="@style/Theme.Atomix.Player" />
+
         <!-- Home button override: this TV won't let another app be Home, so Atomix follows the stock home screen.
              Only the system can bind it (BIND_ACCESSIBILITY_SERVICE). -->
         <service

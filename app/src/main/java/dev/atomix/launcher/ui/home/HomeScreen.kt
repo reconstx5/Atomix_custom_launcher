@@ -116,11 +116,13 @@ fun HomeScreen(
     val slide = with(density) { px(390).toPx() }
     val reduced = LocalEffects.current.reduced
     val offset by animateFloatAsState(if (inApps) -slide else 0f, tween(if (reduced) 0 else 300), label = "slide")
+    // Slid up, the spotlight would run into the top menu; it fades out while the apps row has focus.
+    val spotAlpha by animateFloatAsState(if (inApps) 0f else 1f, tween(if (reduced) 0 else 200), label = "spotlight")
 
     Box(Modifier.fillMaxSize()) {
         SpotlightBackdrop(art, dim = inApps)
         Column(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true).graphicsLayer { translationY = offset }) {
-            Box(Modifier.fillMaxWidth().height(px(616)).padding(start = px(116), end = px(116), bottom = px(8)), contentAlignment = Alignment.BottomStart) {
+            Box(Modifier.fillMaxWidth().height(px(616)).graphicsLayer { alpha = spotAlpha }.padding(start = px(116), end = px(116), bottom = px(8)), contentAlignment = Alignment.BottomStart) {
                 Spotlight(spot, spotOn, url(spot?.logo), loader, is24)
             }
             Row(Modifier.padding(start = px(116), top = px(24)), verticalAlignment = Alignment.CenterVertically) {
