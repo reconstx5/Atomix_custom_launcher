@@ -2,33 +2,45 @@ package dev.atomix.launcher
 
 import android.content.Intent
 import android.os.Bundle
-import dev.atomix.launcher.atomix.atomixIntent
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
+import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import dev.atomix.launcher.apps.InputEntry
 import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.apps.liveTvIntent
 import dev.atomix.launcher.apps.safeStart
+import dev.atomix.launcher.atomix.atomixIntent
+import dev.atomix.launcher.livetv.source.Channel
+import dev.atomix.launcher.livetv.source.LiveState
+import dev.atomix.launcher.shell.FocusMemory
+import dev.atomix.launcher.shell.HomeViewModel
+import dev.atomix.launcher.shell.ShellScreen
 import dev.atomix.launcher.ui.apps.AppsScreen
 import dev.atomix.launcher.ui.apps.AppsScreenState
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
-import dev.atomix.launcher.ui.home.HomeState
-import dev.atomix.launcher.ui.home.HomeViewModel
+import dev.atomix.launcher.ui.home.InputsDialog
+import dev.atomix.launcher.ui.home.clockText
+import dev.atomix.launcher.ui.kit.Effects
+import dev.atomix.launcher.ui.kit.LocalEffects
+import dev.atomix.launcher.ui.kit.Tab
+import dev.atomix.launcher.ui.livetv.LiveTvTab
 import dev.atomix.launcher.ui.setup.SetupFlow
 import dev.atomix.launcher.ui.setup.SetupViewModel
 import dev.atomix.launcher.ui.theme.AtomixTheme
@@ -38,74 +50,120 @@ class SetupHolder(graph: AppGraph) : ViewModel() {
 }
 
 class HomeHolder(graph: AppGraph) : ViewModel() {
-    val vm = HomeViewModel(graph::api, graph.store, graph.favouriteApps::visible, viewModelScope)
+    val vm = HomeViewModel(graph.live, graph.favouriteApps, graph.apps, viewModelScope)
 }
 
+private const val TUNER_INPUT = "tv-tuner"
 
 class HomeActivity : ComponentActivity() {
     private lateinit var graph: AppGraph
     private val home: HomeHolder by lazy {
         ViewModelProvider(this, viewModelFactory { initializer { HomeHolder(graph) } })[HomeHolder::class.java]
     }
+    private val homeMemory by lazy { FocusMemory(graph.prefs, "home") }
+
+    /** Bumped on every return to Home; the visible screen restores its remembered focus. */
+    private val restoreTick = mutableIntStateOf(0)
+    private val tab = mutableStateOf(Tab.Home)
+    private val signedIn = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         graph = AppGraph.get(this)
+        signedIn.value = graph.store.token != null && graph.store.profileId != null
         val appsState = AppsScreenState(graph.favouriteApps) { graph.apps.apps.value }
-        lifecycleScope.launch { graph.apps.apps.collect { home.vm.refreshDock() } }
         setContent {
             AtomixTheme {
-                var signedIn by remember { mutableStateOf(graph.store.token != null && graph.store.profileId != null) }
-                if (!signedIn) {
-                    val holder = viewModel { SetupHolder(graph) }
-                    LaunchedEffect(Unit) { holder.vm.start() }
-                    SetupFlow(holder.vm) { signedIn = true; home.vm.refresh() }
-                } else if (showApps.value) {
-                    AppsScreen(
-                        state = appsState,
-                        loader = graph.imageLoader,
-                        onLaunch = { launch(it.launch) },
-                        onDockChanged = { home.vm.refreshDock() },
-                        onBack = { showApps.value = false },
-                    )
-                } else {
-                    val state by home.vm.state.collectAsState()
-                    LaunchedEffect(state.status) { if (state.status == HomeState.Status.SignedOut) signedIn = false }
-                    HomeScreen(
-                        vm = home.vm,
-                        loader = graph.imageLoader,
-                        imageUrl = { path -> graph.api()?.imageUrl(path)?.toString() },
-                        actions = HomeActions(
-                            openWeb = { route -> launch(atomixIntent(this, route)) },
-                            openApp = { launch(it.launch) },
-                            openApps = { showApps.value = true },
-                            openLiveTv = { liveTvIntent(packageManager)?.let(::launch) ?: toast("Live TV isn't installed") },
-                            listInputs = { TvInputs(this).hdmi() },
-                            openInput = { launch(TvInputs(this).intentFor(it)) },
-                            switchProfile = { graph.store.profileId = null; signedIn = false },
-                            moveDockApp = { pkg, delta -> graph.favouriteApps.let { f -> f.move(pkg, f.visible().indexOfFirst { it.packageName == pkg } + delta) } },
-                            removeDockApp = { graph.favouriteApps.remove(it) },
-                        ),
-                    )
+                CompositionLocalProvider(LocalEffects provides Effects(graph.prefs.reducedEffects)) {
+                    if (!signedIn.value) {
+                        val holder = viewModel { SetupHolder(graph) }
+                        LaunchedEffect(Unit) { holder.vm.start() }
+                        SetupFlow(holder.vm) { signedIn.value = true; home.vm.onVisible() }
+                    } else {
+                        val ui by home.vm.ui.collectAsState()
+                        LaunchedEffect(ui.live) {
+                            if (ui.live == LiveState.SignedOut) { graph.store.clearAuth(); signedIn.value = false }
+                        }
+                        var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
+                        var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
+                        val is24 = DateFormat.is24HourFormat(this)
+                        ShellScreen(
+                            tab = tab.value,
+                            onTab = { tab.value = it; restoreTick.intValue++ },
+                            clock = clockText(ui.nowMs, is24),
+                            blurred = blurred,
+                            onInputs = { inputs = listOf(InputEntry(TUNER_INPUT, "TV tuner")) + TvInputs(this).hdmi() },
+                            onSettings = ::openSettings,
+                        ) { current ->
+                            when (current) {
+                                Tab.Home -> HomeScreen(
+                                    ui = ui,
+                                    loader = graph.imageLoader,
+                                    url = { graph.liveClient()?.url(it)?.toString() },
+                                    is24 = is24,
+                                    memory = homeMemory,
+                                    restoreTick = restoreTick.intValue,
+                                    actions = HomeActions(
+                                        play = ::playChannel,
+                                        openApp = { launch(it.launch) },
+                                        allApps = { tab.value = Tab.Apps },
+                                        chooseChannels = { tab.value = Tab.LiveTv },
+                                        openSettings = ::openSettings,
+                                        retry = home.vm::refreshNow,
+                                        unavailable = { toast("Can't reach the TV server") },
+                                    ),
+                                    onArt = { blurred = it },
+                                )
+                                Tab.LiveTv -> LiveTvTab(ui, graph.imageLoader, { graph.liveClient()?.url(it)?.toString() }, is24, ::playChannel)
+                                Tab.Apps -> AppsScreen(
+                                    state = appsState,
+                                    loader = graph.imageLoader,
+                                    onLaunch = { launch(it.launch) },
+                                    onDockChanged = { home.vm.refreshApps() },
+                                    onBack = { tab.value = Tab.Home },
+                                )
+                            }
+                        }
+                        inputs?.let { list ->
+                            InputsDialog(list, onPick = { inputs = null; openInput(it) }, onDismiss = { inputs = null })
+                        }
+                    }
                 }
             }
         }
     }
 
-    /** Pressing Home while the Apps grid is open returns to the home screen. */
-    private val showApps = mutableStateOf(false)
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        showApps.value = false
+    private fun openInput(input: InputEntry) {
+        if (input.id == TUNER_INPUT) liveTvIntent(packageManager)?.let(::launch) ?: toast("The TV tuner app isn't installed")
+        else launch(TvInputs(this).intentFor(input))
     }
 
-    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    // Settings arrives in a later stage; until then the gear opens Atomix's own settings.
+    private fun openSettings() = launch(atomixIntent(this, "#/settings"))
+
+    private fun playChannel(channel: Channel) = toast("Playback arrives in the next update")
+
+    /** Pressing Home while on another tab returns to the Home tab. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        tab.value = Tab.Home
+        restoreTick.intValue++
+    }
 
     override fun onResume() {
         super.onResume()
-        if (graph.store.token != null && graph.store.profileId != null) home.vm.refresh()
+        if (signedIn.value) {
+            home.vm.onVisible()
+            restoreTick.intValue++
+        }
     }
+
+    override fun onPause() {
+        super.onPause()
+        home.vm.onHidden()
+    }
+
+    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 
     private fun launch(intent: Intent) {
         if (!safeStart(intent)) toast("Couldn't open that")

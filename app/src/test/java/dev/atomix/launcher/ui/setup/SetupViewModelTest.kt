@@ -50,8 +50,6 @@ class SetupViewModelTest {
             if (correctPin != null && pin != correctPin) throw HttpException(403, "Wrong PIN")
             selected += id
         }
-        override suspend fun homeJson() = "{}"
-        override fun imageUrl(path: String?): HttpUrl? = null
     }
 
     private class Probe(val ok: Boolean) : ServerProbe { override suspend fun isAtomix(base: HttpUrl) = ok }

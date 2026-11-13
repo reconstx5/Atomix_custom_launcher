@@ -47,9 +47,6 @@ class SessionStore(context: Context, encrypted: Boolean = true) {
     var profileName: String?
         get() = str(K_PROFILE_NAME)
         set(v) = put(K_PROFILE_NAME, v)
-    var cachedHomeJson: String?
-        get() = str(K_HOME)
-        set(v) = put(K_HOME, v)
     /** Last channel list from the server, shown dimmed while it can't be reached. */
     var cachedChannelsJson: String?
         get() = str(K_CHANNELS)

@@ -21,15 +21,15 @@ class AtomixApiTest {
 
     @After fun tearDown() = server.shutdown()
 
-    @Test fun home_sendsBearer() = runTest {
-        server.enqueue(MockResponse().setBody("""{"hero":null,"rows":[]}"""))
-        api.home()
+    @Test fun profiles_sendsBearer() = runTest {
+        server.enqueue(MockResponse().setBody("[]"))
+        api.profiles()
         assertEquals("Bearer abc", server.takeRequest().getHeader("Authorization"))
     }
 
     @Test fun unauthorized_throwsAuthExpired() = runTest {
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"Sign in"}"""))
-        try { api.home(); throw AssertionError("expected AuthExpiredException") } catch (_: AuthExpiredException) {}
+        try { api.profiles(); throw AssertionError("expected AuthExpiredException") } catch (_: AuthExpiredException) {}
     }
 
     @Test fun poll_approved_readsCookieToken() = runTest {
@@ -58,10 +58,5 @@ class AtomixApiTest {
         val req = server.takeRequest()
         assertEquals("/api/profiles/2/select", req.path)
         assertTrue(req.body.readUtf8().contains("\"pin\":\"1234\""))
-    }
-
-    @Test fun imageUrl_resolvesRelative() {
-        val url = api.imageUrl("/api/items/5/image/backdrop?v=1")!!
-        assertEquals(server.url("/api/items/5/image/backdrop?v=1"), url)
     }
 }

@@ -21,7 +21,7 @@ class SessionStoreTest {
         s.token = "t"
         s.profileId = 1
         s.profileName = "Dallas"
-        s.cachedHomeJson = "{}"
+        s.cachedChannelsJson = "[]"
         s.dock = listOf("a", "b")
         s.clearAuth()
         assertEquals("http://192.168.8.65:8787/".toHttpUrl(), s.serverUrl)
@@ -29,7 +29,7 @@ class SessionStoreTest {
         assertNull(s.token)
         assertNull(s.profileId)
         assertNull(s.profileName)
-        assertNull(s.cachedHomeJson)
+        assertNull(s.cachedChannelsJson)
     }
 
     @Test fun values_roundTrip() {

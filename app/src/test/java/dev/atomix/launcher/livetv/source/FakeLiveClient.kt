@@ -16,6 +16,7 @@ class FakeLiveClient(
     var down = false
     var failWrites = false
     var lastOrder: List<String>? = null
+    var refreshes = 0
     val calls = mutableListOf<String>()
     var playReplies = ArrayDeque<() -> PlayReply>()
     var pingResult: () -> Boolean = { true }
@@ -23,7 +24,7 @@ class FakeLiveClient(
     private fun check() { if (down) throw IOException("down") }
     private fun checkWrite() { check(); if (failWrites) throw IOException("write failed") }
 
-    override suspend fun status() = check().let { LiveStatus(enabled, emptyList(), admin = true) }
+    override suspend fun status() = check().let { refreshes++; LiveStatus(enabled, emptyList(), admin = true) }
     override suspend fun channels(): List<Channel> { check(); return channels.map { it.copy(favourite = it.id in favourites) } }
     override suspend fun channelsJson(): String = buildJsonArray {
         channels().forEach { c ->

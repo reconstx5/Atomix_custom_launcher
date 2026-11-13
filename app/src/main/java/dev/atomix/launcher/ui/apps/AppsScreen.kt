@@ -39,8 +39,6 @@ import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import dev.atomix.launcher.apps.AppEntry
-import dev.atomix.launcher.ui.home.GlassMenu
-import dev.atomix.launcher.ui.home.MenuOption
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.atomixFocusRing

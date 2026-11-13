@@ -1,4 +1,4 @@
-package dev.atomix.launcher.ui.home
+package dev.atomix.launcher.ui.apps
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
