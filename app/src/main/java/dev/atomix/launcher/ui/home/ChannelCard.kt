@@ -111,7 +111,7 @@ fun ChannelCard(
     Column(
         modifier
             .onFocusChanged { if (it.isFocused) onFocused() }
-            .tvFocus(focused, scale = 1.08f, cornerPx = 16f)
+            .tvFocus(focused, cornerPx = 16f)
             .size(px(480), px(270))
             .clip(shape)
             .background(if (focused) AtomixColors.SolidPanel else AtomixColors.DeepSpaceInset.copy(alpha = 0.92f), shape)

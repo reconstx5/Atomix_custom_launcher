@@ -132,7 +132,7 @@ fun ChannelRow(ch: Channel, nowMs: Long, loader: ImageLoader, url: (String?) -> 
         Row(
             Modifier.weight(1f)
                 .then(focus)
-                .tvFocus(focused, scale = 1.02f, cornerPx = 16f)
+                .tvFocus(focused, cornerPx = 16f)
                 .background(if (focused) AtomixColors.SolidPanel else Color.Transparent, RoundedCornerShape(px(16)))
                 .clickable(interaction, indication = null, onClick = onClick)
                 .padding(horizontal = px(20), vertical = px(12)),

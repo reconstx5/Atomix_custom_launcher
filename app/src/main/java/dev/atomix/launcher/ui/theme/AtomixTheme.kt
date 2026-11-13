@@ -43,26 +43,54 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.atomix.launcher.R
 
-/** Orbit tokens, from Atomix DESIGN.md. */
+/** The redesign's colours (design spec §4.1). */
 object AtomixColors {
-    val DeepSpace = Color(0xFF05050C)
-    val DeepSpaceInset = Color(0xFF0B0B16)
-    val Ice = Color(0xFF8FE9FF)
+    val Ground = Color(0xFF0A1322)
+    val Tile = Color(0xFF16243A)
+    val Raised = Color(0xFF1B2C46)
+    val Panel = Color(0xFF101B2C)
+    val Inset = Color(0xFF0E1828)
+    val KeyCap = Color(0xFF24344D)
+    val RoundButton = Color(0xFF1A2638)
+    /** The card colour under artwork. */
+    val Card = Color(0xFF111D2E)
+    val OverVideo = Color(0xEB0A1220)
+    val OverVideoList = Color(0xF00A1220)
+    val HintChip = Color(0xD60A1220)
+    val Ice = Color(0xFFA9DCFB)
+    val Ring = Color(0xFFBFE6FF)
+    /** Text and icons on ice. */
+    val Ink = Color(0xFF0A1322)
     val Text = Color.White
-    val TextSoft = Color.White.copy(alpha = 0.78f)
-    val TextDim = Color.White.copy(alpha = 0.55f)
-    val GlassClear = Color.White.copy(alpha = 0.14f)
-    val GlassStrong = Color.White.copy(alpha = 0.22f)
-    val GlassEdge = Color.White.copy(alpha = 0.16f)
-    val GlassPanel = Color(0xCC0B0B16)
-    val Coral = Color(0xFFFF7A86)
-    // Overhaul tokens (research: contrast checked against the brightest artwork).
-    val TextPrimary = Color(0xFFF1F1F1)
-    val TextSecondary = Color(0xFFB4B8BF)
-    val Live = Color(0xFFC62F3A)
-    val SolidPanel = Color(0xFF141726)
-    val Edge = Color.White.copy(alpha = 0.16f)
+    val TextBright = Color(0xFFE6ECF3)
+    val TextSoft = Color(0xFFD5DDE8)
+    val TextSecondary = Color(0xFFC3CEDC)
+    val Label = Color(0xFF9FB0C6)
+    val Inactive = Color(0xFFA7B2C3)
+    val InactiveSoft = Color(0xFF97A3B6)
+    val InactiveDim = Color(0xFF8794A8)
+    val Green = Color(0xFF7BE0A3)
+    val GreenText = Color(0xFF9BEBBB)
+    val Amber = Color(0xFFFFD08A)
+    val LiveRed = Color(0xFFFF5A5F)
+    val LiveText = Color(0xFFFFB3B5)
+    val LogoPlate = Color(0xFFF2F5F9)
+    val SwitchOff = Color(0xFF2A3A52)
     val Track = Color.White.copy(alpha = 0.24f)
+
+    // Legacy names, deleted in Task 10
+    val DeepSpace = Ground
+    val DeepSpaceInset = Inset
+    val TextDim = Label
+    val GlassClear = Tile
+    val GlassStrong = Raised
+    val GlassPanel = Panel
+    val SolidPanel = Raised
+    val GlassEdge = Color.Transparent
+    val Edge = Color.Transparent
+    val Coral = Amber
+    val TextPrimary = Text
+    val Live = LiveRed
 }
 
 val AVATAR_COLORS = mapOf(
@@ -89,12 +117,25 @@ private val LocalUnit = staticCompositionLocalOf { 0.5f }
 }
 
 object AtomixType {
+    @Composable fun wordmark() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(26), letterSpacing = 0.24.em(), color = AtomixColors.Text)
+    @Composable fun tab() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Medium, fontSize = pxSp(32), lineHeight = pxSp(40), color = AtomixColors.Text)
+    @Composable fun clock() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(36), color = AtomixColors.Text)
+    @Composable fun heading() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(44), lineHeight = pxSp(56), color = AtomixColors.Text)
+    @Composable fun subheading() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(30), lineHeight = pxSp(40), color = AtomixColors.Text)
+    @Composable fun rowLabel() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(28), lineHeight = pxSp(36), color = AtomixColors.Text)
+    @Composable fun description() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(24), lineHeight = pxSp(30), color = AtomixColors.TextSecondary)
+    @Composable fun groupLabel() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(22), lineHeight = pxSp(24), letterSpacing = 0.08.em(), color = AtomixColors.Label)
+    @Composable fun value() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(26), color = AtomixColors.Ice)
+    @Composable fun hint() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(24), color = AtomixColors.Text)
+    @Composable fun button() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(26), color = AtomixColors.Text)
+    @Composable fun note() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(22), lineHeight = pxSp(28), color = AtomixColors.Text)
+
+    // Legacy names, deleted in Task 10
     @Composable fun display() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(116), lineHeight = pxSp(125), letterSpacing = (-0.045).em(), color = AtomixColors.Text)
     @Composable fun headline() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(56), letterSpacing = (-0.035).em(), color = AtomixColors.Text)
     @Composable fun title() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(26), letterSpacing = (-0.015).em(), color = AtomixColors.Text)
     @Composable fun body() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(22), lineHeight = pxSp(33), color = AtomixColors.TextSoft)
-    @Composable fun label() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(20), color = AtomixColors.TextSoft)
-    // Overhaul scale (px at 1920×1080; floor 22).
+    @Composable fun label() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(22), color = AtomixColors.TextSoft)
     @Composable fun spotlight() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(80), lineHeight = pxSp(88), color = AtomixColors.TextPrimary)
     @Composable fun eyebrow() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Medium, fontSize = pxSp(24), lineHeight = pxSp(32), letterSpacing = 0.16.em(), color = AtomixColors.TextSecondary)
     @Composable fun meta() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(30), lineHeight = pxSp(38), color = AtomixColors.TextSecondary)
@@ -103,7 +144,7 @@ object AtomixType {
     @Composable fun cardTitle() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(28), lineHeight = pxSp(34), color = AtomixColors.TextPrimary)
     @Composable fun small() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(24), lineHeight = pxSp(30), color = AtomixColors.TextSecondary)
     @Composable fun badge() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(22), lineHeight = pxSp(28), color = Color.White)
-    @Composable fun caption() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(16), color = AtomixColors.TextDim)
+    @Composable fun caption() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(22), color = AtomixColors.TextDim)
 }
 
 private fun Double.em() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Em)

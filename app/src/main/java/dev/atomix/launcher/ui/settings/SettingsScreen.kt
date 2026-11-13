@@ -206,7 +206,7 @@ private fun SectionItem(title: String, selected: Boolean, modifier: Modifier, on
         modifier
             .fillMaxWidth()
             .height(px(72))
-            .tvFocus(focused, scale = 1.03f, cornerPx = 16f)
+            .tvFocus(focused, cornerPx = 16f)
             .background(
                 when {
                     focused -> Color.White

@@ -120,7 +120,7 @@ private fun AppTile(app: AppEntry, loader: ImageLoader, focus: Modifier, onClick
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .then(focus)
-                .tvFocus(focused, scale = 1.08f, cornerPx = 18f)
+                .tvFocus(focused, cornerPx = 18f)
                 .clip(shape)
                 .background(AtomixColors.GlassClear)
                 .border(1.dp, AtomixColors.GlassEdge, shape)

@@ -115,7 +115,7 @@ fun rememberSpotlightArt(url: String?, loader: ImageLoader): SpotlightArt? {
 /** Full-bleed backdrop: the art (or its darker copy), crossfading on change; Deep Space when there's none. */
 @Composable
 fun SpotlightBackdrop(art: SpotlightArt?, dim: Boolean, modifier: Modifier = Modifier) {
-    val ms = LocalEffects.current.crossfadeMs
+    val ms = LocalEffects.current.motionMs
     Box(modifier.fillMaxSize().background(AtomixColors.DeepSpace)) {
         Crossfade(art to dim, animationSpec = tween(ms), label = "backdrop") { (a, d) ->
             if (a != null) {

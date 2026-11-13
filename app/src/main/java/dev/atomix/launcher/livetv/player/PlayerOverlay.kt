@@ -279,7 +279,7 @@ private fun TabChip(text: String, selected: Boolean, onClick: () -> Unit) {
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(50)
     Column(
-        Modifier.tvFocus(focused, scale = 1.04f, cornerPx = 999f)
+        Modifier.tvFocus(focused, cornerPx = 999f)
             .background(if (focused) Color.White else Color.Transparent, shape)
             .clickable(interaction, indication = null, onClick = onClick)
             .padding(horizontal = px(24), vertical = px(10)),

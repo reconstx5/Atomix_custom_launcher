@@ -38,7 +38,7 @@ fun IconButton(icon: LineIcon, label: String, onClick: () -> Unit, modifier: Mod
     Box(
         modifier
             .semantics { contentDescription = label }
-            .tvFocus(focused, scale = 1.1f, cornerPx = sizePx / 2f)
+            .tvFocus(focused, cornerPx = sizePx / 2f)
             .size(px(sizePx))
             .background(if (focused) Color.White else AtomixColors.GlassClear, CircleShape)
             .clickable(interaction, indication = null, onClick = onClick),
@@ -56,7 +56,7 @@ fun ChipButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     val shape = RoundedCornerShape(50)
     Row(
         modifier
-            .tvFocus(focused, scale = 1.06f, cornerPx = 999f)
+            .tvFocus(focused, cornerPx = 999f)
             .background(if (focused) Color.White else AtomixColors.GlassClear, shape)
             .border(1.dp, if (focused) Color.Transparent else AtomixColors.Edge, shape)
             .clickable(interaction, indication = null, enabled = enabled, onClick = onClick)

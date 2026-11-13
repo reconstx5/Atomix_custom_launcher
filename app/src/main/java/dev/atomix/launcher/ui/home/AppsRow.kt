@@ -45,7 +45,7 @@ fun AppPill(app: AppEntry, loader: ImageLoader, onClick: () -> Unit, onFocused: 
     Row(
         modifier
             .onFocusChanged { if (it.isFocused) onFocused() }
-            .tvFocus(focused, scale = 1.1f, cornerPx = 999f)
+            .tvFocus(focused, cornerPx = 999f)
             .background(if (focused) Color.White else AtomixColors.GlassClear, shape)
             .border(1.dp, if (focused) Color.Transparent else AtomixColors.Edge, shape)
             .clickable(interaction, indication = null, onClick = onClick)
