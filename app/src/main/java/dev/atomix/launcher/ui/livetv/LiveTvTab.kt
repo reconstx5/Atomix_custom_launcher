@@ -273,9 +273,9 @@ fun ChannelRow(
         }
         when (mark) {
             RowMark.OnHome -> Icon(LineIcon.House, AtomixColors.Ice, 30)
-            RowMark.Watching -> Row(horizontalArrangement = Arrangement.spacedBy(px(10)), verticalAlignment = Alignment.CenterVertically) {
+            RowMark.Watching -> Row(horizontalArrangement = Arrangement.spacedBy(px(8)), verticalAlignment = Alignment.CenterVertically) {
                 Icon(LineIcon.Bars, AtomixColors.Ice, 24)
-                BasicText("Watching", style = AtomixType.note().copy(color = AtomixColors.Ice), maxLines = 1)
+                BasicText("Watching", style = AtomixType.note().copy(fontWeight = FontWeight.Bold, color = AtomixColors.Ice), maxLines = 1)
             }
             null -> Unit
         }

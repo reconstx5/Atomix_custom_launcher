@@ -53,9 +53,12 @@ fun IconButton(icon: LineIcon, label: String, onClick: () -> Unit, modifier: Mod
     }
 }
 
-/** The panel button, such as "Try again" or "Choose channels": a rounded tile, raised with the ring when focused. */
+/**
+ * The panel button, such as "Try again" or "Choose channels": a rounded tile, raised with the ring when focused.
+ * [lead] is an amber figure before the words.
+ */
 @Composable
-fun ChipButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: LineIcon? = null, enabled: Boolean = true) {
+fun ChipButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, icon: LineIcon? = null, enabled: Boolean = true, lead: String? = null) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(px(16))
@@ -70,6 +73,8 @@ fun ChipButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) Icon(icon, AtomixColors.Text, 26)
+        // A figure the button is about, such as how far behind live "Jump to live" would jump.
+        if (lead != null) BasicText(lead, style = AtomixType.button().copy(fontWeight = FontWeight.Bold, color = AtomixColors.Amber), maxLines = 1)
         BasicText(text, style = AtomixType.button().copy(fontWeight = if (focused) FontWeight.Bold else FontWeight.SemiBold), maxLines = 1)
     }
 }

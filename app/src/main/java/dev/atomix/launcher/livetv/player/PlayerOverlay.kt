@@ -1,14 +1,11 @@
+@file:OptIn(ExperimentalComposeUiApi::class) // FocusRequester.Cancel
+
 package dev.atomix.launcher.livetv.player
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,12 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -32,36 +24,46 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.onAir
-import dev.atomix.launcher.ui.kit.LogoPlate
 import dev.atomix.launcher.ui.home.clockText
-import dev.atomix.launcher.ui.home.timeRange
+import dev.atomix.launcher.ui.home.onAirLines
 import dev.atomix.launcher.ui.kit.ChipButton
-import dev.atomix.launcher.ui.kit.IconButton
+import dev.atomix.launcher.ui.kit.HintBar
+import dev.atomix.launcher.ui.kit.HintSpot
+import dev.atomix.launcher.ui.kit.Icon
 import dev.atomix.launcher.ui.kit.LineIcon
 import dev.atomix.launcher.ui.kit.LiveBadge
-import dev.atomix.launcher.ui.kit.tvFocus
+import dev.atomix.launcher.ui.kit.LogoPlate
+import dev.atomix.launcher.ui.kit.SegmentedPills
+import dev.atomix.launcher.ui.kit.Wash
+import dev.atomix.launcher.ui.kit.WashKind
+import dev.atomix.launcher.ui.kit.WindowColumn
+import dev.atomix.launcher.ui.kit.WindowState
+import dev.atomix.launcher.ui.kit.hintsFor
 import dev.atomix.launcher.ui.livetv.ChannelRow
+import dev.atomix.launcher.ui.livetv.RowMark
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.px
-
-/** Panels over video: the video can't be blurred, so a translucent dark surface with the usual light edge. */
-private val OverVideo = Color(0xE6141726)
+import dev.atomix.launcher.ui.theme.pxSp
 
 /** Where the stream is relative to live; [behindMs] > 0 once the viewer has paused or gone back. */
 data class LiveInfo(val paused: Boolean, val behindMs: Long)
@@ -77,6 +79,24 @@ class OverlayActions(
     val nextChannel: () -> Unit,
     val home: () -> Unit,
 )
+
+/**
+ * Which hints to show over the picture, from what is on screen: the channel list first, then the error card, then
+ * the banner, then tuning. A clean picture has none. [failedButton] is the focused button's label on the error card;
+ * [listChannel] is the focused row's channel in the list, or null while a pill has focus.
+ */
+fun playerSpot(failedButton: String?, tuning: Boolean, layers: Set<Layer>, listChannel: String?): HintSpot? = when {
+    Layer.ChannelList in layers -> if (listChannel != null) HintSpot.PlayerList(listChannel) else HintSpot.Pill("Close")
+    failedButton != null -> HintSpot.PlayerError(failedButton, bannerUp = Layer.Banner in layers)
+    Layer.Banner in layers -> HintSpot.PlayerBanner
+    tuning -> HintSpot.PlayerTuning
+    else -> null
+}
+
+/** How many rows of the channel list show at once. */
+private const val LIST_ROWS = 8
+
+private const val TRY_AGAIN = "Try again"
 
 /** Everything drawn over the picture. */
 @Composable
@@ -100,60 +120,105 @@ fun PlayerOverlay(
 ) {
     Box(Modifier.fillMaxSize()) {
         val failed = state as? SessionState.Failed
+        val tuning = failed == null && (state is SessionState.Tuning || (state is SessionState.Playing && !ready) || state is SessionState.Idle)
+        // The focused button on the error card, and the focused row's channel in the list (null on a pill).
+        var failedButton by remember { mutableStateOf(TRY_AGAIN) }
+        var listChannel by remember { mutableStateOf<String?>(null) }
+        val spot = playerSpot(if (failed != null) failedButton else null, tuning, layers, listChannel)
+
+        if (failed != null || tuning) Wash(WashKind.Player)
         when {
-            failed != null -> ErrorCard(failed, shown, loader, url, actions, Modifier.align(Alignment.Center))
-            state is SessionState.Tuning || (state is SessionState.Playing && !ready) || state is SessionState.Idle ->
-                Tuning(shown, loader, url, Modifier.align(Alignment.Center))
+            failed != null -> ErrorCard(failed, shown, loader, url, actions, onButton = { failedButton = it })
+            tuning -> Tuning(shown, loader, url)
         }
         if (Layer.Banner in layers) {
+            // Darkens the lower half only, so the banner's words read over a bright picture.
+            Box(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.52f).background(
+                    Brush.verticalGradient(0f to Scrim.copy(alpha = 0f), 0.654f to Scrim.copy(alpha = 0.80f), 1f to Scrim.copy(alpha = 0.94f)),
+                ),
+            )
             Banner(
                 shown, nowMs, is24, loader, url,
                 controls = controls && Layer.Controls in layers && failed == null,
                 live = live, actions = actions,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(start = px(116), end = px(116), bottom = px(60)),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(start = px(100), end = px(100), bottom = px(124)),
             )
         }
         if (Layer.ChannelList in layers) {
-            QuickList(pinned, all, listSource, shown, nowMs, is24, loader, url, actions.pick, Modifier.align(Alignment.CenterStart))
-        }
-        val big = typed.ifEmpty { notice }
-        if (big != null) {
-            BasicText(
-                big,
-                Modifier.align(Alignment.TopEnd).padding(top = px(60), end = px(116))
-                    .background(OverVideo, RoundedCornerShape(px(20))).padding(horizontal = px(36), vertical = px(20)),
-                style = if (typed.isNotEmpty()) AtomixType.spotlight() else AtomixType.rowHeader(),
+            QuickList(
+                pinned, all, listSource, shown, nowMs, loader, url, actions.pick,
+                onFocus = { listChannel = it },
+                hints = spot,
+                modifier = Modifier.align(Alignment.CenterStart),
             )
+        } else if (spot != null) {
+            HintBar(hintsFor(spot), Modifier.align(Alignment.BottomEnd).padding(end = px(100), bottom = px(40)))
+        }
+        if (typed.isNotEmpty()) NumberChip(typed, numberMatch(typed, all), nowMs, loader, url, Modifier.align(Alignment.TopEnd))
+        else if (notice != null) Notice(notice, Modifier.align(Alignment.TopEnd))
+    }
+}
+
+private val Scrim = Color(0xFF070E1A)
+
+/** "Channel 2", or nothing for a channel without a number. */
+@Composable
+private fun ChannelNumberLine(ch: Channel) {
+    ch.number?.let { BasicText("Channel $it", style = AtomixType.description().copy(fontSize = pxSp(26), lineHeight = pxSp(34)), maxLines = 1) }
+}
+
+@Composable
+private fun Tuning(ch: Channel, loader: ImageLoader, url: (String?) -> String?) {
+    Column(Modifier.fillMaxWidth().height(px(1000)), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        LogoPlate(ch, url(ch.logo), loader, widthPx = 240, heightPx = 135, cornerPx = 22)
+        Spacer(Modifier.height(px(28)))
+        ChannelNumberLine(ch)
+        BasicText(ch.name, style = AtomixType.heading(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(px(20)))
+        // A still arc: a spinning one would be an animation that runs for as long as tuning takes.
+        Row(horizontalArrangement = Arrangement.spacedBy(px(14)), verticalAlignment = Alignment.CenterVertically) {
+            Icon(LineIcon.Arc, AtomixColors.Ice, 28)
+            BasicText("Tuning…", style = AtomixType.rowLabel().copy(fontWeight = FontWeight.Normal, lineHeight = pxSp(38), color = AtomixColors.TextSoft))
         }
     }
 }
 
 @Composable
-private fun Tuning(ch: Channel, loader: ImageLoader, url: (String?) -> String?, modifier: Modifier) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(px(24))) {
-        LogoPlate(ch, url(ch.logo), loader, widthPx = 240, heightPx = 135)
-        BasicText("Tuning…", style = AtomixType.meta())
-    }
-}
-
-@Composable
-private fun ErrorCard(failed: SessionState.Failed, ch: Channel, loader: ImageLoader, url: (String?) -> String?, actions: OverlayActions, modifier: Modifier) {
+private fun ErrorCard(
+    failed: SessionState.Failed,
+    ch: Channel,
+    loader: ImageLoader,
+    url: (String?) -> String?,
+    actions: OverlayActions,
+    onButton: (String) -> Unit,
+) {
     val first = remember { FocusRequester() }
     LaunchedEffect(failed) { withFrameNanos { }; runCatching { first.requestFocus() } }
     Column(
-        modifier.widthIn(max = px(1000)).background(OverVideo, RoundedCornerShape(px(28)))
-            .border(1.dp, AtomixColors.Edge, RoundedCornerShape(px(28))).padding(px(48)),
-        verticalArrangement = Arrangement.spacedBy(px(20)),
+        Modifier.padding(start = px(460), top = px(330)).width(px(1000))
+            .background(AtomixColors.Panel, RoundedCornerShape(px(28)))
+            .padding(start = px(48), top = px(44), end = px(48), bottom = px(48)),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(24))) {
-            LogoPlate(ch, url(ch.logo), loader, widthPx = 160, heightPx = 90)
-            BasicText(ch.name, style = AtomixType.rowHeader())
+            LogoPlate(ch, url(ch.logo), loader, widthPx = 132, heightPx = 74, cornerPx = 12)
+            Column {
+                ChannelNumberLine(ch)
+                BasicText(ch.name, style = AtomixType.heading().copy(fontSize = pxSp(40), lineHeight = pxSp(50)), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
-        BasicText(failed.message, style = AtomixType.meta())
-        Row(Modifier.padding(top = px(12)), horizontalArrangement = Arrangement.spacedBy(px(20))) {
-            ChipButton("Try again", actions.retry, Modifier.focusRequester(first))
-            ChipButton("Next channel", actions.nextChannel)
-            ChipButton("Back to Home", actions.home)
+        BasicText(
+            failed.message,
+            Modifier.padding(top = px(28)),
+            style = AtomixType.description().copy(fontSize = pxSp(30), lineHeight = pxSp(42), color = AtomixColors.TextBright),
+        )
+        Row(Modifier.padding(top = px(34)), horizontalArrangement = Arrangement.spacedBy(px(16))) {
+            @Composable
+            fun button(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) =
+                ChipButton(label, onClick, modifier.height(px(68)).onFocusChanged { if (it.isFocused) onButton(label) })
+            button(TRY_AGAIN, actions.retry, Modifier.focusRequester(first))
+            button("Next channel", actions.nextChannel)
+            button("Back to Home", actions.home)
         }
     }
 }
@@ -171,60 +236,69 @@ private fun Banner(
     modifier: Modifier,
 ) {
     val on = onAir(ch, nowMs)
-    val shape = RoundedCornerShape(px(28))
+    val lines = onAirLines(on, is24)
     Column(
-        modifier.fillMaxWidth().background(OverVideo, shape).border(1.dp, AtomixColors.Edge, shape).padding(px(36)),
-        verticalArrangement = Arrangement.spacedBy(px(18)),
+        modifier.fillMaxWidth().background(AtomixColors.OverVideo, RoundedCornerShape(px(24)))
+            .padding(start = px(36), top = px(30), end = px(36), bottom = px(32)),
+        verticalArrangement = Arrangement.spacedBy(px(22)),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(28))) {
-            BasicText(ch.number?.toString() ?: "", style = AtomixType.rowHeader())
-            LogoPlate(ch, url(ch.logo), loader, widthPx = 160, heightPx = 90)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(24))) {
+            val number = ch.number?.toString().orEmpty()
+            BasicText(
+                number,
+                Modifier.width(px(if (number.length <= 2) 34 else 20 * number.length)),
+                style = AtomixType.subheading().copy(color = AtomixColors.TextSoft, textAlign = TextAlign.Center),
+                maxLines = 1,
+            )
+            LogoPlate(ch, url(ch.logo), loader, widthPx = 132, heightPx = 74, cornerPx = 14)
             Column(Modifier.weight(1f)) {
-                BasicText(ch.name, style = AtomixType.small(), maxLines = 1)
-                BasicText(
-                    on.programme?.title ?: "No programme information",
-                    style = AtomixType.rowHeader(), maxLines = 1, overflow = TextOverflow.Ellipsis,
-                )
+                BasicText(ch.name, style = AtomixType.description().copy(fontSize = pxSp(26), lineHeight = pxSp(34)), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                BasicText(lines.title, style = AtomixType.heading().copy(lineHeight = pxSp(54)), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            BasicText(clockText(nowMs, is24), style = AtomixType.meta().copy(color = AtomixColors.TextPrimary))
+            BasicText(clockText(nowMs, is24), style = AtomixType.clock(), maxLines = 1)
         }
         val p = on.programme
         if (p != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(20))) {
-                BasicText(clockText(p.start, is24), style = AtomixType.small())
-                Box(Modifier.weight(1f).height(px(6)).clip(RoundedCornerShape(50)).background(AtomixColors.Track)) {
-                    Box(Modifier.fillMaxHeight().fillMaxWidth(on.progress ?: 0f).background(AtomixColors.Ice))
+                val time = AtomixType.value().copy(fontWeight = FontWeight.Medium, color = AtomixColors.TextBright)
+                BasicText(clockText(p.start, is24), style = time)
+                Box(Modifier.weight(1f).height(px(10)).background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(px(5)))) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(on.progress ?: 0f).background(AtomixColors.Ice, RoundedCornerShape(px(5))))
                 }
-                BasicText(clockText(p.end, is24), style = AtomixType.small())
+                BasicText(clockText(p.end, is24), style = time)
             }
         }
-        on.upNext?.let { n ->
-            BasicText("Next: ${n.title} · ${timeRange(n.start, n.end, is24)}", style = AtomixType.small(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(16))) {
+            val behind = controls && live.behindMs > BEHIND_SHOWN_MS
+            if (controls) {
+                val first = remember { FocusRequester() }
+                LaunchedEffect(Unit) { withFrameNanos { }; runCatching { first.requestFocus() } }
+                ChipButton(
+                    if (live.paused) "Play" else "Pause",
+                    actions.togglePause,
+                    Modifier.focusRequester(first).onPreviewKeyEvent {
+                        // ◀ on the first button opens the channel list, as on a clean screen.
+                        if (it.type == KeyEventType.KeyDown && it.key == Key.DirectionLeft) { actions.openList(); true } else false
+                    },
+                    icon = if (live.paused) LineIcon.Play else LineIcon.Pause,
+                )
+                ChipButton("Back 30 seconds", actions.back30, icon = LineIcon.Back30)
+            }
+            if (behind) ChipButton("Jump to live", actions.jumpToLive, lead = "−${mmss(live.behindMs)}")
+            else LiveBadge(Modifier.padding(start = px(if (controls) 8 else 0)))
+            val next = on.upNext?.let { "Next: ${it.title} • ${clockText(it.start, is24)}" }.orEmpty()
+            BasicText(
+                next,
+                Modifier.weight(1f),
+                style = AtomixType.value().copy(fontWeight = FontWeight.Normal, color = AtomixColors.TextSoft, textAlign = TextAlign.End),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        if (controls) ControlsRow(live, actions)
     }
 }
 
-@Composable
-private fun ControlsRow(live: LiveInfo, actions: OverlayActions) {
-    val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { withFrameNanos { }; runCatching { first.requestFocus() } }
-    Row(Modifier.padding(top = px(8)), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(24))) {
-        IconButton(
-            if (live.paused) LineIcon.Play else LineIcon.Pause,
-            if (live.paused) "Play" else "Pause",
-            actions.togglePause,
-            Modifier.focusRequester(first).onPreviewKeyEvent {
-                // ◀ on the first button opens the channel list, as on a clean screen.
-                if (it.type == KeyEventType.KeyDown && it.key == Key.DirectionLeft) { actions.openList(); true } else false
-            },
-        )
-        IconButton(LineIcon.Back30, "Back 30 seconds", actions.back30)
-        if (live.behindMs > BEHIND_SHOWN_MS) ChipButton("−${mmss(live.behindMs)} · Jump to live", actions.jumpToLive)
-        else LiveBadge()
-    }
-}
-
+/** The channel list over the left of the picture: "On Home" or every channel, the one being watched marked. */
 @Composable
 private fun QuickList(
     pinned: List<Channel>,
@@ -232,63 +306,87 @@ private fun QuickList(
     initial: ZapSource,
     playing: Channel,
     nowMs: Long,
-    is24: Boolean,
     loader: ImageLoader,
     url: (String?) -> String?,
     pick: (Channel, ZapSource) -> Unit,
+    onFocus: (String?) -> Unit,
+    hints: HintSpot?,
     modifier: Modifier,
 ) {
     var tab by remember { mutableStateOf(if (pinned.isEmpty()) ZapSource.All else initial) }
     val list = if (tab == ZapSource.Pinned) pinned else all
-    val listState = rememberLazyListState()
-    val playingFocus = remember { FocusRequester() }
-    val firstFocus = remember { FocusRequester() }
-    val start = list.indexOfFirst { it.id == playing.id }
+    val window = remember(tab) { WindowState() }
+    val rowFocus = remember { HashMap<String, FocusRequester>() }
+    // Opening the list, or choosing the other one, puts focus on the channel being watched (else the first row).
     LaunchedEffect(tab) {
-        if (start > 0) listState.scrollToItem(start)
+        val start = list.indexOfFirst { it.id == playing.id }.coerceAtLeast(0)
+        val target = list.getOrNull(start) ?: return@LaunchedEffect
+        window.show(start, list.size, LIST_ROWS)
         withFrameNanos { }
-        runCatching { (if (start >= 0) playingFocus else firstFocus).requestFocus() }
+        runCatching { rowFocus[target.id]?.requestFocus() }
     }
     Column(
-        modifier.width(px(760)).fillMaxHeight().background(OverVideo).padding(top = px(60), start = px(48), end = px(24)),
-        verticalArrangement = Arrangement.spacedBy(px(20)),
+        modifier.width(px(800)).fillMaxHeight().background(AtomixColors.OverVideoList)
+            .padding(start = px(60), top = px(40), end = px(40), bottom = px(40)),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(px(16))) {
-            TabChip("Pinned", tab == ZapSource.Pinned) { tab = ZapSource.Pinned }
-            TabChip("All channels", tab == ZapSource.All) { tab = ZapSource.All }
+        SegmentedPills(
+            listOf("On Home", "All channels"),
+            selected = if (tab == ZapSource.Pinned) 0 else 1,
+            onSelect = { tab = if (it == 0) ZapSource.Pinned else ZapSource.All },
+            onFocused = { onFocus(null) },
+            trackPx = 60, padPx = 6, pillPadPx = 22, gapPx = 6,
+        )
+        Spacer(Modifier.height(px(22)))
+        if (list.isEmpty()) BasicText("No channels on Home yet.", style = AtomixType.description())
+        WindowColumn(list, { it.id }, window, LIST_ROWS, rowPx = 92, gapPx = 10) { _, ch, slot ->
+            ChannelRow(
+                ch, nowMs, loader, url,
+                onClick = { pick(ch, tab) },
+                modifier = slot,
+                focus = Modifier.focusRequester(rowFocus.getOrPut(ch.id) { FocusRequester() })
+                    .focusProperties { left = FocusRequester.Cancel; right = FocusRequester.Cancel },
+                mark = if (ch.id == playing.id) RowMark.Watching else null,
+                onFocused = { onFocus(ch.name) },
+            )
         }
-        if (list.isEmpty()) {
-            BasicText("No pinned channels yet.", style = AtomixType.small())
-        }
-        LazyColumn(state = listState, contentPadding = PaddingValues(bottom = px(60)), verticalArrangement = Arrangement.spacedBy(px(8))) {
-            itemsIndexed(list, key = { _, c -> c.id }) { i, ch ->
-                val focus = when {
-                    ch.id == playing.id -> Modifier.focusRequester(playingFocus)
-                    i == 0 -> Modifier.focusRequester(firstFocus)
-                    else -> Modifier
-                }
-                ChannelRow(ch, nowMs, loader, url, onClick = { pick(ch, tab) }, focus = focus)
+        Spacer(Modifier.weight(1f))
+        if (hints != null) HintBar(hintsFor(hints))
+    }
+}
+
+/** The digits being typed and, once they match a channel, that channel beside them. */
+@Composable
+private fun NumberChip(typed: String, match: Channel?, nowMs: Long, loader: ImageLoader, url: (String?) -> String?, modifier: Modifier) {
+    Row(
+        modifier.padding(top = px(60), end = px(100)).background(AtomixColors.OverVideo, RoundedCornerShape(px(24)))
+            .padding(start = px(32), top = px(22), end = px(36), bottom = px(22)),
+        horizontalArrangement = Arrangement.spacedBy(px(28)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicText(typed, style = AtomixType.heading().copy(fontSize = pxSp(96), lineHeight = pxSp(104), color = AtomixColors.Ice), maxLines = 1)
+        if (match != null) {
+            LogoPlate(match, url(match.logo), loader, widthPx = 132, heightPx = 74, cornerPx = 14)
+            Column {
+                BasicText(match.name, style = AtomixType.heading().copy(fontSize = pxSp(36), lineHeight = pxSp(46)), maxLines = 1)
+                BasicText(
+                    onAirLines(onAir(match, nowMs), is24 = true).title,
+                    style = AtomixType.description().copy(fontSize = pxSp(26), lineHeight = pxSp(34), color = AtomixColors.TextSoft),
+                    maxLines = 1,
+                )
             }
         }
     }
 }
 
+/** A short notice in the number chip's place, such as "No channel 9999". */
 @Composable
-private fun TabChip(text: String, selected: Boolean, onClick: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(50)
-    Column(
-        Modifier.tvFocus(focused, cornerPx = 999f)
-            .background(if (focused) Color.White else Color.Transparent, shape)
-            .clickable(interaction, indication = null, onClick = onClick)
-            .padding(horizontal = px(24), vertical = px(10)),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BasicText(text, style = AtomixType.menu().copy(color = if (focused) AtomixColors.DeepSpace else if (selected) AtomixColors.TextPrimary else AtomixColors.TextSecondary))
-        Spacer(Modifier.height(px(6)))
-        Box(Modifier.size(px(8)).background(if (selected) AtomixColors.Ice else Color.Transparent, RoundedCornerShape(50)))
-    }
+private fun Notice(text: String, modifier: Modifier) {
+    BasicText(
+        text,
+        modifier.padding(top = px(60), end = px(100)).background(AtomixColors.OverVideo, RoundedCornerShape(px(24)))
+            .padding(start = px(32), top = px(22), end = px(36), bottom = px(22)),
+        style = AtomixType.heading().copy(fontSize = pxSp(36), lineHeight = pxSp(46)),
+    )
 }
 
 private const val BEHIND_SHOWN_MS = 10_000L

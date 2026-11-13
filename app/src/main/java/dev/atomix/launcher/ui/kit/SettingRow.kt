@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -145,23 +146,29 @@ private fun PillTrack(options: List<String>, selected: Int) {
 }
 
 @Composable
-private fun Pill(text: String, selected: Boolean, focused: Boolean, modifier: Modifier) {
-    val ground = when {
-        selected -> AtomixColors.Ice
-        focused -> AtomixColors.Raised
-        else -> Color.Transparent
-    }
+private fun Pill(text: String, selected: Boolean, focused: Boolean, modifier: Modifier, padPx: Int = 20) {
+    // The chosen pill is ice, and so is the focus ring. With focus on it, the ice draws 4 px in from the ring, so the
+    // ring still reads as a ring (and does without its glow, with Reduced effects on).
+    val gap = if (selected && focused) 4 else 0
     Box(
-        modifier.height(px(48)).background(ground, RoundedCornerShape(px(12))).padding(horizontal = px(20)),
+        modifier.height(px(48)).background(if (focused) AtomixColors.Raised else Color.Transparent, RoundedCornerShape(px(12))).padding(px(gap)),
         contentAlignment = Alignment.Center,
     ) {
-        val style = if (selected) AtomixType.hint().copy(fontWeight = FontWeight.Bold, color = AtomixColors.Ink)
-        else AtomixType.hint().copy(color = if (focused) AtomixColors.Text else AtomixColors.TextSecondary)
-        BasicText(text, style = style, maxLines = 1)
+        Box(
+            Modifier.fillMaxHeight().background(if (selected) AtomixColors.Ice else Color.Transparent, RoundedCornerShape(px(12 - gap))).padding(horizontal = px(padPx - gap)),
+            contentAlignment = Alignment.Center,
+        ) {
+            val style = if (selected) AtomixType.hint().copy(fontWeight = FontWeight.Bold, color = AtomixColors.Ink)
+            else AtomixType.hint().copy(color = if (focused) AtomixColors.Text else AtomixColors.TextSecondary)
+            BasicText(text, style = style, maxLines = 1)
+        }
     }
 }
 
-/** A segmented choice that takes focus pill by pill; OK on a pill selects it. */
+/**
+ * A segmented choice that takes focus pill by pill; OK on a pill selects it. The track's measurements are the
+ * settings boards'; the channel list over video draws a slightly roomier one.
+ */
 @Composable
 fun SegmentedPills(
     options: List<String>,
@@ -169,8 +176,15 @@ fun SegmentedPills(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     onFocused: (Int) -> Unit = {},
+    trackPx: Int = 56,
+    padPx: Int = 4,
+    pillPadPx: Int = 20,
+    gapPx: Int = 0,
 ) {
-    Row(modifier.height(px(56)).background(AtomixColors.Inset, RoundedCornerShape(px(16))).padding(px(4))) {
+    Row(
+        modifier.height(px(trackPx)).background(AtomixColors.Inset, RoundedCornerShape(px(16))).padding(px(padPx)),
+        horizontalArrangement = Arrangement.spacedBy(px(gapPx)),
+    ) {
         options.forEachIndexed { i, option ->
             val interaction = remember { MutableInteractionSource() }
             val focused by interaction.collectIsFocusedAsState()
@@ -180,6 +194,7 @@ fun SegmentedPills(
                     .onFocusChanged { if (it.isFocused) onFocused(i) }
                     .tvFocus(focused, cornerPx = 12f)
                     .clickable(interaction, indication = null) { onSelect(i) },
+                pillPadPx,
             )
         }
     }

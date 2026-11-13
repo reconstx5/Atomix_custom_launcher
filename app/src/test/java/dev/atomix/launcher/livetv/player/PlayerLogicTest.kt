@@ -2,6 +2,7 @@ package dev.atomix.launcher.livetv.player
 
 import dev.atomix.launcher.livetv.source.PlayReply
 import dev.atomix.launcher.livetv.source.tv
+import dev.atomix.launcher.ui.kit.HintSpot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -132,5 +133,26 @@ class PlayerLogicTest {
     @Test fun findByNumber_matchesOrNull() {
         assertEquals("d", findByNumber(list, 12)?.id)
         assertNull(findByNumber(list, 99))
+    }
+
+    @Test fun numberMatch_addsTheChannelOnlyOnAMatch() {
+        val list = listOf(tv("a", 2), tv("b", 20))
+        assertEquals("a", numberMatch("2", list)?.id)
+        assertEquals("b", numberMatch("20", list)?.id)
+        assertEquals("a", numberMatch("02", list)?.id)
+        assertNull(numberMatch("", list)); assertNull(numberMatch("0", list)); assertNull(numberMatch("9999", list))
+    }
+
+    @Test fun playerSpot_followsWhatIsOnScreen() {
+        val banner = setOf(Layer.Banner, Layer.Controls)
+        assertEquals(HintSpot.PlayerList("TVNZ 2"), playerSpot(null, false, setOf(Layer.ChannelList), "TVNZ 2"))
+        assertEquals(HintSpot.Pill("Close"), playerSpot(null, false, setOf(Layer.ChannelList), null))
+        assertEquals(HintSpot.PlayerError("Try again", bannerUp = false), playerSpot("Try again", false, emptySet(), null))
+        assertEquals(HintSpot.PlayerError("Next channel", bannerUp = true), playerSpot("Next channel", false, banner, null))
+        assertEquals(HintSpot.PlayerBanner, playerSpot(null, true, banner, null))     // Back hides the banner first
+        assertEquals(HintSpot.PlayerTuning, playerSpot(null, true, emptySet(), null))
+        assertEquals(HintSpot.PlayerBanner, playerSpot(null, false, banner, null))
+        assertNull(playerSpot(null, false, emptySet(), null))                          // a clean picture has nothing over it
+        assertNull(playerSpot(null, false, setOf(Layer.NumberEntry), null))
     }
 }

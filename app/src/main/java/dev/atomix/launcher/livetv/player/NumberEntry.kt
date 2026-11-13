@@ -32,3 +32,9 @@ class NumberEntry(private val scope: CoroutineScope, private val commitMs: Long 
 }
 
 fun findByNumber(list: List<Channel>, n: Int): Channel? = list.firstOrNull { it.number == n }
+
+/**
+ * The channel the digits typed so far name, if any ("02" is channel 2). Nothing for no digits, or digits that match no
+ * channel: the chip then shows the digits alone.
+ */
+fun numberMatch(typed: String, all: List<Channel>): Channel? = typed.toIntOrNull()?.let { findByNumber(all, it) }
