@@ -17,7 +17,7 @@ Tools live in `D:\atomix-launcher-tools` (JDK 17, Android SDK, Gradle). Then:
 It needs the release key first. You make it once, in your own terminal:
 
 ```powershell
-.\scripts\create-keystore.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\create-keystore.ps1
 ```
 
 You choose the password. It goes only into keytool's prompt and `D:\atomix-launcher-tools\keystore.properties`.
@@ -26,6 +26,9 @@ Switching from a debug build to the release build needs one uninstall (the signa
 so you sign in with Quick Connect once more.
 
 ## Cheat sheet
+
+Windows blocks `.ps1` files by default. Run each script as `powershell -ExecutionPolicy Bypass -File <script> [args]`,
+which allows that one run and changes no setting. The table shows the script part.
 
 | What | Command (from `D:\atomix-launcher`) |
 | --- | --- |

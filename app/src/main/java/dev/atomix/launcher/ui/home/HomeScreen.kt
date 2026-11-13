@@ -37,14 +37,16 @@ class HomeActions(
 
 @Composable
 fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> String?, actions: HomeActions) {
-    val state by vm.state.collectAsState()
+    // Keep the State object: derived state below must read a snapshot State (StateFlow.value isn't observed).
+    val stateHolder = vm.state.collectAsState()
+    val state by stateHolder
     val focusedState = vm.focusedItem.collectAsState()
     val offline = state.status == HomeState.Status.Offline
     // The hero follows the focused card; before any card has had focus it shows Atomix's own hero.
     // Read through derived state so a focus move recomposes only the hero layers, not the whole screen.
     val shownState = remember {
         derivedStateOf {
-            val s = vm.state.value
+            val s = stateHolder.value
             if (s.status == HomeState.Status.Offline) null
             else focusedState.value?.takeIf { f -> s.row?.items?.any { it.id == f.id } == true } ?: s.hero
         }
