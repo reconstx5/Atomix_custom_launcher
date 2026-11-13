@@ -44,4 +44,15 @@ class DockStoreTest {
         assertEquals(expected, dock.dock().map { it.packageName })
         assertEquals(expected, DockStore(store) { apps }.dock().map { it.packageName })
     }
+
+    @Test fun moveBy_skipsAppsThatAreNotInstalled() {
+        // Twitch is saved in the dock but not installed, so SmartTube moving right lands after Prime Video.
+        val installed = DEFAULT_DOCK.filter { it != "tv.twitch.android.app" }.map(::app)
+        val dock = DockStore(store) { installed }
+        dock.moveBy("org.smarttube.stable", +1)
+        assertEquals(listOf("com.amazon.amazonvideo.livingroom", "org.smarttube.stable", "ar.tvplayer.tv", "com.phlox.tvwebbrowser"), dock.dock().map { it.packageName })
+        dock.moveBy("org.smarttube.stable", -1)
+        dock.moveBy("org.smarttube.stable", -1) // already first: no change
+        assertEquals(DEFAULT_DOCK - "tv.twitch.android.app", dock.dock().map { it.packageName })
+    }
 }

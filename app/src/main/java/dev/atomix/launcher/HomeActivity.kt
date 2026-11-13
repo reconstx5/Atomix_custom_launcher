@@ -20,6 +20,8 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.apps.liveTvIntent
 import dev.atomix.launcher.apps.safeStart
+import dev.atomix.launcher.ui.apps.AppsScreen
+import dev.atomix.launcher.ui.apps.AppsScreenState
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
 import dev.atomix.launcher.ui.home.HomeState
@@ -48,15 +50,7 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         graph = AppGraph.get(this)
-        val actions = HomeActions(
-            openWeb = { route -> launch(Intent().setClassName(this, WEB_ACTIVITY).putExtra(EXTRA_ROUTE, route)) },
-            openApp = { launch(it.launch) },
-            openApps = { /* Apps grid arrives with Task 8. */ },
-            openLiveTv = { liveTvIntent(packageManager)?.let(::launch) },
-            listInputs = { TvInputs(this).hdmi() },
-            openInput = { launch(TvInputs(this).intentFor(it)) },
-            switchProfile = {},
-        )
+        val appsState = AppsScreenState(graph.dockStore) { graph.installedApps.list() }
         setContent {
             AtomixTheme {
                 var signedIn by remember { mutableStateOf(graph.store.token != null && graph.store.profileId != null) }
@@ -64,6 +58,14 @@ class HomeActivity : ComponentActivity() {
                     val holder = viewModel { SetupHolder(graph) }
                     LaunchedEffect(Unit) { holder.vm.start() }
                     SetupFlow(holder.vm) { signedIn = true; home.vm.refresh() }
+                } else if (showApps.value) {
+                    AppsScreen(
+                        state = appsState,
+                        loader = graph.imageLoader,
+                        onLaunch = { launch(it.launch) },
+                        onDockChanged = { home.vm.refreshDock() },
+                        onBack = { showApps.value = false },
+                    )
                 } else {
                     val state by home.vm.state.collectAsState()
                     LaunchedEffect(state.status) { if (state.status == HomeState.Status.SignedOut) signedIn = false }
@@ -72,9 +74,15 @@ class HomeActivity : ComponentActivity() {
                         loader = graph.imageLoader,
                         imageUrl = { path -> graph.api()?.imageUrl(path)?.toString() },
                         actions = HomeActions(
-                            openWeb = actions.openWeb, openApp = actions.openApp, openApps = actions.openApps,
-                            openLiveTv = actions.openLiveTv, listInputs = actions.listInputs, openInput = actions.openInput,
+                            openWeb = { route -> launch(Intent().setClassName(this, WEB_ACTIVITY).putExtra(EXTRA_ROUTE, route)) },
+                            openApp = { launch(it.launch) },
+                            openApps = { showApps.value = true },
+                            openLiveTv = { liveTvIntent(packageManager)?.let(::launch) ?: toast("Live TV isn't installed") },
+                            listInputs = { TvInputs(this).hdmi() },
+                            openInput = { launch(TvInputs(this).intentFor(it)) },
                             switchProfile = { graph.store.profileId = null; signedIn = false },
+                            moveDockApp = { pkg, delta -> graph.dockStore.moveBy(pkg, delta) },
+                            removeDockApp = { graph.dockStore.remove(it) },
                         ),
                     )
                 }
@@ -82,12 +90,22 @@ class HomeActivity : ComponentActivity() {
         }
     }
 
+    /** Pressing Home while the Apps grid is open returns to the home screen. */
+    private val showApps = mutableStateOf(false)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        showApps.value = false
+    }
+
+    private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+
     override fun onResume() {
         super.onResume()
         if (graph.store.token != null && graph.store.profileId != null) home.vm.refresh()
     }
 
     private fun launch(intent: Intent) {
-        if (!safeStart(intent)) Toast.makeText(this, "Couldn't open that", Toast.LENGTH_SHORT).show()
+        if (!safeStart(intent)) toast("Couldn't open that")
     }
 }

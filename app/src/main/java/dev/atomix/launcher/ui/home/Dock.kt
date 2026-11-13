@@ -30,6 +30,7 @@ import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.atomixFocusRing
+import dev.atomix.launcher.ui.theme.onLongPressOk
 import dev.atomix.launcher.ui.theme.px
 
 /** Floating smoked-glass dock: pinned apps, a thin divider, then Live TV and Inputs. */
@@ -39,6 +40,7 @@ fun Dock(
     loader: ImageLoader,
     firstFocus: FocusRequester,
     onApp: (AppEntry) -> Unit,
+    onAppLongPress: (AppEntry) -> Unit,
     onLiveTv: () -> Unit,
     onInputs: () -> Unit,
     modifier: Modifier = Modifier,
@@ -54,7 +56,7 @@ fun Dock(
         horizontalArrangement = Arrangement.spacedBy(px(6)),
     ) {
         apps.forEachIndexed { i, app ->
-            DockItem(app.label, if (i == 0) Modifier.focusRequester(firstFocus) else Modifier, { onApp(app) }) {
+            DockItem(app.label, (if (i == 0) Modifier.focusRequester(firstFocus) else Modifier).onLongPressOk { onAppLongPress(app) }, { onApp(app) }) {
                 AsyncImage(model = app.icon, imageLoader = loader, contentDescription = null, modifier = Modifier.size(px(48)))
             }
         }

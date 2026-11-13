@@ -30,6 +30,8 @@ class HomeActions(
     val listInputs: () -> List<InputEntry>,
     val openInput: (InputEntry) -> Unit,
     val switchProfile: () -> Unit,
+    val moveDockApp: (pkg: String, delta: Int) -> Unit = { _, _ -> },
+    val removeDockApp: (pkg: String) -> Unit = {},
 )
 
 @Composable
@@ -43,6 +45,7 @@ fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> St
     val playFocus = remember { FocusRequester() }
     val dockFocus = remember { FocusRequester() }
     var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
+    var editing by remember { mutableStateOf<AppEntry?>(null) }
     var initialFocusDone by remember { mutableStateOf(false) }
 
     BackHandler { /* Home is the bottom of the stack: Back does nothing here. */ }
@@ -83,6 +86,7 @@ fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> St
             loader = loader,
             firstFocus = dockFocus,
             onApp = actions.openApp,
+            onAppLongPress = { editing = it },
             onLiveTv = actions.openLiveTv,
             onInputs = { inputs = actions.listInputs() },
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = px(36)),
@@ -101,6 +105,17 @@ fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> St
             ),
             Modifier.padding(start = px(48), top = px(200)),
         )
+        editing?.let { app ->
+            GlassMenu(
+                app.label,
+                listOf(
+                    MenuOption("Move left") { actions.moveDockApp(app.packageName, -1); vm.refreshDock() },
+                    MenuOption("Move right") { actions.moveDockApp(app.packageName, +1); vm.refreshDock() },
+                    MenuOption("Remove from dock") { actions.removeDockApp(app.packageName); vm.refreshDock() },
+                ),
+                onDismiss = { editing = null },
+            )
+        }
         inputs?.let { list ->
             InputsDialog(list, onPick = { inputs = null; actions.openInput(it) }, onDismiss = { inputs = null })
         }

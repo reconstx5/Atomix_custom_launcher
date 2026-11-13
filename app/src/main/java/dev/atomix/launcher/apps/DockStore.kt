@@ -28,6 +28,15 @@ class DockStore(private val store: SessionStore, private val apps: () -> List<Ap
         store.dock = saved() - pkg
     }
 
+    /** Swaps [pkg] with its visible neighbour ([delta] = -1 left, +1 right); hidden (uninstalled) entries are skipped. */
+    fun moveBy(pkg: String, delta: Int) {
+        val visible = dock().map { it.packageName }
+        val neighbour = visible.getOrNull(visible.indexOf(pkg) + delta) ?: return
+        val rest = saved() - pkg
+        val at = rest.indexOf(neighbour) + if (delta > 0) 1 else 0
+        store.dock = rest.toMutableList().apply { add(at, pkg) }
+    }
+
     fun move(pkg: String, toIndex: Int) {
         val s = saved().toMutableList()
         if (!s.remove(pkg)) return
