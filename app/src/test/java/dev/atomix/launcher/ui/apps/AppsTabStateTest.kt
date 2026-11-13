@@ -52,4 +52,21 @@ class AppsTabStateTest {
         assertFalse(state.isFavourite("com.other"))
         assertEquals(DEFAULT_DOCK, favourites.visible().map { it.packageName })
     }
+
+    @Test fun shown_filtersToTheRow_keepingListOrder() {
+        val state = AppsTabState(favourites, catalog)
+        assertEquals(apps.map { it.packageName }, state.shown(AppFilter.All).map { it.packageName })
+        assertEquals(DEFAULT_DOCK, state.shown(AppFilter.InRow).map { it.packageName })
+        assertEquals("All · 6", state.pillLabel(AppFilter.All))
+        assertEquals("In this row · 5", state.pillLabel(AppFilter.InRow))
+    }
+
+    @Test fun menu_offersAddOrRemove_thenAppInfo() {
+        val state = AppsTabState(favourites, catalog)
+        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Info), state.menuFor("com.other"))
+        assertEquals(listOf(AppMenuItem.Remove, AppMenuItem.Info), state.menuFor(DEFAULT_DOCK[0]))
+    }
+
+    @Test fun menu_forAnAppThatHasGone_isEmpty() =
+        assertEquals(emptyList<AppMenuItem>(), AppsTabState(favourites, catalog).menuFor("uninstalled.pkg"))
 }

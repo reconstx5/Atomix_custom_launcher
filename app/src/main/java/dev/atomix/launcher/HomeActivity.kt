@@ -1,6 +1,7 @@
 package dev.atomix.launcher
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.KeyEvent
@@ -41,6 +42,7 @@ import dev.atomix.launcher.shell.Place
 import dev.atomix.launcher.shell.ShellScreen
 import dev.atomix.launcher.ui.apps.AppsTab
 import dev.atomix.launcher.ui.apps.AppsTabState
+import dev.atomix.launcher.ui.apps.ManageAppsScreen
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
 import dev.atomix.launcher.ui.home.ROW_ON_NOW
@@ -217,10 +219,23 @@ class HomeActivity : ComponentActivity() {
                                     memory = appsTabMemory,
                                     restoreTick = restoreTick.intValue,
                                     onLaunch = { launch(it.launch) },
-                                    onFavouritesChanged = { home.vm.refreshApps() },
+                                    onEdit = { place.value = Place.ManageApps },
                                 )
-                                // Manage apps, Inputs and Settings become places in Tasks 7, 8 and 9.
-                                Place.ManageApps, Place.Inputs, Place.Settings -> Unit
+                                Place.ManageApps -> ManageAppsScreen(
+                                    state = appsState,
+                                    loader = graph.imageLoader,
+                                    onInfo = { app ->
+                                        // A fresh task, so Back from the TV's page comes straight back here and not to
+                                        // whatever the TV's settings were last left showing.
+                                        launch(
+                                            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + app.packageName))
+                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
+                                        )
+                                    },
+                                    onChanged = { home.vm.refreshApps() },
+                                )
+                                // Inputs and Settings become places in Tasks 8 and 9.
+                                Place.Inputs, Place.Settings -> Unit
                             }
                         }
                         inputs?.let { list ->

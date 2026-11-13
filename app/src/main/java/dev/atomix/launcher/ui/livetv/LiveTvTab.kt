@@ -73,9 +73,6 @@ import kotlinx.coroutines.delay
 
 const val ROW_CHANNELS = "channels"
 
-/** Where the old tab layouts start below the top bar; goes with the Apps tab's rebuild (Task 7). */
-const val TAB_TOP = 150
-
 /** How many channel rows show at once. */
 private const val ROWS_SHOWN = 7
 

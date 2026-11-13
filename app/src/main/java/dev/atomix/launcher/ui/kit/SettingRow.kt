@@ -22,6 +22,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEventType
@@ -166,7 +168,8 @@ private fun Pill(text: String, selected: Boolean, focused: Boolean, modifier: Mo
 }
 
 /**
- * A segmented choice that takes focus pill by pill; OK on a pill selects it. The track's measurements are the
+ * A segmented choice that takes focus pill by pill; OK on a pill selects it. [selectedFocus], when given, is attached
+ * to the chosen pill, so a screen can send focus to it. The track's measurements are the
  * settings boards'; the channel list over video draws a slightly roomier one.
  */
 @Composable
@@ -180,6 +183,7 @@ fun SegmentedPills(
     padPx: Int = 4,
     pillPadPx: Int = 20,
     gapPx: Int = 0,
+    selectedFocus: FocusRequester? = null,
 ) {
     Row(
         modifier.height(px(trackPx)).background(AtomixColors.Inset, RoundedCornerShape(px(16))).padding(px(padPx)),
@@ -190,7 +194,7 @@ fun SegmentedPills(
             val focused by interaction.collectIsFocusedAsState()
             Pill(
                 option, i == selected, focused,
-                Modifier
+                (if (i == selected && selectedFocus != null) Modifier.focusRequester(selectedFocus) else Modifier)
                     .onFocusChanged { if (it.isFocused) onFocused(i) }
                     .tvFocus(focused, cornerPx = 12f)
                     .clickable(interaction, indication = null) { onSelect(i) },
