@@ -1,0 +1,179 @@
+{
+    "hero":  {
+                 "id":  5,
+                 "kind":  "movie",
+                 "libraryId":  1,
+                 "parentId":  null,
+                 "showId":  null,
+                 "title":  "Brothers",
+                 "sortTitle":  "brothers",
+                 "year":  2024,
+                 "season":  null,
+                 "episode":  null,
+                 "overview":  "A reformed criminal\u0027s attempt at going straight is derailed when he reunites with his sanity-testing twin brother on a road trip for the score of a lifetime. Dodging bullets, the law, and an overbearing mother along the way, they must heal their severed family bond before they end up killing each other.",
+                 "genres":  [
+                                "Action",
+                                "Comedy",
+                                "Crime"
+                            ],
+                 "rating":  5.9,
+                 "runtime":  89,
+                 "airDate":  "2024-10-10",
+                 "duration":  6405.000833,
+                 "poster":  "/api/items/5/image/poster?v=1791501078659",
+                 "backdrop":  "/api/items/5/image/backdrop?v=1791501078659",
+                 "logo":  "/api/items/5/image/logo?v=1791501078659",
+                 "addedAt":  1791501076333,
+                 "tint":  "#997a38",
+                 "tintWide":  null,
+                 "progress":  {
+                                  "position":  0,
+                                  "duration":  6405.000833,
+                                  "watched":  false,
+                                  "updatedAt":  1794502280628,
+                                  "locator":  null,
+                                  "device":  null
+                              },
+                 "tagline":  "Family is a life sentence.",
+                 "trailer":  {
+                                 "kind":  "youtube",
+                                 "key":  "XVnfFsMKbMo",
+                                 "name":  "Official Trailer"
+                             }
+             },
+    "rows":  [
+                 {
+                     "key":  "live-now",
+                     "id":  "live-now",
+                     "title":  "On now",
+                     "style":  "landscape",
+                     "items":  [
+                                   {
+                                       "kind":  "live",
+                                       "id":  "live:477",
+                                       "channelId":  477,
+                                       "number":  1,
+                                       "title":  "Deal Or No Deal Australia",
+                                       "subtitle":  "TVNZ 1",
+                                       "image":  "/api/live/programmes/265516/image",
+                                       "logo":  "/api/live/channels/477/logo",
+                                       "progress":  0.3958711111111111,
+                                       "end":  1794542400000,
+                                       "radio":  false,
+                                       "drm":  [
+                                                   "widevine"
+                                               ],
+                                       "appUrl":  "https://www.tvnz.co.nz",
+                                       "appName":  "TVNZ+"
+                                   }
+                               ]
+                 },
+                 {
+                     "key":  "recent-1",
+                     "id":  "recent-1",
+                     "libraryId":  1,
+                     "title":  "Recently added in Test",
+                     "style":  "poster",
+                     "items":  [
+                                   {
+                                       "id":  7,
+                                       "kind":  "movie",
+                                       "libraryId":  1,
+                                       "parentId":  null,
+                                       "showId":  null,
+                                       "title":  "Blow",
+                                       "sortTitle":  "blow",
+                                       "year":  2001,
+                                       "season":  null,
+                                       "episode":  null,
+                                       "overview":  "The story of how George Jung, together with the Medellín Cartel led by Pablo Escobar, established the billion-dollar cocaine empire in the United States in the 1970s.",
+                                       "genres":  [
+                                                      "Crime",
+                                                      "Drama"
+                                                  ],
+                                       "rating":  7.4,
+                                       "runtime":  124,
+                                       "airDate":  "2001-04-04",
+                                       "duration":  7406.440709,
+                                       "poster":  "/api/items/7/image/poster?v=1792327270789",
+                                       "backdrop":  "/api/items/7/image/backdrop?v=1792327270789",
+                                       "logo":  "/api/items/7/image/logo?v=1792327270789",
+                                       "addedAt":  1791585106843,
+                                       "tint":  "#876260",
+                                       "tintWide":  null,
+                                       "progress":  {
+                                                        "position":  3.9221198999984614,
+                                                        "duration":  7406.440709,
+                                                        "watched":  false,
+                                                        "updatedAt":  1794358612709,
+                                                        "locator":  null,
+                                                        "device":  null
+                                                    },
+                                       "playCount":  0,
+                                       "lastPlayed":  1794358612710,
+                                       "stars":  null,
+                                       "favourite":  false
+                                   },
+                                   {
+                                       "id":  6,
+                                       "kind":  "movie",
+                                       "libraryId":  1,
+                                       "parentId":  null,
+                                       "showId":  null,
+                                       "title":  "Jackass: Best and Last",
+                                       "sortTitle":  "jackass best and last",
+                                       "year":  2026,
+                                       "season":  null,
+                                       "episode":  null,
+                                       "overview":  "The fifth and final installment to Jackass franchise where the crew go on one last insane crusade.",
+                                       "genres":  [
+                                                      "Action",
+                                                      "Comedy",
+                                                      "Documentary"
+                                                  ],
+                                       "rating":  7.4,
+                                       "runtime":  92,
+                                       "airDate":  "2026-06-25",
+                                       "duration":  5717.888,
+                                       "poster":  "/api/items/6/image/poster?v=1791501078803",
+                                       "backdrop":  "/api/items/6/image/backdrop?v=1791501078803",
+                                       "logo":  "/api/items/6/image/logo?v=1791501078803",
+                                       "addedAt":  1791501076335,
+                                       "tint":  "#6e533c",
+                                       "tintWide":  "#a37b59",
+                                       "progress":  {
+                                                        "position":  0.000005,
+                                                        "duration":  5717.888,
+                                                        "watched":  true,
+                                                        "updatedAt":  1794502262057,
+                                                        "locator":  null,
+                                                        "device":  null
+                                                    },
+                                       "playCount":  0,
+                                       "lastPlayed":  1794502262058,
+                                       "stars":  null,
+                                       "favourite":  false
+                                   }
+                               ]
+                 }
+             ],
+    "libraries":  [
+                      {
+                          "id":  1,
+                          "name":  "Test",
+                          "type":  "movies",
+                          "paths":  [
+                                        "D:\\Movies"
+                                    ],
+                          "lastScan":  1794540723866,
+                          "count":  0,
+                          "serverId":  null,
+                          "serverName":  null,
+                          "remoteId":  null,
+                          "options":  {
+                                          "previews":  true
+                                      },
+                          "recordings":  false
+                      }
+                  ]
+}
