@@ -3,6 +3,7 @@ package dev.atomix.launcher
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
+import android.view.KeyEvent
 import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -55,6 +56,8 @@ import dev.atomix.launcher.ui.settings.SettingsActions
 import dev.atomix.launcher.ui.settings.SettingsInfo
 import dev.atomix.launcher.ui.settings.SettingsScreen
 import dev.atomix.launcher.ui.settings.SettingsState
+import dev.atomix.launcher.ui.splash.SplashPolicy
+import dev.atomix.launcher.ui.splash.SplashScreen
 import dev.atomix.launcher.ui.setup.SetupFlow
 import dev.atomix.launcher.ui.setup.SetupViewModel
 import dev.atomix.launcher.ui.theme.AtomixTheme
@@ -89,6 +92,9 @@ class HomeActivity : ComponentActivity() {
     private val settingsOpen = mutableStateOf(false)
     /** Reduced effects, applied at once when Settings changes it. */
     private val reduced = mutableStateOf(false)
+    /** The cold-start splash is still on screen; any key skips it. */
+    private val splashing = mutableStateOf(false)
+    private val splashPolicy get() = SplashPolicy.Process
     private val settings by lazy {
         SettingsState(graph::liveClient, graph.live, graph.store, { graph.locator.locate(graph.store.serverUrl, graph.store.lastKnownUrl) }, graph.prefs)
     }
@@ -120,12 +126,15 @@ class HomeActivity : ComponentActivity() {
         graph = AppGraph.get(this)
         signedIn.value = graph.store.token != null && graph.store.profileId != null
         reduced.value = graph.prefs.reducedEffects
+        splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
         val appsState = AppsTabState(graph.favouriteApps, graph.apps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't save that pin. Try again.") }
         setContent {
             AtomixTheme {
                 CompositionLocalProvider(LocalEffects provides Effects(reduced.value)) {
-                    if (!signedIn.value) {
+                    if (splashing.value) {
+                        SplashScreen(reduced = reduced.value) { splashing.value = false }
+                    } else if (!signedIn.value) {
                         val holder = viewModel { SetupHolder(graph) }
                         LaunchedEffect(Unit) { holder.vm.start() }
                         SetupFlow(holder.vm) { signedIn.value = true; home.vm.onVisible() }
@@ -212,6 +221,15 @@ class HomeActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Any key skips the splash; the press itself is swallowed so it doesn't also act on Home. */
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (splashing.value) {
+            if (event.action == KeyEvent.ACTION_UP) splashing.value = false
+            return true
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun openInput(input: InputEntry) {
