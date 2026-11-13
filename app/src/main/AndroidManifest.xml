@@ -30,6 +30,8 @@
         <activity
             android:name=".HomeActivity"
             android:exported="true"
+            android:label="Atomix TV"
+            android:banner="@drawable/banner_launcher"
             android:excludeFromRecents="true"
             android:launchMode="singleTask"
             android:stateNotNeeded="true"
@@ -45,13 +47,23 @@
             </intent-filter>
         </activity>
 
+        <!-- Atomix as its own app: own tile, own task, own process (its WebView never weighs on Home). -->
         <activity
-            android:name=".web.WebScreenActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
+            android:name=".atomix.AtomixActivity"
+            android:exported="true"
+            android:label="Atomix"
+            android:banner="@drawable/banner"
+            android:process=":atomix"
+            android:taskAffinity="dev.atomix.launcher.atomix"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|keyboardHidden|keyboard|navigation"
             android:hardwareAccelerated="true"
-            android:theme="@style/Theme.Atomix" />
+            android:theme="@style/Theme.Atomix">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <!-- Home button override: this TV won't let another app be Home, so Atomix follows the stock home screen.
              Only the system can bind it (BIND_ACCESSIBILITY_SERVICE). -->

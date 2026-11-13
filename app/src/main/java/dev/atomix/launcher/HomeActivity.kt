@@ -2,6 +2,7 @@ package dev.atomix.launcher
 
 import android.content.Intent
 import android.os.Bundle
+import dev.atomix.launcher.atomix.atomixIntent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import android.widget.Toast
@@ -40,8 +41,6 @@ class HomeHolder(graph: AppGraph) : ViewModel() {
     val vm = HomeViewModel(graph::api, graph.store, graph.favouriteApps::visible, viewModelScope)
 }
 
-const val WEB_ACTIVITY = "dev.atomix.launcher.web.WebScreenActivity"
-const val EXTRA_ROUTE = "route"
 
 class HomeActivity : ComponentActivity() {
     private lateinit var graph: AppGraph
@@ -77,7 +76,7 @@ class HomeActivity : ComponentActivity() {
                         loader = graph.imageLoader,
                         imageUrl = { path -> graph.api()?.imageUrl(path)?.toString() },
                         actions = HomeActions(
-                            openWeb = { route -> launch(Intent().setClassName(this, WEB_ACTIVITY).putExtra(EXTRA_ROUTE, route)) },
+                            openWeb = { route -> launch(atomixIntent(this, route)) },
                             openApp = { launch(it.launch) },
                             openApps = { showApps.value = true },
                             openLiveTv = { liveTvIntent(packageManager)?.let(::launch) ?: toast("Live TV isn't installed") },

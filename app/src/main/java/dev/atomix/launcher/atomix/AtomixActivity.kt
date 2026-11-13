@@ -1,7 +1,8 @@
-package dev.atomix.launcher.web
+package dev.atomix.launcher.atomix
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.KeyEvent
@@ -14,14 +15,15 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.widget.Toast
 import android.widget.FrameLayout
-import dev.atomix.launcher.AppGraph
-import dev.atomix.launcher.EXTRA_ROUTE
+import dev.atomix.launcher.data.SessionStore
+import dev.atomix.launcher.web.AtomixWebClient
+import dev.atomix.launcher.web.shouldClose
 
 /**
- * One full-screen WebView for Atomix's player, detail, library and search pages.
- * It exists only while this activity is open and is destroyed on exit, so Home never holds one.
+ * The Atomix app: its web app full screen, in its own task and its own process (`:atomix`), so its WebView
+ * never counts against Home's memory and pressing Home leaves it running like any other app.
  */
-class WebScreenActivity : Activity() {
+class AtomixActivity : Activity() {
     private var webView: WebView? = null
     private lateinit var root: String
     private var customView: View? = null
@@ -30,8 +32,7 @@ class WebScreenActivity : Activity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        val store = AppGraph.get(this).store
+        val store = SessionStore(this)
         val server = store.serverUrl
         val token = store.token
         if (server == null || token == null) { finish(); return }
@@ -65,6 +66,7 @@ class WebScreenActivity : Activity() {
 
                 override fun onShowCustomView(view: View, callback: CustomViewCallback) {
                     customView = view; customCallback = callback
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     container.addView(view, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
                 }
 
@@ -72,6 +74,7 @@ class WebScreenActivity : Activity() {
                     customView?.let(container::removeView)
                     customView = null
                     customCallback = null
+                    window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 }
             }
         }
@@ -80,6 +83,15 @@ class WebScreenActivity : Activity() {
         webView = web
         web.loadUrl("$origin/$root")
         web.requestFocus()
+    }
+
+    /** Opened again with a route (e.g. Settings → Manage sources): go there in the running page. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        val route = intent.getStringExtra(EXTRA_ROUTE)?.takeIf { it.startsWith("#/") } ?: return
+        val server = SessionStore(this).serverUrl ?: return
+        root = route
+        webView?.loadUrl(server.toString().trimEnd('/') + "/" + route)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
