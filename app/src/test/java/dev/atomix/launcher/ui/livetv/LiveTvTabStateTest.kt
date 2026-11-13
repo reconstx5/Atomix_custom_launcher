@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -63,5 +64,25 @@ class LiveTvTabStateTest {
         state.togglePin("tv2"); runCurrent()
         assertFalse(state.isPinned("tv2"))
         assertEquals(1, errors)
+    }
+
+    @Test fun showOnHome_thenSavingTheOrder_stillSendsRadioFavourites() = runTest {
+        fake.favourites = mutableListOf("r1", "tv1")
+        repo.refresh()
+        val state = LiveTvTabState(repo, this)
+        state.togglePin("tv2"); runCurrent()          // Show on Home: on
+        repo.saveOrder(listOf("tv2", "tv1"))          // what Home's Edit saves
+        assertEquals(listOf("tv2", "tv1", "r1"), fake.lastOrder)
+        state.togglePin("tv1"); runCurrent()          // Show on Home: off
+        repo.saveOrder(listOf("tv2"))
+        assertEquals(listOf("tv2", "r1"), fake.lastOrder)
+    }
+
+    @Test fun switchTarget_isTheFocusedChannel_orNothingOnceItHasGone() = runTest {
+        repo.refresh()
+        val state = LiveTvTabState(repo, this)
+        assertEquals("tv2", state.switchTarget("tv2")?.id)
+        assertNull(state.switchTarget("gone"))
+        assertNull(state.switchTarget(null))
     }
 }

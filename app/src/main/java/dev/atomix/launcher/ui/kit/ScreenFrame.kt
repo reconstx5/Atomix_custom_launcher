@@ -89,7 +89,7 @@ fun ScreenFrame(
                 horizontalArrangement = Arrangement.spacedBy(px(12)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(LineIcon.ChevronDown, AtomixColors.TextSecondary, 24)
+                Icon(LineIcon.ChevronDown, AtomixColors.Label, 24)
                 BasicText(more, style = AtomixType.description(), maxLines = 1)
             }
         }

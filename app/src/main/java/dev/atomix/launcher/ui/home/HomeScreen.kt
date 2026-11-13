@@ -427,8 +427,12 @@ fun HomeScreen(
                                             // small card, off to the right.
                                             down = FocusRequester.Cancel
                                             if (!editing) up = appEntry()
-                                        } else if (small == 0 && channelsEditShown && !editing) {
-                                            up = channelsEditFocus
+                                        } else {
+                                            if (small == 0 && channelsEditShown && !editing) up = channelsEditFocus
+                                            // A key that arrives before the next unseen card has been built stops
+                                            // here for a frame rather than finding something outside the cards.
+                                            if (small > 0 && small == smallStart - 1) up = FocusRequester.Cancel
+                                            if (small == smallStart + 2 && small < smalls.lastIndex) down = FocusRequester.Cancel
                                         }
                                     },
                                 watchHint = !editing,

@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -75,24 +76,30 @@ const val LARGE_CARD_H = 506
 const val SMALL_CARD_W = 646
 const val SMALL_CARD_H = 244
 
-/** The dark colour the artwork fades into on the large card. */
+/** The dark colour artwork fades into. */
 private val Scrim = Color(0xFF070E1A)
+
+/** The fade over full-bleed artwork: a little dark at the top for the channel's name, nearly solid behind the words. */
+internal fun artScrim(): Brush = Brush.verticalGradient(
+    0f to Scrim.copy(alpha = 0.25f), 0.26f to Scrim.copy(alpha = 0f), 0.52f to Scrim.copy(alpha = 0.55f), 1f to Scrim.copy(alpha = 0.96f),
+)
 
 /** Programme artwork, asked for at the size it is drawn and cropped to fill; nothing is drawn without a picture. */
 @Composable
-private fun Artwork(url: String?, loader: ImageLoader, widthPx: Int, heightPx: Int, alignment: Alignment, modifier: Modifier = Modifier) {
+internal fun Artwork(url: String?, loader: ImageLoader, widthPx: Int, heightPx: Int, alignment: Alignment, modifier: Modifier = Modifier, onError: () -> Unit = {}) {
     if (url == null) return
     val context = LocalContext.current
     val density = LocalDensity.current
     val w = with(density) { px(widthPx).roundToPx() }
     val h = with(density) { px(heightPx).roundToPx() }
-    val request = remember(url, w, h) { ImageRequest.Builder(context).data(url).size(w, h).build() }
+    val failed by rememberUpdatedState(onError)
+    val request = remember(url, w, h) { ImageRequest.Builder(context).data(url).size(w, h).listener(onError = { _, _ -> failed() }).build() }
     AsyncImage(request, imageLoader = loader, contentDescription = null, contentScale = ContentScale.Crop, alignment = alignment, modifier = modifier.size(px(widthPx), px(heightPx)))
 }
 
 /** The channel's name on a dark chip, so it reads over any artwork. */
 @Composable
-private fun NameChip(name: String, sizeSp: Int, lineSp: Int, padH: Int, padV: Int, cornerPx: Int, modifier: Modifier = Modifier) {
+internal fun NameChip(name: String, sizeSp: Int, lineSp: Int, padH: Int, padV: Int, cornerPx: Int, modifier: Modifier = Modifier) {
     BasicText(
         name,
         modifier.background(AtomixColors.HintChip, RoundedCornerShape(px(cornerPx))).padding(horizontal = px(padH), vertical = px(padV)),
@@ -103,7 +110,7 @@ private fun NameChip(name: String, sizeSp: Int, lineSp: Int, padH: Int, padV: In
 }
 
 @Composable
-private fun ProgressBar(progress: Float, heightPx: Int, track: Color, modifier: Modifier = Modifier) {
+internal fun ProgressBar(progress: Float, heightPx: Int, track: Color, modifier: Modifier = Modifier) {
     Box(modifier.height(px(heightPx)).background(track, RoundedCornerShape(px(5)))) {
         Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(AtomixColors.Ice, RoundedCornerShape(px(5))))
     }
@@ -154,13 +161,7 @@ fun ChannelCard(
 @Composable
 fun BoxScope.LargeChannelCard(channel: Channel, lines: OnAirLines, artUrl: String?, loader: ImageLoader, watchHint: Boolean) {
     Artwork(artUrl, loader, LARGE_CARD_W, LARGE_CARD_H, BiasAlignment(0f, -0.6f))
-    Box(
-        Modifier.fillMaxSize().background(
-            Brush.verticalGradient(
-                0f to Scrim.copy(alpha = 0.25f), 0.26f to Scrim.copy(alpha = 0f), 0.52f to Scrim.copy(alpha = 0.55f), 1f to Scrim.copy(alpha = 0.96f),
-            ),
-        ),
-    )
+    Box(Modifier.fillMaxSize().background(artScrim()))
     NameChip(channel.name, 30, 38, 20, 8, 14, Modifier.padding(start = px(28), top = px(24)))
     Column(Modifier.align(Alignment.BottomStart).padding(start = px(36), bottom = px(30)).width(px(720))) {
         // A long title takes a second line rather than being cut short: this is read from across the room.

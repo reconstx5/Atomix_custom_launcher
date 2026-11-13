@@ -267,7 +267,7 @@ private fun QuickList(
                     i == 0 -> Modifier.focusRequester(firstFocus)
                     else -> Modifier
                 }
-                ChannelRow(ch, nowMs, loader, url, is24, onClick = { pick(ch, tab) }, focus = focus)
+                ChannelRow(ch, nowMs, loader, url, onClick = { pick(ch, tab) }, focus = focus)
             }
         }
     }

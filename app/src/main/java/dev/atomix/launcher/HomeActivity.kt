@@ -135,7 +135,7 @@ class HomeActivity : ComponentActivity() {
         reduced.value = graph.prefs.reducedEffects
         splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
         val appsState = AppsTabState(graph.favouriteApps, graph.apps)
-        val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't save that pin. Try again.") }
+        val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }
         setContent {
             AtomixTheme {
                 CompositionLocalProvider(LocalEffects provides Effects(reduced.value)) {
