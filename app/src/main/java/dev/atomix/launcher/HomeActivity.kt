@@ -35,7 +35,7 @@ class SetupHolder(graph: AppGraph) : ViewModel() {
 }
 
 class HomeHolder(graph: AppGraph) : ViewModel() {
-    val vm = HomeViewModel(graph::api, graph.store, graph.dockStore::dock, viewModelScope)
+    val vm = HomeViewModel(graph::api, graph.store, graph.favouriteApps::visible, viewModelScope)
 }
 
 const val WEB_ACTIVITY = "dev.atomix.launcher.web.WebScreenActivity"
@@ -50,7 +50,7 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         graph = AppGraph.get(this)
-        val appsState = AppsScreenState(graph.dockStore) { graph.installedApps.list() }
+        val appsState = AppsScreenState(graph.favouriteApps) { graph.installedApps.list() }
         setContent {
             AtomixTheme {
                 var signedIn by remember { mutableStateOf(graph.store.token != null && graph.store.profileId != null) }
@@ -81,8 +81,8 @@ class HomeActivity : ComponentActivity() {
                             listInputs = { TvInputs(this).hdmi() },
                             openInput = { launch(TvInputs(this).intentFor(it)) },
                             switchProfile = { graph.store.profileId = null; signedIn = false },
-                            moveDockApp = { pkg, delta -> graph.dockStore.moveBy(pkg, delta) },
-                            removeDockApp = { graph.dockStore.remove(it) },
+                            moveDockApp = { pkg, delta -> graph.favouriteApps.let { f -> f.move(pkg, f.visible().indexOfFirst { it.packageName == pkg } + delta) } },
+                            removeDockApp = { graph.favouriteApps.remove(it) },
                         ),
                     )
                 }

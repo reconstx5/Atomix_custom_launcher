@@ -5,7 +5,6 @@ import android.net.ConnectivityManager
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import dev.atomix.launcher.apps.DockStore
 import dev.atomix.launcher.apps.InstalledApps
 import dev.atomix.launcher.data.AtomixApi
 import dev.atomix.launcher.data.AtomixClient
@@ -13,6 +12,8 @@ import dev.atomix.launcher.data.OkHttpServerProbe
 import dev.atomix.launcher.data.ServerLocator
 import dev.atomix.launcher.data.SessionStore
 import dev.atomix.launcher.data.subnetHostsOf
+import dev.atomix.launcher.prefs.FavouriteApps
+import dev.atomix.launcher.prefs.LauncherPrefs
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import java.net.Inet4Address
@@ -27,7 +28,8 @@ class AppGraph private constructor(private val context: Context) {
     val store = SessionStore(context)
     val locator = ServerLocator(OkHttpServerProbe(http)) { ownIpv4()?.let(::subnetHostsOf).orEmpty() }
     val installedApps = InstalledApps(context.packageManager)
-    val dockStore = DockStore(store) { installedApps.list() }
+    val prefs = LauncherPrefs(context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)) { store.dock }
+    val favouriteApps = FavouriteApps(prefs) { installedApps.list() }
 
     fun apiFor(url: HttpUrl): AtomixClient = AtomixApi(url, { store.token }, http)
     fun api(): AtomixClient? = store.serverUrl?.let(::apiFor)
