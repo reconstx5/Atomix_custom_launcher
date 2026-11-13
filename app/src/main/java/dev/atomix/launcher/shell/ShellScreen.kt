@@ -8,38 +8,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.ImageBitmap
-import dev.atomix.launcher.ui.kit.Tab
 import dev.atomix.launcher.ui.kit.TopMenu
+import dev.atomix.launcher.ui.kit.Wash
 import dev.atomix.launcher.ui.theme.px
 
 /**
- * The launcher's frame: the top menu over whichever tab is open. Back on Live TV or Apps returns to Home;
- * on Home it does nothing (Home is the bottom of the stack).
+ * The launcher's frame: the ground, whichever place is open, and the top bar over it. Back goes up one level
+ * ([Place.back]); on Home it does nothing (Home is the bottom of the stack).
  */
 @Composable
 fun ShellScreen(
-    tab: Tab,
-    onTab: (Tab) -> Unit,
+    place: Place,
+    onPlace: (Place) -> Unit,
     clock: String,
-    blurred: ImageBitmap?,
     onInputs: () -> Unit,
     onSettings: () -> Unit,
-    content: @Composable (Tab) -> Unit,
+    content: @Composable (Place) -> Unit,
 ) {
     val menuFocus = remember { FocusRequester() }
-    BackHandler { if (tab != Tab.Home) onTab(Tab.Home) }
+    BackHandler { place.back()?.let(onPlace) }
     Box(Modifier.fillMaxSize()) {
-        content(tab)
+        Wash()
+        content(place)
         TopMenu(
-            selected = tab,
-            onSelect = onTab,
+            selected = place.tab,
+            current = place.button,
+            onSelect = { onPlace(Place.of(it)) },
             onInputs = onInputs,
             onSettings = onSettings,
             clock = clock,
-            blurred = blurred,
             firstFocus = menuFocus,
-            modifier = Modifier.padding(start = px(116), end = px(116), top = px(60)),
+            modifier = Modifier.padding(start = px(100), end = px(100), top = px(28)),
         )
     }
 }

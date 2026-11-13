@@ -17,7 +17,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -38,6 +37,7 @@ import dev.atomix.launcher.livetv.player.ZapSource
 import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeViewModel
+import dev.atomix.launcher.shell.Place
 import dev.atomix.launcher.shell.ShellScreen
 import dev.atomix.launcher.ui.apps.AppsTab
 import dev.atomix.launcher.ui.apps.AppsTabState
@@ -87,7 +87,7 @@ class HomeActivity : ComponentActivity() {
 
     /** Bumped on every return to Home; the visible screen restores its remembered focus. */
     private val restoreTick = mutableIntStateOf(0)
-    private val tab = mutableStateOf(Tab.Home)
+    private val place = mutableStateOf(Place.Home)
     private val signedIn = mutableStateOf(false)
     /** Settings covers the whole shell while open; Back closes it. */
     private val settingsOpen = mutableStateOf(false)
@@ -152,7 +152,6 @@ class HomeActivity : ComponentActivity() {
                                 graph.store.clearAuth(); signedIn.value = false; stopAtomixProcess(this@HomeActivity)
                             }
                         }
-                        var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
                         var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
                         // Coming back to Home — the Home button, or leaving an app — closes anything open over it.
                         LaunchedEffect(restoreTick.intValue) { inputs = null }
@@ -177,15 +176,14 @@ class HomeActivity : ComponentActivity() {
                                 ),
                             )
                         } else ShellScreen(
-                            tab = tab.value,
-                            onTab = { tab.value = it; restoreTick.intValue++ },
+                            place = place.value,
+                            onPlace = { place.value = it; restoreTick.intValue++ },
                             clock = clockText(ui.nowMs, is24),
-                            blurred = blurred,
                             onInputs = { inputs = listOf(InputEntry(TUNER_INPUT, "TV tuner")) + TvInputs(this).hdmi() },
                             onSettings = ::openSettings,
                         ) { current ->
                             when (current) {
-                                Tab.Home -> HomeScreen(
+                                Place.Home -> HomeScreen(
                                     ui = ui,
                                     loader = graph.imageLoader,
                                     url = { graph.liveClient()?.url(it)?.toString() },
@@ -195,17 +193,17 @@ class HomeActivity : ComponentActivity() {
                                     actions = HomeActions(
                                         play = { playChannel(it, Tab.Home) },
                                         openApp = { launch(it.launch) },
-                                        allApps = { tab.value = Tab.Apps },
-                                        chooseChannels = { tab.value = Tab.LiveTv },
+                                        allApps = { place.value = Place.Apps },
+                                        chooseChannels = { place.value = Place.LiveTv },
                                         openSettings = ::openSettings,
                                         retry = home.vm::refreshNow,
                                         unavailable = { toast("Can't reach the TV server") },
                                         saveChannels = { order -> home.vm.saveChannelOrder(order) { toast("Couldn't save the channel order. Try again.") } },
                                         saveApps = home.vm::saveAppOrder,
                                     ),
-                                    onArt = { blurred = it },
+                                    onArt = {},
                                 )
-                                Tab.LiveTv -> LiveTvTab(
+                                Place.LiveTv -> LiveTvTab(
                                     state = liveState,
                                     ui = ui,
                                     loader = graph.imageLoader,
@@ -215,7 +213,7 @@ class HomeActivity : ComponentActivity() {
                                     restoreTick = restoreTick.intValue,
                                     onPlay = { playChannel(it, Tab.LiveTv) },
                                 )
-                                Tab.Apps -> AppsTab(
+                                Place.Apps -> AppsTab(
                                     state = appsState,
                                     loader = graph.imageLoader,
                                     memory = appsTabMemory,
@@ -223,6 +221,8 @@ class HomeActivity : ComponentActivity() {
                                     onLaunch = { launch(it.launch) },
                                     onFavouritesChanged = { home.vm.refreshApps() },
                                 )
+                                // Manage apps, Inputs and Settings become places in Tasks 7, 8 and 9.
+                                Place.ManageApps, Place.Inputs, Place.Settings -> Unit
                             }
                         }
                         inputs?.let { list ->
@@ -288,7 +288,7 @@ class HomeActivity : ComponentActivity() {
         super.onNewIntent(intent)
         // The Home button means Home, not "Home with Settings still over it".
         settingsOpen.value = false
-        tab.value = Tab.Home
+        place.value = Place.Home
         restoreTick.intValue++
     }
 
