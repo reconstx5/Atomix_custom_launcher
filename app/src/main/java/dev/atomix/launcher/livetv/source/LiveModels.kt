@@ -42,6 +42,8 @@ data class LiveSource(
     val error: String? = null,
     val warning: String? = null,
     val lastRefresh: Long? = null,
+    /** The server's one-line description, e.g. "460 channels in 2 groups · guide to Sun 6 am". */
+    val summary: String? = null,
 )
 
 /** [admin]: the server sent admin-only fields, so this profile may refresh and manage sources. */
@@ -163,6 +165,7 @@ internal object LiveParse {
                     error = s.str("error"),
                     warning = s.str("warning"),
                     lastRefresh = s.long("lastRefresh"),
+                    summary = s.str("summary"),
                 )
             },
             admin = sources.any { "lastRefresh" in it || "error" in it },

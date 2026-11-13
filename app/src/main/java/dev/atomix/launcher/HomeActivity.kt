@@ -2,6 +2,7 @@ package dev.atomix.launcher
 
 import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -26,6 +27,7 @@ import dev.atomix.launcher.apps.InputEntry
 import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.apps.liveTvIntent
 import dev.atomix.launcher.apps.safeStart
+import dev.atomix.launcher.atomix.ROUTE_LIVE_SETTINGS
 import dev.atomix.launcher.atomix.atomixIntent
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.LiveState
@@ -49,6 +51,10 @@ import dev.atomix.launcher.ui.livetv.LiveTvTab
 import dev.atomix.launcher.ui.livetv.LiveTvTabState
 import dev.atomix.launcher.ui.livetv.ROW_CHANNELS
 import androidx.lifecycle.lifecycleScope
+import dev.atomix.launcher.ui.settings.SettingsActions
+import dev.atomix.launcher.ui.settings.SettingsInfo
+import dev.atomix.launcher.ui.settings.SettingsScreen
+import dev.atomix.launcher.ui.settings.SettingsState
 import dev.atomix.launcher.ui.setup.SetupFlow
 import dev.atomix.launcher.ui.setup.SetupViewModel
 import dev.atomix.launcher.ui.theme.AtomixTheme
@@ -79,6 +85,13 @@ class HomeActivity : ComponentActivity() {
     private val restoreTick = mutableIntStateOf(0)
     private val tab = mutableStateOf(Tab.Home)
     private val signedIn = mutableStateOf(false)
+    /** Settings covers the whole shell while open; Back closes it. */
+    private val settingsOpen = mutableStateOf(false)
+    /** Reduced effects, applied at once when Settings changes it. */
+    private val reduced = mutableStateOf(false)
+    private val settings by lazy {
+        SettingsState(graph::liveClient, graph.live, graph.store, { graph.locator.locate(graph.store.serverUrl, graph.store.lastKnownUrl) }, graph.prefs)
+    }
 
     /**
      * Playback returns the last channel watched: Home focuses its card (or keeps the card that started it), the
@@ -106,11 +119,12 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         graph = AppGraph.get(this)
         signedIn.value = graph.store.token != null && graph.store.profileId != null
+        reduced.value = graph.prefs.reducedEffects
         val appsState = AppsTabState(graph.favouriteApps, graph.apps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't save that pin. Try again.") }
         setContent {
             AtomixTheme {
-                CompositionLocalProvider(LocalEffects provides Effects(graph.prefs.reducedEffects)) {
+                CompositionLocalProvider(LocalEffects provides Effects(reduced.value)) {
                     if (!signedIn.value) {
                         val holder = viewModel { SetupHolder(graph) }
                         LaunchedEffect(Unit) { holder.vm.start() }
@@ -123,7 +137,26 @@ class HomeActivity : ComponentActivity() {
                         var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
                         var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
                         val is24 = DateFormat.is24HourFormat(this)
-                        ShellScreen(
+                        if (settingsOpen.value) {
+                            SettingsScreen(
+                                state = settings,
+                                info = SettingsInfo(
+                                    server = { graph.store.serverUrl?.toString()?.removeSuffix("/") },
+                                    profile = graph.store.profileName,
+                                    version = versionName(),
+                                    homeOverrideOn = settings.homeOverrideOn(Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)),
+                                ),
+                                reduced = reduced.value,
+                                nowMs = ui.nowMs,
+                                actions = SettingsActions(
+                                    testChannel = ::testChannel,
+                                    manageSources = { launch(atomixIntent(this, ROUTE_LIVE_SETTINGS)) },
+                                    switchProfile = ::switchProfile,
+                                    setReduced = { settings.reducedEffects = it; reduced.value = it },
+                                    close = ::closeSettings,
+                                ),
+                            )
+                        } else ShellScreen(
                             tab = tab.value,
                             onTab = { tab.value = it; restoreTick.intValue++ },
                             clock = clockText(ui.nowMs, is24),
@@ -186,8 +219,32 @@ class HomeActivity : ComponentActivity() {
         else launch(TvInputs(this).intentFor(input))
     }
 
-    // Settings arrives in a later stage; until then the gear opens Atomix's own settings.
-    private fun openSettings() = launch(atomixIntent(this, "#/settings"))
+    private fun openSettings() { settingsOpen.value = true }
+
+    private fun closeSettings() {
+        settingsOpen.value = false
+        restoreTick.intValue++
+    }
+
+    /** Plays a channel from Settings; Back from the player returns to Settings. */
+    private fun testChannel(id: String) {
+        val pinned = (home.vm.ui.value.live as? LiveState.Ready)?.pinned.orEmpty().any { it.id == id }
+        playedFrom = Tab.Home
+        player.launch(PlayerActivity.intent(this, id, if (pinned) ZapSource.Pinned else ZapSource.All))
+    }
+
+    /** Keeps the sign-in but forgets the profile, so setup opens on the profile list. */
+    private fun switchProfile() {
+        settingsOpen.value = false
+        graph.store.profileId = null
+        graph.store.profileName = null
+        graph.store.cachedChannelsJson = null
+        graph.store.cachedFavouriteIds = null
+        signedIn.value = false
+    }
+
+    private fun versionName(): String =
+        runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: ""
 
     /** Zapping follows the list playback started from: pinned channels from Home, every channel from Live TV. */
     private fun playChannel(channel: Channel, from: Tab) {

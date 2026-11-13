@@ -20,11 +20,15 @@ class FakeLiveClient(
     val calls = mutableListOf<String>()
     var playReplies = ArrayDeque<() -> PlayReply>()
     var pingResult: () -> Boolean = { true }
+    /** What /api/live/status answers; null means enabled, no sources, admin. */
+    var statusReply: LiveStatus? = null
+    /** Thrown by [refreshSource] (e.g. a 403 for a non-admin profile). */
+    var refreshFailure: Exception? = null
 
     private fun check() { if (down) throw IOException("down") }
     private fun checkWrite() { check(); if (failWrites) throw IOException("write failed") }
 
-    override suspend fun status() = check().let { refreshes++; LiveStatus(enabled, emptyList(), admin = true) }
+    override suspend fun status() = check().let { refreshes++; statusReply ?: LiveStatus(enabled, emptyList(), admin = true) }
     override suspend fun channels(): List<Channel> { check(); return channels.map { it.copy(favourite = it.id in favourites) } }
     override suspend fun channelsJson(): String = buildJsonArray {
         channels().forEach { c ->
@@ -47,7 +51,7 @@ class FakeLiveClient(
     }
     override suspend fun ping(reply: PlayReply): Boolean { check(); calls += "ping ${reply.sessionId}"; return pingResult() }
     override suspend fun stop(reply: PlayReply) { calls += "stop ${reply.sessionId}" }
-    override suspend fun refreshSource(id: String) { checkWrite(); calls += "refresh $id" }
+    override suspend fun refreshSource(id: String) { checkWrite(); refreshFailure?.let { throw it }; calls += "refresh $id" }
     override fun url(path: String?): HttpUrl? = path?.let { "http://server$it".toHttpUrl() }
 }
 

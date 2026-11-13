@@ -57,6 +57,7 @@ class LiveApiTest {
         assertEquals(460, admin.sources.single().channels)
         assertEquals("8 unmatched", admin.sources.single().warning)
         assertEquals(1794544000000, admin.sources.single().lastRefresh)
+        assertEquals("460 channels", admin.sources.single().summary)
         server.enqueue(MockResponse().setBody("""{"enabled":true,"sources":[{"id":"s","name":"S","channels":3,"lastOk":1}]}"""))
         assertFalse(api.status().admin)
     }
