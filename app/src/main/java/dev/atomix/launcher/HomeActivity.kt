@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
+import android.util.Log
 import android.view.KeyEvent
 import android.text.format.DateFormat
 import android.widget.Toast
@@ -46,8 +47,8 @@ import dev.atomix.launcher.ui.apps.ManageAppsScreen
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
 import dev.atomix.launcher.ui.home.ROW_ON_NOW
-import dev.atomix.launcher.ui.home.InputsDialog
 import dev.atomix.launcher.ui.home.clockText
+import dev.atomix.launcher.ui.inputs.InputsScreen
 import dev.atomix.launcher.ui.kit.Effects
 import dev.atomix.launcher.ui.kit.LocalEffects
 import dev.atomix.launcher.ui.kit.Tab
@@ -93,6 +94,8 @@ class HomeActivity : ComponentActivity() {
     private val signedIn = mutableStateOf(false)
     /** Settings covers the whole shell while open; Back closes it. */
     private val settingsOpen = mutableStateOf(false)
+    /** The HDMI ports the Inputs page lists, read each time it opens. */
+    private val hdmiInputs = mutableStateOf<List<InputEntry>>(emptyList())
     /** Reduced effects, applied at once when Settings changes it. */
     private val reduced = mutableStateOf(false)
     /** The cold-start splash is still on screen; any key skips it. */
@@ -154,9 +157,6 @@ class HomeActivity : ComponentActivity() {
                                 graph.store.clearAuth(); signedIn.value = false; stopAtomixProcess(this@HomeActivity)
                             }
                         }
-                        var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
-                        // Coming back to Home — the Home button, or leaving an app — closes anything open over it.
-                        LaunchedEffect(restoreTick.intValue) { inputs = null }
                         val is24 = DateFormat.is24HourFormat(this)
                         if (settingsOpen.value) {
                             SettingsScreen(
@@ -181,7 +181,7 @@ class HomeActivity : ComponentActivity() {
                             place = place.value,
                             onPlace = { place.value = it; restoreTick.intValue++ },
                             clock = clockText(ui.nowMs, is24),
-                            onInputs = { inputs = listOf(InputEntry(TUNER_INPUT, "TV tuner")) + TvInputs(this).hdmi() },
+                            onInputs = ::openInputs,
                             onSettings = ::openSettings,
                         ) { current ->
                             when (current) {
@@ -234,12 +234,15 @@ class HomeActivity : ComponentActivity() {
                                     },
                                     onChanged = { home.vm.refreshApps() },
                                 )
-                                // Inputs and Settings become places in Tasks 8 and 9.
-                                Place.Inputs, Place.Settings -> Unit
+                                Place.Inputs -> InputsScreen(
+                                    hdmi = hdmiInputs.value,
+                                    tuner = InputEntry(TUNER_INPUT, "TV tuner"),
+                                    // Home first, so coming back from the input lands on Home, not on this list.
+                                    onPick = { place.value = Place.Home; openInput(it) },
+                                )
+                                // Settings becomes a place in Task 9.
+                                Place.Settings -> Unit
                             }
-                        }
-                        inputs?.let { list ->
-                            InputsDialog(list, onPick = { inputs = null; openInput(it) }, onDismiss = { inputs = null })
                         }
                     }
                 }
@@ -254,6 +257,15 @@ class HomeActivity : ComponentActivity() {
             return true
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    /** Opens the Inputs page with the TV's HDMI ports as they are listed now. */
+    private fun openInputs() {
+        val inputs = TvInputs(this)
+        hdmiInputs.value = inputs.hdmi()
+        // Everything the TV will tell an ordinary app about its inputs, for reading back with logcat.
+        inputs.describeAll().forEach { Log.i("AtomixInputs", it) }
+        place.value = Place.Inputs
     }
 
     private fun openInput(input: InputEntry) {
