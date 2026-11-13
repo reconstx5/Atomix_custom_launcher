@@ -14,7 +14,10 @@ data class AppEntry(
 
 const val SELF_PACKAGE = "dev.atomix.launcher"
 
-/** Launchable apps: TV (leanback) activities win over phone ones; one entry per package; never this launcher. */
+/** Atomix's own app tile lives in this package; it is listed like any other app. */
+const val ATOMIX_ACTIVITY = "dev.atomix.launcher.atomix.AtomixActivity"
+
+/** Launchable apps: TV (leanback) activities win over phone ones; one entry per package; never this launcher (but Atomix's tile, yes). */
 class InstalledApps(private val pm: PackageManager) {
     fun list(): List<AppEntry> {
         val seen = LinkedHashMap<String, AppEntry>()
@@ -23,7 +26,7 @@ class InstalledApps(private val pm: PackageManager) {
             for (ri in pm.queryIntentActivities(query, 0)) {
                 val ai = ri.activityInfo ?: continue
                 val pkg = ai.packageName
-                if (pkg == SELF_PACKAGE || pkg in seen) continue
+                if ((pkg == SELF_PACKAGE && ai.name != ATOMIX_ACTIVITY) || pkg in seen) continue
                 val launch = Intent(Intent.ACTION_MAIN).addCategory(category)
                     .setClassName(pkg, ai.name)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)

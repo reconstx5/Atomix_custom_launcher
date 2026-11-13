@@ -2,6 +2,8 @@ package dev.atomix.launcher
 
 import android.content.Intent
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -50,7 +52,8 @@ class HomeActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         graph = AppGraph.get(this)
-        val appsState = AppsScreenState(graph.favouriteApps) { graph.installedApps.list() }
+        val appsState = AppsScreenState(graph.favouriteApps) { graph.apps.apps.value }
+        lifecycleScope.launch { graph.apps.apps.collect { home.vm.refreshDock() } }
         setContent {
             AtomixTheme {
                 var signedIn by remember { mutableStateOf(graph.store.token != null && graph.store.profileId != null) }

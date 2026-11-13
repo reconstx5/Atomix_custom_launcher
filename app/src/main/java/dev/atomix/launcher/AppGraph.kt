@@ -1,10 +1,14 @@
 package dev.atomix.launcher
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.net.ConnectivityManager
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.InstalledApps
 import dev.atomix.launcher.data.AtomixApi
 import dev.atomix.launcher.data.AtomixClient
@@ -16,6 +20,9 @@ import dev.atomix.launcher.prefs.FavouriteApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.net.Inet4Address
 import java.util.concurrent.TimeUnit
 
@@ -29,7 +36,20 @@ class AppGraph private constructor(private val context: Context) {
     val locator = ServerLocator(OkHttpServerProbe(http)) { ownIpv4()?.let(::subnetHostsOf).orEmpty() }
     val installedApps = InstalledApps(context.packageManager)
     val prefs = LauncherPrefs(context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)) { store.dock }
-    val favouriteApps = FavouriteApps(prefs) { installedApps.list() }
+    /** Lives as long as the process; for loads that outlast any one screen. */
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    val apps = AppCatalog(installedApps::list, scope)
+    val favouriteApps = FavouriteApps(prefs) { apps.apps.value }
+
+    init {
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_PACKAGE_ADDED); addAction(Intent.ACTION_PACKAGE_REMOVED); addAction(Intent.ACTION_PACKAGE_CHANGED)
+            addDataScheme("package")
+        }
+        context.registerReceiver(object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) = apps.invalidate()
+        }, filter)
+    }
 
     fun apiFor(url: HttpUrl): AtomixClient = AtomixApi(url, { store.token }, http)
     fun api(): AtomixClient? = store.serverUrl?.let(::apiFor)
