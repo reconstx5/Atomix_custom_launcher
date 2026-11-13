@@ -221,8 +221,10 @@ fun HomeScreen(
     // Home is on screen (unpinned on another device, app uninstalled) would otherwise take the focus with it.
     LaunchedEffect(restoreTick, pinned.size, ui.apps.size, live::class) {
         val rows = linkedMapOf(ROW_ON_NOW to pinned.map { it.id }, ROW_APPS to ui.apps.map { it.packageName })
-        // First visit with nothing pinned: start on the empty state's button, not down in the apps.
-        val target = if (memory.current() == null && pinned.isEmpty()) null else memory.resolve(rows)
+        // With nothing pinned the row is replaced by its empty state, and that button is what to focus — on a first
+        // visit, and again when the last pin goes: falling through to an app tile would scroll Home away from it.
+        val rememberedApp = memory.current()?.row == ROW_APPS
+        val target = if (pinned.isEmpty() && !rememberedApp) null else memory.resolve(rows)
         withFrameNanos { }
         val ok = when (target?.row) {
             ROW_ON_NOW -> focusIn(channelList, target, channelFocus)
@@ -246,7 +248,7 @@ fun HomeScreen(
         SpotlightBackdrop(art, dim = inApps)
         Column(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true).graphicsLayer { translationY = offset }) {
             Box(Modifier.fillMaxWidth().height(px(616)).graphicsLayer { alpha = spotAlpha }.padding(start = px(116), end = px(116), bottom = px(8)), contentAlignment = Alignment.BottomStart) {
-                Spotlight(spot, spotOn, url(spot?.logo), loader, is24)
+                Spotlight(spot, spotOn, url(spot?.logo), loader, is24, live = !offline)
             }
             EditableHeader(
                 "On now",

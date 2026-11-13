@@ -31,6 +31,16 @@ class PlayerLogicTest {
         assertEquals(listOf("d"), tuned)
     }
 
+    @Test fun step_withOnlyOneChannel_staysPutAndDoesNotRetune() = runTest {
+        val tuned = mutableListOf<String>()
+        val one = listOf(tv("a", 1))
+        val zap = ZapQueue(backgroundScope, delayMs = 500) { tuned += it.id }
+        assertEquals("a", zap.step(one, one[0], +1).id)
+        assertEquals("a", zap.step(one, one[0], -1).id)
+        advanceTimeBy(1_000); runCurrent()
+        assertEquals("the picture is not thrown away to re-tune the same channel", emptyList<String>(), tuned)
+    }
+
     @Test fun step_wrapsAroundBothWays() = runTest {
         val zap = ZapQueue(backgroundScope) {}
         assertEquals("a", zap.step(list, list.last(), +1).id)

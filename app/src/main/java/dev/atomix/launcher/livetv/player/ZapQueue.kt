@@ -14,7 +14,8 @@ class ZapQueue(private val scope: CoroutineScope, private val delayMs: Long = 50
     private var pending: Job? = null
 
     fun step(list: List<Channel>, from: Channel, delta: Int): Channel {
-        if (list.isEmpty()) return from
+        // With one channel there is nowhere to go: re-tuning it would throw the picture away for nothing.
+        if (list.isEmpty() || (list.size == 1 && list[0].id == from.id)) return from
         val n = list.size
         var i = list.indexOfFirst { it.id == from.id }
         if (i < 0) i = if (delta > 0) -1 else n

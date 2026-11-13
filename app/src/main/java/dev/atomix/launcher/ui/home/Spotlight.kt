@@ -132,13 +132,14 @@ fun SpotlightBackdrop(art: SpotlightArt?, dim: Boolean, modifier: Modifier = Mod
  * title, times/genre/minutes left and a one-line description. No buttons — OK on the card plays.
  */
 @Composable
-fun Spotlight(channel: Channel?, on: OnAir?, logoUrl: String?, loader: ImageLoader, is24: Boolean, modifier: Modifier = Modifier) {
+fun Spotlight(channel: Channel?, on: OnAir?, logoUrl: String?, loader: ImageLoader, is24: Boolean, live: Boolean = true, modifier: Modifier = Modifier) {
     if (channel == null) return
     Column(modifier.widthIn(max = px(1000)), verticalArrangement = Arrangement.spacedBy(px(14))) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(16))) {
             LogoPlate(channel, logoUrl, loader, Modifier.height(px(56)), logoMax = 110 to 36)
             BasicText(listOfNotNull(channel.number?.toString(), channel.name).joinToString(" · ").uppercase(), style = AtomixType.eyebrow())
-            LiveBadge()
+            // Nothing is live while the server can't be reached: the cards are dimmed and OK is disabled.
+            if (live) LiveBadge()
         }
         val p = on?.programme
         BasicText(p?.title ?: channel.name, style = AtomixType.spotlight(), maxLines = 2, overflow = TextOverflow.Ellipsis)

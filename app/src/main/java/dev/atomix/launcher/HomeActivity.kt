@@ -145,6 +145,8 @@ class HomeActivity : ComponentActivity() {
                         }
                         var blurred by remember { mutableStateOf<ImageBitmap?>(null) }
                         var inputs by remember { mutableStateOf<List<InputEntry>?>(null) }
+                        // Coming back to Home — the Home button, or leaving an app — closes anything open over it.
+                        LaunchedEffect(restoreTick.intValue) { inputs = null }
                         val is24 = DateFormat.is24HourFormat(this)
                         if (settingsOpen.value) {
                             SettingsScreen(
@@ -274,6 +276,8 @@ class HomeActivity : ComponentActivity() {
     /** Pressing Home while on another tab returns to the Home tab. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        // The Home button means Home, not "Home with Settings still over it".
+        settingsOpen.value = false
         tab.value = Tab.Home
         restoreTick.intValue++
     }

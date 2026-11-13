@@ -60,15 +60,20 @@ fun onAirMeta(on: OnAir, is24: Boolean): String? {
 @Composable
 fun LogoPlate(channel: Channel, logoUrl: String?, loader: ImageLoader, modifier: Modifier = Modifier, logoMax: Pair<Int, Int> = 160 to 80) {
     var plate by remember(channel.id) { mutableStateOf(Color(hashedPlate(channel.name))) }
+    // A logo that 404s or times out would otherwise leave an empty coloured rectangle with nothing in it.
+    var logoFailed by remember(logoUrl) { mutableStateOf(false) }
     val context = LocalContext.current
     Box(modifier.background(plate, RoundedCornerShape(px(10))).padding(px(10)), contentAlignment = Alignment.Center) {
-        if (logoUrl != null) {
+        if (logoUrl != null && !logoFailed) {
             val request = remember(logoUrl) {
                 ImageRequest.Builder(context).data(logoUrl).size(320, 160).allowHardware(false)
-                    .listener(onSuccess = { _, result ->
-                        val bmp = (result.drawable as? BitmapDrawable)?.bitmap ?: return@listener
-                        plateFrom(bmp)?.let { plate = Color(it) }
-                    }).build()
+                    .listener(
+                        onSuccess = { _, result ->
+                            val bmp = (result.drawable as? BitmapDrawable)?.bitmap ?: return@listener
+                            plateFrom(bmp)?.let { plate = Color(it) }
+                        },
+                        onError = { _, _ -> logoFailed = true },
+                    ).build()
             }
             AsyncImage(request, imageLoader = loader, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.sizeIn(maxWidth = px(logoMax.first), maxHeight = px(logoMax.second)))
         } else {
@@ -131,12 +136,22 @@ fun ChannelCard(
             overflow = TextOverflow.Ellipsis,
         )
         BasicText(
-            if (focused && on.upNext != null) "Next: ${on.upNext.title}" else onAirMeta(on, is24) ?: "No programme information",
+            onAirMeta(on, is24) ?: "No programme information",
             style = AtomixType.small(),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = px(4)),
         )
+        // Focus adds what's next; it never takes away how long is left on the card you are looking at.
+        if (focused && on.upNext != null) {
+            BasicText(
+                "Next: ${on.upNext.title}",
+                style = AtomixType.small().copy(color = AtomixColors.TextDim),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = px(2)),
+            )
+        }
         val progress = on.progress
         if (progress != null) {
             Box(Modifier.padding(top = px(14)).fillMaxWidth().height(px(if (focused) 6 else 4)).background(AtomixColors.Track, RoundedCornerShape(50))) {
