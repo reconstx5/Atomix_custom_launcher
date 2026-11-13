@@ -68,7 +68,7 @@ fun ContinueRow(
                     onFocused(item)
                     // Warm the hero for the neighbours so focus moves land on a ready backdrop.
                     listOfNotNull(row.items.getOrNull(index - 1), row.items.getOrNull(index + 1)).forEach { n ->
-                        imageUrl(n.backdrop)?.let { loader.enqueue(ImageRequest.Builder(context).data(it).size(1280, 720).build()) }
+                        (imageUrl(n.backdrop) ?: imageUrl(n.poster))?.let { loader.enqueue(heroRequest(context, it)) }
                     }
                 }
             }

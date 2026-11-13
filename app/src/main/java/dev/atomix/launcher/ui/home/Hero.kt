@@ -47,42 +47,29 @@ import dev.atomix.launcher.ui.theme.GlassButton
 import dev.atomix.launcher.ui.theme.px
 import dev.atomix.launcher.ui.theme.pxSp
 
+/** Backdrop crossfade (spec: 400 ms). Coil skips it when the art is already in memory (prefetched neighbours). */
+const val HERO_FADE_MS = 400
+
+/** Height of the hero text block (design px): logo or 2-line title, meta, progress, 2-line overview, buttons. */
+const val HERO_INFO_H = 520
+
 fun accentOf(item: Item?): Color = parseTint(item?.tintWide) ?: parseTint(item?.tint) ?: AtomixColors.Ice
 
-/** Full-bleed artwork with Orbit's page shade: strong at the left and the bottom. */
+/** Full-bleed artwork; Orbit's page shade is baked into the bitmap by [OrbitScrim], so this draws one layer. */
 @Composable
 fun HeroBackdrop(item: Item?, offline: Boolean, imageUrl: (String?) -> String?, loader: ImageLoader) {
     val context = LocalContext.current
-    // The window background is already Deep Space, so nothing here fills the screen twice.
-    // Each scrim is drawn only over the band it darkens, which keeps GPU fill low on the TV.
-    val shade = AtomixColors.DeepSpace
-    Box(
-        Modifier.fillMaxSize().drawWithCache {
-            val w = size.width
-            val h = size.height
-            val left = Brush.horizontalGradient(0f to shade.copy(alpha = 0.92f), 1f to shade.copy(alpha = 0f), endX = w * 0.6f)
-            val top = Brush.verticalGradient(0f to shade.copy(alpha = 0.6f), 1f to shade.copy(alpha = 0f), endY = h * 0.16f)
-            val bottom = Brush.verticalGradient(0f to shade.copy(alpha = 0f), 1f to shade.copy(alpha = 0.95f), startY = h * 0.55f, endY = h)
-            onDrawWithContent {
-                drawContent()
-                drawRect(left, size = Size(w * 0.6f, h))
-                drawRect(top, size = Size(w, h * 0.16f))
-                drawRect(bottom, topLeft = Offset(0f, h * 0.55f), size = Size(w, h * 0.45f))
-            }
-        },
-    ) {
-        val url = if (offline) null else (imageUrl(item?.backdrop) ?: imageUrl(item?.poster))
-        if (url != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(url).size(1280, 720).crossfade(400).build(),
-                imageLoader = loader,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else if (offline || item == null) {
-            OfflineBackdrop()
-        }
+    val url = if (offline) null else (imageUrl(item?.backdrop) ?: imageUrl(item?.poster))
+    if (url != null) {
+        AsyncImage(
+            model = heroRequest(context, url, HERO_FADE_MS),
+            imageLoader = loader,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+    } else if (offline || item == null) {
+        OfflineBackdrop()
     }
 }
 
@@ -126,7 +113,9 @@ fun HeroInfo(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    Column(modifier.width(px(1100)), verticalArrangement = Arrangement.spacedBy(px(18))) {
+    // Fixed height, content pinned to the bottom: the row below never moves when the hero's text changes,
+    // so a focus move re-lays out only this block.
+    Column(modifier.width(px(1100)).height(px(HERO_INFO_H)), verticalArrangement = Arrangement.spacedBy(px(18), Alignment.Bottom)) {
         if (item == null) {
             Box(Modifier.height(px(200)))
             BasicText(

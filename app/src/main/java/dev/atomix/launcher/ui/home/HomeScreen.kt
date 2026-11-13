@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,10 +38,18 @@ class HomeActions(
 @Composable
 fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> String?, actions: HomeActions) {
     val state by vm.state.collectAsState()
-    val focused by vm.focusedItem.collectAsState()
+    val focusedState = vm.focusedItem.collectAsState()
     val offline = state.status == HomeState.Status.Offline
     // The hero follows the focused card; before any card has had focus it shows Atomix's own hero.
-    val shown: Item? = if (offline) null else (focused?.takeIf { f -> state.row?.items?.any { it.id == f.id } == true } ?: state.hero)
+    // Read through derived state so a focus move recomposes only the hero layers, not the whole screen.
+    val shownState = remember {
+        derivedStateOf {
+            val s = vm.state.value
+            if (s.status == HomeState.Status.Offline) null
+            else focusedState.value?.takeIf { f -> s.row?.items?.any { it.id == f.id } == true } ?: s.hero
+        }
+    }
+    val hasShown by remember { derivedStateOf { shownState.value != null } }
 
     val playFocus = remember { FocusRequester() }
     val dockFocus = remember { FocusRequester() }
@@ -50,17 +59,17 @@ fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> St
 
     BackHandler { /* Home is the bottom of the stack: Back does nothing here. */ }
 
-    LaunchedEffect(state.status, shown != null) {
-        if (initialFocusDone || state.status == HomeState.Status.Loading && shown == null) return@LaunchedEffect
-        initialFocusDone = runCatching { if (shown != null) playFocus.requestFocus() else dockFocus.requestFocus() }.isSuccess
+    LaunchedEffect(state.status, hasShown) {
+        if (initialFocusDone || state.status == HomeState.Status.Loading && !hasShown) return@LaunchedEffect
+        initialFocusDone = runCatching { if (hasShown) playFocus.requestFocus() else dockFocus.requestFocus() }.isSuccess
     }
 
     Box(Modifier.fillMaxSize()) {
-        HeroBackdrop(shown, offline, imageUrl, loader)
+        HeroBackdropLayer({ shownState.value }, offline, imageUrl, loader)
         TopBar(state.profileName, onProfile = actions.switchProfile)
-        Column(Modifier.padding(top = px(150))) {
-            HeroInfo(
-                item = shown,
+        Column(Modifier.padding(top = px(110))) {
+            HeroInfoLayer(
+                item = { shownState.value },
                 offline = offline,
                 imageUrl = imageUrl,
                 loader = loader,
@@ -94,7 +103,7 @@ fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> St
         // Drawn after the hero text so the expanded rail sits on top of it.
         Rail(
             listOf(
-                RailEntry(LineIcon.Home, "Home") { runCatching { (if (shown != null) playFocus else dockFocus).requestFocus() } },
+                RailEntry(LineIcon.Home, "Home") { runCatching { (if (shownState.value != null) playFocus else dockFocus).requestFocus() } },
                 RailEntry(LineIcon.Apps, "Apps", onClick = actions.openApps),
                 RailEntry(LineIcon.Library, "Library", enabled = !offline) {
                     actions.openWeb(state.libraryId?.let { "#/library/$it" } ?: "#/")
@@ -121,3 +130,20 @@ fun HomeScreen(vm: HomeViewModel, loader: ImageLoader, imageUrl: (String?) -> St
         }
     }
 }
+
+/** Reads the shown item here, so only this layer recomposes when focus moves. */
+@Composable
+private fun HeroBackdropLayer(item: () -> Item?, offline: Boolean, imageUrl: (String?) -> String?, loader: ImageLoader) =
+    HeroBackdrop(item(), offline, imageUrl, loader)
+
+@Composable
+private fun HeroInfoLayer(
+    item: () -> Item?,
+    offline: Boolean,
+    imageUrl: (String?) -> String?,
+    loader: ImageLoader,
+    playFocus: FocusRequester,
+    onPlay: (Item) -> Unit,
+    onInfo: (Item) -> Unit,
+    modifier: Modifier = Modifier,
+) = HeroInfo(item(), offline, imageUrl, loader, playFocus, onPlay, onInfo, modifier)
