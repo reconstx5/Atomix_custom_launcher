@@ -1,6 +1,7 @@
 package dev.atomix.launcher.ui.setup
 
 import dev.atomix.launcher.data.AtomixClient
+import dev.atomix.launcher.data.AuthExpiredException
 import dev.atomix.launcher.data.ATOMIX_PORT
 import dev.atomix.launcher.data.HttpException
 import dev.atomix.launcher.data.PollResult
@@ -117,6 +118,13 @@ class SetupViewModel(
                 block()
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
+            } catch (e: AuthExpiredException) {
+                // The saved sign-in was revoked or expired: sign in again rather than blaming the network.
+                store.clearAuth()
+                runCatching { quickConnect() }.onFailure { f ->
+                    if (f is kotlinx.coroutines.CancellationException) throw f
+                    _state.value = SetupState.EnterAddress("Couldn't reach Atomix. Check the computer is on, then try again.")
+                }
             } catch (e: Exception) {
                 _state.value = SetupState.EnterAddress("Couldn't reach Atomix. Check the computer is on, then try again.")
             }

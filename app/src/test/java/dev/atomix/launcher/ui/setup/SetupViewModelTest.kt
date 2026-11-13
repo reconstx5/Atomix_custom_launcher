@@ -40,11 +40,12 @@ class SetupViewModelTest {
         var profilesList = listOf(Profile(1, "Dallas"))
         var correctPin: String? = null
         var startFails = false
+        var profilesExpired = false
         val selected = mutableListOf<Long>()
         override suspend fun status() = Status("Atomix")
         override suspend fun quickConnectStart(): QuickConnectStart { if (startFails) throw java.io.IOException("offline"); return QuickConnectStart(codes.removeFirst(), "poll", 300_000, 300_000) }
         override suspend fun quickConnectPoll(poll: String): PollResult { pollCount++; return polls.removeFirstOrNull() ?: PollResult.Pending }
-        override suspend fun profiles() = profilesList
+        override suspend fun profiles(): List<Profile> { if (profilesExpired) { profilesExpired = false; throw dev.atomix.launcher.data.AuthExpiredException() }; return profilesList }
         override suspend fun selectProfile(id: Long, pin: String?) {
             if (correctPin != null && pin != correctPin) throw HttpException(403, "Wrong PIN")
             selected += id
@@ -128,5 +129,14 @@ class SetupViewModelTest {
         vm.start(); runCurrent()
         val s = vm.state.value
         assertTrue("was $s", s is SetupState.EnterAddress && s.error != null)
+    }
+
+    @Test fun expiredSessionDuringSetup_clearsAuth_andShowsQuickConnectOnce() = runTest {
+        val api = FakeApi().apply { profilesExpired = true }
+        store.serverUrl = server; store.token = "old"
+        val vm = vm(api)
+        vm.start(); runCurrent()
+        assertEquals(null, store.token)
+        assertEquals("AAAAAA", (vm.state.value as SetupState.QuickConnect).code)
     }
 }

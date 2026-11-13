@@ -12,7 +12,7 @@ import android.webkit.CookieManager
 import android.webkit.PermissionRequest
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.widget.Toast
 import android.widget.FrameLayout
 import dev.atomix.launcher.AppGraph
 import dev.atomix.launcher.EXTRA_ROUTE
@@ -51,11 +51,11 @@ class WebScreenActivity : Activity() {
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             settings.userAgentString = settings.userAgentString + " AtomixLauncher/1"
-            webViewClient = object : WebViewClient() {
-                // Stay inside Atomix: other hosts are not opened in this screen.
-                override fun shouldOverrideUrlLoading(view: WebView, request: android.webkit.WebResourceRequest): Boolean =
-                    !request.url.toString().startsWith(origin)
-            }
+            webViewClient = AtomixWebClient(
+                origin,
+                onOffline = { leave("Atomix isn't reachable right now") },
+                onRendererGone = { leave("Atomix closed unexpectedly") },
+            )
             webChromeClient = object : WebChromeClient() {
                 override fun onPermissionRequest(request: PermissionRequest) {
                     val fromServer = request.origin.toString().trimEnd('/') == origin
@@ -105,6 +105,13 @@ class WebScreenActivity : Activity() {
     override fun onResume() {
         super.onResume()
         webView?.onResume()
+    }
+
+    /** Leaves the Atomix screen with a short note; the WebView is torn down in onDestroy. */
+    private fun leave(message: String) {
+        if (isFinishing) return
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        finish()
     }
 
     override fun onDestroy() {
