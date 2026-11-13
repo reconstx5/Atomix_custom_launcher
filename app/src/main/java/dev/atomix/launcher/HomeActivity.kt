@@ -147,6 +147,8 @@ class HomeActivity : ComponentActivity() {
                                         openSettings = ::openSettings,
                                         retry = home.vm::refreshNow,
                                         unavailable = { toast("Can't reach the TV server") },
+                                        saveChannels = home.vm::saveChannelOrder,
+                                        saveApps = home.vm::saveAppOrder,
                                     ),
                                     onArt = { blurred = it },
                                 )

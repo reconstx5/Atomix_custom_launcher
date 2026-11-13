@@ -5,6 +5,7 @@ import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.livetv.source.LiveRepository
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.prefs.FavouriteApps
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -37,6 +38,28 @@ class HomeViewModel(
     fun refreshApps() { _ui.value = _ui.value.copy(apps = favourites.visible()) }
 
     fun refreshNow() { scope.launch { repo.refresh() } }
+
+    /**
+     * Writes the pinned channels' order to Atomix when edit mode ends; channels missing from [order] are unpinned.
+     * If the server refuses, the row goes back to the server's order.
+     */
+    fun saveChannelOrder(order: List<String>) {
+        scope.launch {
+            try {
+                repo.saveOrder(order)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                // LiveRepository has already put the previous order back.
+            }
+        }
+    }
+
+    /** Saves the apps row's order at once (local only); apps missing from [order] leave Home. */
+    fun saveAppOrder(order: List<String>) {
+        favourites.setVisibleOrder(order)
+        refreshApps()
+    }
 
     fun onVisible() {
         loop?.cancel()

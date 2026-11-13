@@ -83,6 +83,22 @@ class HomeViewModelTest {
         assertEquals(listOf("c"), vm.ui.value.apps.map { it.packageName })
     }
 
+    @Test fun saveChannelOrder_writesTheServer_droppingRemoved() {
+        fake.favourites = mutableListOf("1", "2")
+        vm.onVisible(); scope.runCurrent()
+        vm.saveChannelOrder(listOf("2"))
+        scope.runCurrent()
+        assertEquals(listOf("2"), fake.lastOrder)
+        assertEquals(listOf("2"), (vm.ui.value.live as LiveState.Ready).pinned.map { it.id })
+    }
+
+    @Test fun saveAppOrder_appliesAtOnce_keepingHiddenFavourites() {
+        scope.runCurrent()
+        vm.saveAppOrder(listOf("a"))
+        assertEquals(listOf("a"), vm.ui.value.apps.map { it.packageName })
+        assertEquals(listOf("a", "gone"), prefs.favouriteApps)
+    }
+
     @Test fun clockTicks() {
         vm.onVisible(); scope.runCurrent()
         val first = vm.ui.value.nowMs

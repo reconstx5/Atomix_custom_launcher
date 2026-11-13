@@ -71,6 +71,9 @@ fun AppsRow(
     onAllApps: () -> Unit,
     allAppsFocus: FocusRequester,
     modifier: Modifier = Modifier,
+    held: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
 ) {
     LazyRow(
         modifier,
@@ -80,10 +83,16 @@ fun AppsRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         itemsIndexed(apps, key = { _, a -> a.packageName }) { i, app ->
-            AppPill(app, loader, { onOpen(app) }, { onFocused(app, i) }, Modifier.focusRequester(requesters(app.packageName)))
+            AppPill(app, loader, { onOpen(app) }, { onFocused(app, i) }, Modifier.lifted(app.packageName == held).focusRequester(requesters(app.packageName)))
         }
-        item(key = "all-apps") {
-            ChipButton("All apps", onAllApps, Modifier.focusRequester(allAppsFocus).height(px(88)), icon = LineIcon.Apps)
+        if (trailing != null) item(key = "edit-trailing") { trailing() }
+        else {
+            item(key = "all-apps") {
+                ChipButton("All apps", onAllApps, Modifier.focusRequester(allAppsFocus).height(px(88)), icon = LineIcon.Apps)
+            }
+            if (onEdit != null) item(key = "edit") {
+                ChipButton("Edit", onEdit, Modifier.height(px(88)), icon = LineIcon.Edit)
+            }
         }
     }
 }

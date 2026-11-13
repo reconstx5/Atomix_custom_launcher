@@ -1,11 +1,14 @@
 package dev.atomix.launcher.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -28,6 +31,8 @@ fun OnNowRow(
     onPlay: (Channel) -> Unit,
     onFocused: (Channel, Int) -> Unit,
     modifier: Modifier = Modifier,
+    held: String? = null,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     LazyRow(
         modifier,
@@ -45,8 +50,11 @@ fun OnNowRow(
                 dimmed = dimmed,
                 onClick = { onPlay(ch) },
                 onFocused = { onFocused(ch, i) },
-                modifier = Modifier.focusRequester(requesters(ch.id)),
+                modifier = Modifier.lifted(ch.id == held).focusRequester(requesters(ch.id)),
             )
+        }
+        if (trailing != null) item(key = "edit-trailing") {
+            Box(Modifier.height(px(270)), contentAlignment = Alignment.Center) { trailing() }
         }
     }
 }
