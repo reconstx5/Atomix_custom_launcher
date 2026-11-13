@@ -5,12 +5,26 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import dev.atomix.launcher.ui.kit.TopMenu
 import dev.atomix.launcher.ui.kit.Wash
 import dev.atomix.launcher.ui.theme.px
+
+/**
+ * How a screen and the top bar hand focus to each other: [marked] is the bar's marked item (the open tab, or the lit
+ * round button), where a screen sends Up; [down], set by the screen that is showing, is where Down from the bar lands
+ * when the nearest item is not the right one.
+ */
+class TopBarFocus(val marked: FocusRequester) {
+    var down: (() -> FocusRequester)? = null
+}
+
+val LocalTopBarFocus = staticCompositionLocalOf<TopBarFocus?> { null }
 
 /**
  * The launcher's frame: the ground, whichever place is open, and the top bar over it. Back goes up one level
@@ -26,10 +40,11 @@ fun ShellScreen(
     content: @Composable (Place) -> Unit,
 ) {
     val menuFocus = remember { FocusRequester() }
+    val barFocus = remember { TopBarFocus(menuFocus) }
     BackHandler { place.back()?.let(onPlace) }
     Box(Modifier.fillMaxSize()) {
         Wash()
-        content(place)
+        CompositionLocalProvider(LocalTopBarFocus provides barFocus) { content(place) }
         TopMenu(
             selected = place.tab,
             current = place.button,
@@ -38,7 +53,8 @@ fun ShellScreen(
             onSettings = onSettings,
             clock = clock,
             firstFocus = menuFocus,
-            modifier = Modifier.padding(start = px(100), end = px(100), top = px(28)),
+            modifier = Modifier.padding(start = px(100), end = px(100), top = px(28))
+                .focusProperties { down = barFocus.down?.invoke() ?: FocusRequester.Default },
         )
     }
 }

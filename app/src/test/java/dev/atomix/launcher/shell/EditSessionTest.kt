@@ -1,7 +1,6 @@
 package dev.atomix.launcher.shell
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -19,23 +18,6 @@ class EditSessionTest {
         assertEquals(listOf("a", "c", "b"), s.order)
         assertNull(s.held)
         assertTrue(s.changed)
-    }
-
-    @Test fun cancelMove_restoresTheOrderFromPickUp() {
-        val s = abc()
-        s.pickUp("b"); s.move(-1)
-        assertEquals(listOf("b", "a", "c"), s.order)
-        s.cancelMove()
-        assertEquals(listOf("a", "b", "c"), s.order)
-        assertNull(s.held)
-        assertFalse(s.changed)
-    }
-
-    @Test fun cancelMove_keepsEarlierPlacedMoves() {
-        val s = abc()
-        s.pickUp("a"); s.move(+1); s.place()
-        s.pickUp("c"); s.move(-2); s.cancelMove()
-        assertEquals(listOf("b", "a", "c"), s.order)
     }
 
     @Test fun moveAtTheEnds_isNoOp() {
@@ -61,23 +43,34 @@ class EditSessionTest {
         assertEquals(3 to 3, s.position())
     }
 
-    @Test fun remove_dropsAndMarksChanged() {
-        val s = abc()
-        s.remove("a")
-        assertEquals(listOf("b", "c"), s.order)
-        assertTrue(s.changed)
-    }
-
-    @Test fun removeHeld_clearsHeld() {
-        val s = abc()
-        s.pickUp("b"); s.remove("b")
-        assertNull(s.held)
-        assertEquals(listOf("a", "c"), s.order)
-    }
-
     @Test fun pickUpUnknownKey_holdsNothing() {
         val s = abc()
         s.pickUp("z")
         assertNull(s.held)
+    }
+
+    @Test fun ok_picksUp_arrowsMove_okPutsDown() {
+        val s = abc()
+        assertEquals(EditOutcome.Handled, s.onKey(EditKey.Ok, "b")); assertEquals("b", s.held)
+        assertEquals(EditOutcome.Handled, s.onKey(EditKey.End, "b")); assertEquals(listOf("a", "c", "b"), s.order)
+        assertEquals(EditOutcome.Placed, s.onKey(EditKey.Ok, "b")); assertNull(s.held)
+    }
+
+    @Test fun back_whileHolding_putsDownWhereItIs() {
+        val s = abc(); s.onKey(EditKey.Ok, "c"); s.onKey(EditKey.Front, "c")
+        assertEquals(EditOutcome.Placed, s.onKey(EditKey.Back, "c"))
+        assertEquals(listOf("a", "c", "b"), s.order); assertNull(s.held)
+    }
+
+    @Test fun back_withNothingHeld_finishes() = assertEquals(EditOutcome.Finished, abc().onKey(EditKey.Back, "a"))
+
+    @Test fun arrows_withNothingHeld_areLeftToFocus() {
+        val s = abc()
+        assertEquals(EditOutcome.Ignored, s.onKey(EditKey.End, "a")); assertEquals(listOf("a", "b", "c"), s.order)
+    }
+
+    @Test fun ok_onNothingOrAnUnknownItem_isIgnored() {
+        assertEquals(EditOutcome.Ignored, abc().onKey(EditKey.Ok, null))
+        assertEquals(EditOutcome.Ignored, abc().onKey(EditKey.Ok, "z"))
     }
 }

@@ -39,7 +39,7 @@ import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeUi
 import dev.atomix.launcher.ui.kit.LogoPlate
-import dev.atomix.launcher.ui.home.onAirMeta
+import dev.atomix.launcher.ui.home.onAirLines
 import dev.atomix.launcher.ui.kit.ChipButton
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.LineIcon
@@ -144,7 +144,7 @@ fun ChannelRow(ch: Channel, nowMs: Long, loader: ImageLoader, url: (String?) -> 
             Column(Modifier.weight(1f)) {
                 BasicText(ch.name, style = AtomixType.cardTitle(), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 BasicText(
-                    on.programme?.let { "${it.title} · ${onAirMeta(on, is24)}" } ?: "No programme information",
+                    onAirLines(on, is24).let { l -> listOfNotNull(l.title, l.time).joinToString(" · ") },
                     style = AtomixType.small(), maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
             }
