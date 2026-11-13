@@ -189,7 +189,7 @@ class HomeActivity : ComponentActivity() {
                                         openSettings = ::openSettings,
                                         retry = home.vm::refreshNow,
                                         unavailable = { toast("Can't reach the TV server") },
-                                        saveChannels = home.vm::saveChannelOrder,
+                                        saveChannels = { order -> home.vm.saveChannelOrder(order) { toast("Couldn't save the channel order. Try again.") } },
                                         saveApps = home.vm::saveAppOrder,
                                     ),
                                     onArt = { blurred = it },

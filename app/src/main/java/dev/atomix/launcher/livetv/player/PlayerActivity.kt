@@ -62,6 +62,9 @@ class PlayerActivity : ComponentActivity() {
     private var shown by mutableStateOf<Channel?>(null)
     private var sessionState by mutableStateOf<SessionState>(SessionState.Idle)
     private var ready by mutableStateOf(false)
+    /** When the player last ran out of pictures, or null while they are arriving. */
+    private var bufferingSince: Long? = null
+    private val stall = StallWatch()
     private var live by mutableStateOf(LiveInfo(paused = false, behindMs = 0))
     private var controls by mutableStateOf(false)
     private var notice by mutableStateOf<String?>(null)
@@ -98,7 +101,10 @@ class PlayerActivity : ComponentActivity() {
             .build()
         player.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
-                if (state == Player.STATE_READY) { ready = true; session.onPlayerReady() }
+                if (state == Player.STATE_READY) { ready = true; bufferingSince = null; session.onPlayerReady() }
+                // Only once pictures have started: tuning itself can take 20 s on this server, and the session has
+                // its own first-picture deadline for that. `ready` is cleared on every new tune.
+                if (state == Player.STATE_BUFFERING && ready && bufferingSince == null) bufferingSince = System.currentTimeMillis()
                 keepScreenOn()
             }
             override fun onIsPlayingChanged(isPlaying: Boolean) = updateLive()
@@ -114,7 +120,7 @@ class PlayerActivity : ComponentActivity() {
 
         lifecycleScope.launch { session.state.collect(::onSession) }
         lifecycleScope.launch {
-            while (isActive) { nowMs = System.currentTimeMillis(); updateLive(); delay(1_000) }
+            while (isActive) { nowMs = System.currentTimeMillis(); updateLive(); checkStall(); delay(1_000) }
         }
         lifecycleScope.launch { numbers.typed.collect { typedText = it } }
 
@@ -262,6 +268,18 @@ class PlayerActivity : ComponentActivity() {
         live = LiveInfo(paused = !player.playWhenReady, behindMs = behind.coerceAtLeast(0))
         val c = controlsNow()
         if (c != controls) controls = c
+    }
+
+    /**
+     * A stream can stop while the session still looks healthy — the server keeps answering pings but no pictures
+     * arrive. Without this the last frame would sit there with no message for as long as that lasts.
+     */
+    private fun checkStall() {
+        when (stall.tick(bufferingSince, nowMs, paused = !player.playWhenReady)) {
+            StallAction.None -> Unit
+            StallAction.Tuning -> ready = false
+            StallAction.Failed -> { ready = false; session.onPlayerError() }
+        }
     }
 
     private fun togglePause() { player.playWhenReady = !player.playWhenReady; updateLive() }

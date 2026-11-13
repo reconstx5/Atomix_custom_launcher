@@ -217,9 +217,9 @@ fun HomeScreen(
     val art = rememberSpotlightArt(if (offline) null else url(spotOn?.programme?.image), loader)
     LaunchedEffect(art) { onArt(art?.blurred) }
 
-    // Restore focus on every tick, and once more when the rows first fill in.
-    val hasItems = pinned.isNotEmpty() || ui.apps.isNotEmpty()
-    LaunchedEffect(restoreTick, hasItems, live::class) {
+    // Restore focus on every tick, and again whenever either row's contents change: an item that disappears while
+    // Home is on screen (unpinned on another device, app uninstalled) would otherwise take the focus with it.
+    LaunchedEffect(restoreTick, pinned.size, ui.apps.size, live::class) {
         val rows = linkedMapOf(ROW_ON_NOW to pinned.map { it.id }, ROW_APPS to ui.apps.map { it.packageName })
         // First visit with nothing pinned: start on the empty state's button, not down in the apps.
         val target = if (memory.current() == null && pinned.isEmpty()) null else memory.resolve(rows)
@@ -229,7 +229,10 @@ fun HomeScreen(
             ROW_APPS -> focusIn(appList, target, appFocus)
             else -> false
         }
-        if (!ok) runCatching { emptyFocus.requestFocus() }.recoverCatching { allAppsFocus.requestFocus() }
+        // While the first load is still running there is nothing worth focusing: parking on "All apps" would scroll
+        // Home into the apps row, and an early OK would open an app instead of the channel the user left.
+        if (ok || live is LiveState.Loading) return@LaunchedEffect
+        runCatching { emptyFocus.requestFocus() }.recoverCatching { allAppsFocus.requestFocus() }
     }
 
     val density = LocalDensity.current

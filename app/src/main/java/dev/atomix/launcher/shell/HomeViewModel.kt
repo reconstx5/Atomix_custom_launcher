@@ -43,14 +43,16 @@ class HomeViewModel(
      * Writes the pinned channels' order to Atomix when edit mode ends; channels missing from [order] are unpinned.
      * If the server refuses, the row goes back to the server's order.
      */
-    fun saveChannelOrder(order: List<String>) {
+    fun saveChannelOrder(order: List<String>, onError: () -> Unit = {}) {
         scope.launch {
             try {
                 repo.saveOrder(order)
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // LiveRepository has already put the previous order back.
+                // LiveRepository has already put the previous order back. Say so: the row springing back, with the
+                // channels just unpinned restored, is otherwise indistinguishable from a mis-press.
+                onError()
             }
         }
     }

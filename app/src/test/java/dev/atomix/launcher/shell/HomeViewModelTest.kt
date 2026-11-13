@@ -92,6 +92,17 @@ class HomeViewModelTest {
         assertEquals(listOf("2"), (vm.ui.value.live as LiveState.Ready).pinned.map { it.id })
     }
 
+    @Test fun saveChannelOrder_refused_saysSo_insteadOfSilentlyReverting() {
+        fake.favourites = mutableListOf("1", "2")
+        vm.onVisible(); scope.runCurrent()
+        fake.failWrites = true
+        var told = false
+        vm.saveChannelOrder(listOf("2")) { told = true }
+        scope.runCurrent()
+        assertTrue("the user is told the save was refused", told)
+        assertEquals(listOf("1", "2"), (vm.ui.value.live as LiveState.Ready).pinned.map { it.id })
+    }
+
     @Test fun saveAppOrder_appliesAtOnce_keepingHiddenFavourites() {
         scope.runCurrent()
         vm.saveAppOrder(listOf("a"))
