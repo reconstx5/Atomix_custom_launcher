@@ -20,33 +20,47 @@ class SessionStore(context: Context, encrypted: Boolean = true) {
         context.getSharedPreferences("atomix_session_plain", Context.MODE_PRIVATE)
     }
 
+    // Encrypted prefs decrypt on every read, and Home reads these per frame, so values are kept in memory.
+    private val memo = HashMap<String, String?>()
+    private fun str(key: String): String? = synchronized(memo) {
+        if (memo.containsKey(key)) memo[key] else prefs.getString(key, null).also { memo[key] = it }
+    }
+
     var serverUrl: HttpUrl?
-        get() = prefs.getString(K_SERVER, null)?.toHttpUrlOrNull()
+        get() = str(K_SERVER)?.toHttpUrlOrNull()
         set(v) = put(K_SERVER, v?.toString())
     var lastKnownUrl: HttpUrl?
-        get() = prefs.getString(K_LAST, null)?.toHttpUrlOrNull()
+        get() = str(K_LAST)?.toHttpUrlOrNull()
         set(v) = put(K_LAST, v?.toString())
     var token: String?
-        get() = prefs.getString(K_TOKEN, null)
+        get() = str(K_TOKEN)
         set(v) = put(K_TOKEN, v)
     var profileId: Long?
-        get() = if (prefs.contains(K_PROFILE)) prefs.getLong(K_PROFILE, 0) else null
-        set(v) { prefs.edit().apply { if (v == null) remove(K_PROFILE) else putLong(K_PROFILE, v) }.apply() }
+        get() = synchronized(memo) {
+            if (memo.containsKey(K_PROFILE)) memo[K_PROFILE]?.toLong()
+            else (if (prefs.contains(K_PROFILE)) prefs.getLong(K_PROFILE, 0) else null).also { memo[K_PROFILE] = it?.toString() }
+        }
+        set(v) {
+            synchronized(memo) { memo[K_PROFILE] = v?.toString() }
+            prefs.edit().apply { if (v == null) remove(K_PROFILE) else putLong(K_PROFILE, v) }.apply()
+        }
     var profileName: String?
-        get() = prefs.getString(K_PROFILE_NAME, null)
+        get() = str(K_PROFILE_NAME)
         set(v) = put(K_PROFILE_NAME, v)
     var cachedHomeJson: String?
-        get() = prefs.getString(K_HOME, null)
+        get() = str(K_HOME)
         set(v) = put(K_HOME, v)
     var dock: List<String>?
-        get() = prefs.getString(K_DOCK, null)?.let { s -> if (s.isEmpty()) emptyList() else s.split('\n') }
+        get() = str(K_DOCK)?.let { s -> if (s.isEmpty()) emptyList() else s.split('\n') }
         set(v) = put(K_DOCK, v?.joinToString("\n"))
 
     fun clearAuth() {
+        synchronized(memo) { listOf(K_TOKEN, K_PROFILE, K_PROFILE_NAME, K_HOME).forEach { memo[it] = null } }
         prefs.edit().remove(K_TOKEN).remove(K_PROFILE).remove(K_PROFILE_NAME).remove(K_HOME).apply()
     }
 
     private fun put(key: String, v: String?) {
+        synchronized(memo) { memo[key] = v }
         prefs.edit().apply { if (v == null) remove(key) else putString(key, v) }.apply()
     }
 

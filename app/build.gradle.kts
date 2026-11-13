@@ -22,6 +22,12 @@ android {
         release {
             isMinifyEnabled = false
         }
+        // Release code paths signed with the debug key: for on-device speed checks only.
+        create("profile") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

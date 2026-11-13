@@ -21,7 +21,9 @@ interface AtomixClient {
     suspend fun quickConnectPoll(poll: String): PollResult
     suspend fun profiles(): List<Profile>
     suspend fun selectProfile(id: Long, pin: String?)
-    suspend fun home(): HomeResponse
+    /** Raw /api/home body, so the launcher can cache it as-is. */
+    suspend fun homeJson(): String
+    suspend fun home(): HomeResponse = AtomixJson.parseHome(homeJson())
     fun imageUrl(path: String?): HttpUrl?
 }
 
@@ -60,7 +62,7 @@ class AtomixApi(
         post("/api/profiles/$id/select", body)
     }
 
-    override suspend fun home(): HomeResponse = AtomixJson.parseHome(get("/api/home").second)
+    override suspend fun homeJson(): String = get("/api/home").second
 
     override fun imageUrl(path: String?): HttpUrl? = path?.takeIf { it.isNotBlank() }?.let { baseUrl.resolve(it) }
 

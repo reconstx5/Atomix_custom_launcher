@@ -3,7 +3,6 @@ package dev.atomix.launcher.ui.setup
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import dev.atomix.launcher.data.AtomixClient
-import dev.atomix.launcher.data.HomeResponse
 import dev.atomix.launcher.data.HttpException
 import dev.atomix.launcher.data.PollResult
 import dev.atomix.launcher.data.Profile
@@ -50,7 +49,7 @@ class SetupViewModelTest {
             if (correctPin != null && pin != correctPin) throw HttpException(403, "Wrong PIN")
             selected += id
         }
-        override suspend fun home() = HomeResponse()
+        override suspend fun homeJson() = "{}"
         override fun imageUrl(path: String?): HttpUrl? = null
     }
 
