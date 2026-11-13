@@ -56,6 +56,13 @@ object AtomixColors {
     val GlassEdge = Color.White.copy(alpha = 0.16f)
     val GlassPanel = Color(0xCC0B0B16)
     val Coral = Color(0xFFFF7A86)
+    // Overhaul tokens (research: contrast checked against the brightest artwork).
+    val TextPrimary = Color(0xFFF1F1F1)
+    val TextSecondary = Color(0xFFB4B8BF)
+    val Live = Color(0xFFC62F3A)
+    val SolidPanel = Color(0xFF141726)
+    val Edge = Color.White.copy(alpha = 0.16f)
+    val Track = Color.White.copy(alpha = 0.24f)
 }
 
 val AVATAR_COLORS = mapOf(
@@ -87,6 +94,15 @@ object AtomixType {
     @Composable fun title() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(26), letterSpacing = (-0.015).em(), color = AtomixColors.Text)
     @Composable fun body() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(22), lineHeight = pxSp(33), color = AtomixColors.TextSoft)
     @Composable fun label() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(20), color = AtomixColors.TextSoft)
+    // Overhaul scale (px at 1920×1080; floor 22).
+    @Composable fun spotlight() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(80), lineHeight = pxSp(88), color = AtomixColors.TextPrimary)
+    @Composable fun eyebrow() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Medium, fontSize = pxSp(24), lineHeight = pxSp(32), letterSpacing = 0.16.em(), color = AtomixColors.TextSecondary)
+    @Composable fun meta() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(30), lineHeight = pxSp(38), color = AtomixColors.TextSecondary)
+    @Composable fun rowHeader() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Medium, fontSize = pxSp(30), lineHeight = pxSp(38), color = AtomixColors.TextPrimary)
+    @Composable fun menu() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Medium, fontSize = pxSp(28), lineHeight = pxSp(36), color = AtomixColors.TextPrimary)
+    @Composable fun cardTitle() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(28), lineHeight = pxSp(34), color = AtomixColors.TextPrimary)
+    @Composable fun small() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(24), lineHeight = pxSp(30), color = AtomixColors.TextSecondary)
+    @Composable fun badge() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = pxSp(22), lineHeight = pxSp(28), color = Color.White)
     @Composable fun caption() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = pxSp(16), color = AtomixColors.TextDim)
 }
 

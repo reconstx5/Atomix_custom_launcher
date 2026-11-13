@@ -1,5 +1,7 @@
 package dev.atomix.launcher.ui.home
 
+import dev.atomix.launcher.ui.kit.Icon
+import dev.atomix.launcher.ui.kit.LineIcon
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween

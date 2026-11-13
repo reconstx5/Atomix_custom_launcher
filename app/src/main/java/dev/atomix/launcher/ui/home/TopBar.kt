@@ -1,5 +1,7 @@
 package dev.atomix.launcher.ui.home
 
+import dev.atomix.launcher.ui.kit.Icon
+import dev.atomix.launcher.ui.kit.LineIcon
 import android.text.format.DateFormat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

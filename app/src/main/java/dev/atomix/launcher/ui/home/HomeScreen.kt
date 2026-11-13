@@ -1,5 +1,7 @@
 package dev.atomix.launcher.ui.home
 
+import dev.atomix.launcher.ui.kit.Icon
+import dev.atomix.launcher.ui.kit.LineIcon
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
