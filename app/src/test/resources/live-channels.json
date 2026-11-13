@@ -1,0 +1,7 @@
+[
+ {"id":477,"number":1,"name":"TVNZ 1","groups":["Nz"],"logo":"/api/live/channels/477/logo","radio":false,"drm":["widevine"],"favourite":true,
+  "now":{"id":270143,"channelId":477,"start":1794551400000,"end":1794554700000,"title":"The Repair Shop","subtitle":null,"description":"Old things fixed.","categories":["Science"],"episode":"S9 E18","image":"/api/live/programmes/270143/image","repeat":false,"recording":null},
+  "next":{"id":270144,"channelId":477,"start":1794554700000,"end":1794558300000,"title":"George Clarkes Building Home","subtitle":"Matlock Bath","description":null,"categories":[],"image":null}},
+ {"id":"x9","name":"Bare","radio":false,"drm":null,"favourite":false,"now":null,"next":null},
+ {"id":503,"number":219,"name":"Newstalk ZB Auckland","logo":"/api/live/channels/503/logo","radio":true,"drm":null,"favourite":true,"now":null,"next":null}
+]
