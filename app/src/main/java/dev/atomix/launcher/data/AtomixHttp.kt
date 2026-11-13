@@ -16,7 +16,8 @@ class AtomixHttp(val baseUrl: HttpUrl, private val token: () -> String?, private
     suspend fun get(path: String) = call(Request.Builder().url(resolve(path)).get())
     suspend fun post(path: String, json: String = "{}") = call(Request.Builder().url(resolve(path)).post(json.toRequestBody(jsonType)))
     suspend fun put(path: String, json: String) = call(Request.Builder().url(resolve(path)).put(json.toRequestBody(jsonType)))
-    suspend fun delete(path: String) = call(Request.Builder().url(resolve(path)).delete())
+    /** Atomix answers 415 to a DELETE without a JSON body, so it sends an empty one. */
+    suspend fun delete(path: String) = call(Request.Builder().url(resolve(path)).delete("{}".toRequestBody(jsonType)))
 
     fun resolve(path: String): HttpUrl = baseUrl.resolve(path) ?: error("Bad path $path")
 

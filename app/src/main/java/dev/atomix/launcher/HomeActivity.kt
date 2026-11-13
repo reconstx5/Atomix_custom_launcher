@@ -35,8 +35,8 @@ import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeViewModel
 import dev.atomix.launcher.shell.ShellScreen
-import dev.atomix.launcher.ui.apps.AppsScreen
-import dev.atomix.launcher.ui.apps.AppsScreenState
+import dev.atomix.launcher.ui.apps.AppsTab
+import dev.atomix.launcher.ui.apps.AppsTabState
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
 import dev.atomix.launcher.ui.home.ROW_ON_NOW
@@ -46,6 +46,9 @@ import dev.atomix.launcher.ui.kit.Effects
 import dev.atomix.launcher.ui.kit.LocalEffects
 import dev.atomix.launcher.ui.kit.Tab
 import dev.atomix.launcher.ui.livetv.LiveTvTab
+import dev.atomix.launcher.ui.livetv.LiveTvTabState
+import dev.atomix.launcher.ui.livetv.ROW_CHANNELS
+import androidx.lifecycle.lifecycleScope
 import dev.atomix.launcher.ui.setup.SetupFlow
 import dev.atomix.launcher.ui.setup.SetupViewModel
 import dev.atomix.launcher.ui.theme.AtomixTheme
@@ -66,22 +69,36 @@ class HomeActivity : ComponentActivity() {
         ViewModelProvider(this, viewModelFactory { initializer { HomeHolder(graph) } })[HomeHolder::class.java]
     }
     private val homeMemory by lazy { FocusMemory(graph.prefs, "home") }
+    private val liveTabMemory by lazy { FocusMemory(graph.prefs, "liveTab") }
+    private val appsTabMemory by lazy { FocusMemory(graph.prefs, "appsTab") }
+
+    /** Where the playing channel was started from: Back from playback restores focus there. */
+    private var playedFrom = Tab.Home
 
     /** Bumped on every return to Home; the visible screen restores its remembered focus. */
     private val restoreTick = mutableIntStateOf(0)
     private val tab = mutableStateOf(Tab.Home)
     private val signedIn = mutableStateOf(false)
 
-    /** Playback returns the last channel watched; Home focuses its card (or keeps the card that started it). */
+    /**
+     * Playback returns the last channel watched: Home focuses its card (or keeps the card that started it), the
+     * Live TV tab its row.
+     */
     private val player = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val id = result.data?.getStringExtra(PlayerActivity.EXTRA_CHANNEL_ID) ?: return@registerForActivityResult
-        val pinned = when (val s = home.vm.ui.value.live) {
-            is LiveState.Ready -> s.pinned
-            is LiveState.Offline -> s.pinned
-            else -> emptyList()
+        val live = home.vm.ui.value.live
+        if (playedFrom == Tab.LiveTv) {
+            val i = (live as? LiveState.Ready)?.all?.indexOfFirst { it.id == id } ?: -1
+            if (i >= 0) liveTabMemory.remember(FocusTarget(ROW_CHANNELS, id, i))
+        } else {
+            val pinned = when (live) {
+                is LiveState.Ready -> live.pinned
+                is LiveState.Offline -> live.pinned
+                else -> emptyList()
+            }
+            val i = pinned.indexOfFirst { it.id == id }
+            if (i >= 0) homeMemory.remember(FocusTarget(ROW_ON_NOW, id, i))
         }
-        val i = pinned.indexOfFirst { it.id == id }
-        if (i >= 0) homeMemory.remember(FocusTarget(ROW_ON_NOW, id, i))
         restoreTick.intValue++
     }
 
@@ -89,7 +106,8 @@ class HomeActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         graph = AppGraph.get(this)
         signedIn.value = graph.store.token != null && graph.store.profileId != null
-        val appsState = AppsScreenState(graph.favouriteApps) { graph.apps.apps.value }
+        val appsState = AppsTabState(graph.favouriteApps, graph.apps)
+        val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't save that pin. Try again.") }
         setContent {
             AtomixTheme {
                 CompositionLocalProvider(LocalEffects provides Effects(graph.prefs.reducedEffects)) {
@@ -132,13 +150,23 @@ class HomeActivity : ComponentActivity() {
                                     ),
                                     onArt = { blurred = it },
                                 )
-                                Tab.LiveTv -> LiveTvTab(ui, graph.imageLoader, { graph.liveClient()?.url(it)?.toString() }, is24) { playChannel(it, Tab.LiveTv) }
-                                Tab.Apps -> AppsScreen(
+                                Tab.LiveTv -> LiveTvTab(
+                                    state = liveState,
+                                    ui = ui,
+                                    loader = graph.imageLoader,
+                                    url = { graph.liveClient()?.url(it)?.toString() },
+                                    is24 = is24,
+                                    memory = liveTabMemory,
+                                    restoreTick = restoreTick.intValue,
+                                    onPlay = { playChannel(it, Tab.LiveTv) },
+                                )
+                                Tab.Apps -> AppsTab(
                                     state = appsState,
                                     loader = graph.imageLoader,
+                                    memory = appsTabMemory,
+                                    restoreTick = restoreTick.intValue,
                                     onLaunch = { launch(it.launch) },
-                                    onDockChanged = { home.vm.refreshApps() },
-                                    onBack = { tab.value = Tab.Home },
+                                    onFavouritesChanged = { home.vm.refreshApps() },
                                 )
                             }
                         }
@@ -162,6 +190,7 @@ class HomeActivity : ComponentActivity() {
     /** Zapping follows the list playback started from: pinned channels from Home, every channel from Live TV. */
     private fun playChannel(channel: Channel, from: Tab) {
         val source = if (from == Tab.LiveTv) ZapSource.All else ZapSource.Pinned
+        playedFrom = from
         player.launch(PlayerActivity.intent(this, channel.id, source))
     }
 

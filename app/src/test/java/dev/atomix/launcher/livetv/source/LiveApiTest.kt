@@ -112,6 +112,13 @@ class LiveApiTest {
         assertEquals("DELETE /api/live/favourites/5", server.takeRequest().let { "${it.method} ${it.path}" })
     }
 
+    @Test fun removeFavourite_sendsJson() = runTest {
+        // Atomix answers 415 to a body-less DELETE: every write must be JSON.
+        server.enqueue(MockResponse().setBody("{}"))
+        api.removeFavourite("5")
+        assertEquals("application/json; charset=utf-8", server.takeRequest().getHeader("Content-Type"))
+    }
+
     @Test fun ping_okFalse_returnsFalse() = runTest {
         server.enqueue(MockResponse().setBody("""{"ok":false,"error":"gone"}"""))
         server.enqueue(MockResponse().setBody("""{"ok":true}"""))
