@@ -1,6 +1,7 @@
 package dev.atomix.launcher.shell
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -72,5 +73,12 @@ class EditSessionTest {
     @Test fun ok_onNothingOrAnUnknownItem_isIgnored() {
         assertEquals(EditOutcome.Ignored, abc().onKey(EditKey.Ok, null))
         assertEquals(EditOutcome.Ignored, abc().onKey(EditKey.Ok, "z"))
+    }
+
+    @Test fun fits_whileTheRowHoldsTheSameItems_inAnyOrder() {
+        assertTrue(abc().fits(listOf("c", "a", "b")))
+        assertFalse(abc().fits(listOf("a", "b")))
+        assertFalse(abc().fits(listOf("a", "b", "c", "d")))
+        assertFalse(abc().fits(emptyList()))
     }
 }

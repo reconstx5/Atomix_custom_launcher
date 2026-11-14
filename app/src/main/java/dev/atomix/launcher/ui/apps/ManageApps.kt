@@ -125,10 +125,9 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
         when (item) {
             AppMenuItem.Info -> onInfo(app)
             AppMenuItem.Add, AppMenuItem.Remove -> {
-                // Under "In this row" a removed app's tile goes away, so focus goes to its neighbour instead.
+                // Under "In this row" a removed app's tile goes away, so focus goes first to a neighbour that stays put.
                 val leaving = item == AppMenuItem.Remove && filter == AppFilter.InRow
-                val at = shown.indexOf(app)
-                closeMenu(if (leaving) (shown.getOrNull(at + 1) ?: shown.getOrNull(at - 1))?.packageName else app.packageName)
+                closeMenu(if (leaving) focusAfterRemove(shown.map { it.packageName }, shown.indexOf(app), APP_COLUMNS) else app.packageName)
                 state.toggle(app.packageName)
                 version++
                 onChanged()
@@ -156,7 +155,8 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
             trackPx = 60, padPx = 6, pillPadPx = 22, gapPx = 6,
             selectedFocus = pillFocus,
         )
-        WindowColumn(rows, { it.first().packageName }, window, ROWS_SHOWN, rowPx = TILE_H, gapPx = GAP, modifier = Modifier.padding(top = px(GRID_TOP))) { rowIndex, row, slot ->
+        // Rows are keyed by where they are, not by their first app: an app leaving must not rebuild its whole row.
+        WindowColumn(rows, { row, _ -> row }, window, ROWS_SHOWN, rowPx = TILE_H, gapPx = GAP, modifier = Modifier.padding(top = px(GRID_TOP))) { rowIndex, row, slot ->
             Row(slot, horizontalArrangement = Arrangement.spacedBy(px(GAP))) {
                 row.forEachIndexed { column, app ->
                     key(app.packageName) {

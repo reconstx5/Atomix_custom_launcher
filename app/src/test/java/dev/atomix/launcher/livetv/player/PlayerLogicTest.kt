@@ -155,4 +155,11 @@ class PlayerLogicTest {
         assertNull(playerSpot(null, false, emptySet(), null))                          // a clean picture has nothing over it
         assertNull(playerSpot(null, false, setOf(Layer.NumberEntry), null))
     }
+
+    @Test fun liveBadge_onlyWhilePlayingAtTheLiveEdge() {
+        assertTrue(isLiveNow(LiveInfo(paused = false, behindMs = 0)))
+        assertTrue(isLiveNow(LiveInfo(paused = false, behindMs = 10_000)))
+        assertFalse(isLiveNow(LiveInfo(paused = false, behindMs = 10_001)))
+        assertFalse(isLiveNow(LiveInfo(paused = true, behindMs = 0)))
+    }
 }

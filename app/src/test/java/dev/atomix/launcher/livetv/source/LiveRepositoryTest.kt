@@ -107,9 +107,26 @@ class LiveRepositoryTest {
         assertEquals(listOf("tv1", "tv3"), ready().pinned.map { it.id })
     }
 
-    @Test fun saveOrder_withoutAnUnpinnedTvChannel_dropsOnlyThatOne() = runTest {
+    // Edit on Home only rearranges, so a save never takes a channel off Home: one it does not name stays, after those it does.
+    @Test fun saveOrder_withATvFavouriteLeftOut_keepsItAfterTheOnesNamed() = runTest {
         repo.refresh()
         repo.saveOrder(listOf("tv1"))
+        assertEquals(listOf("tv1", "tv3", "r1", "r2"), fake.lastOrder)
+    }
+
+    @Test fun saveOrder_keepsATvFavouriteAddedSinceTheEditBegan() = runTest {
+        repo.refresh()
+        fake.favourites.add("tv2")            // put on Home from another device while the row was being rearranged
+        repo.refresh()
+        repo.saveOrder(listOf("tv3", "tv1"))  // the order as it was when the edit began
+        assertEquals(listOf("tv3", "tv1", "tv2", "r1", "r2"), fake.lastOrder)
+    }
+
+    @Test fun saveOrder_doesNotPutBackAChannelTakenOffHomeSinceTheEditBegan() = runTest {
+        repo.refresh()
+        fake.favourites.remove("tv3")
+        repo.refresh()
+        repo.saveOrder(listOf("tv3", "tv1"))
         assertEquals(listOf("tv1", "r1", "r2"), fake.lastOrder)
     }
 

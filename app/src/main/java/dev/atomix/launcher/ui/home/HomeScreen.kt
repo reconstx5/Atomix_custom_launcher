@@ -201,19 +201,26 @@ fun HomeScreen(
         val key = (if (row == ROW_ON_NOW) focusedId else focusedApp)?.takeIf { it in keys } ?: keys.first()
         scope.launch {
             // Focus goes to the item first, and only then does "Edit" give way to the status text: a focused control
-            // that disappears hands focus to the first thing on the page.
-            if (row == ROW_ON_NOW) focusChannel(key, keys) else focusApp(key, keys.indexOf(key))
+            // that disappears hands focus to the first thing on the page. If focus could not be put in the row,
+            // editing does not start: OK must act on the row and nothing else while it is on.
+            val inRow = if (row == ROW_ON_NOW) focusChannel(key, keys) else focusApp(key, keys.indexOf(key))
+            if (!inRow) return@launch
             edit = EditSession(keys)
             editRow = row
         }
     }
 
-    /** Ends editing and saves. Also called if focus leaves the row being edited, so OK never acts elsewhere mid-edit. */
-    fun endEdit() {
+    /**
+     * Ends editing. Also called if focus leaves the row being edited, so OK never acts elsewhere mid-edit. With
+     * [save] false what was arranged is dropped: the row no longer holds what the edit began with.
+     */
+    fun endEdit(save: Boolean = true) {
         val s = edit ?: return
-        if (editRow == ROW_ON_NOW && s.changed) saveChannels(s.order)
-        // A tile still in the hand is put down where it is, as Back would have done.
-        if (editRow == ROW_APPS && s.held != null) saveApps(s.order)
+        if (save) {
+            if (editRow == ROW_ON_NOW && s.changed) saveChannels(s.order)
+            // A tile still in the hand is put down where it is, as Back would have done.
+            if (editRow == ROW_APPS && s.held != null) saveApps(s.order)
+        }
         edit = null
         editRow = null
     }
@@ -268,6 +275,18 @@ fun HomeScreen(
     }
 
     BackHandler(enabled = editing) { editRow?.let { onEditKey(it, EditKey.Back) } }
+    // An edit stands only while its row still holds the items it began with. If a channel goes on or off Home
+    // elsewhere, an app is uninstalled, or the cards give way to a message (server unreachable), the edit is over and
+    // nothing of it is saved. This does not wait for focus to say so: the row may have gone, guard and all.
+    val editedIds = when (editRow) {
+        ROW_ON_NOW -> pinned.map { it.id }
+        ROW_APPS -> ui.apps.map { it.packageName }
+        else -> null
+    }
+    LaunchedEffect(edit, editedIds) {
+        val s = edit
+        if (s != null && editedIds != null && !s.fits(editedIds)) endEdit(save = false)
+    }
     // Leaving Home mid-edit (another tab, the Home button) still saves what was arranged.
     DisposableEffect(Unit) { onDispose { endEdit() } }
 

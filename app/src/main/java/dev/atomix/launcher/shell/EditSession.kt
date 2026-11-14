@@ -5,8 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * Edit mode for one Home row: OK picks an item up, ◀/▶ move it live, OK places it, ▼ removes, Back cancels the move.
- * Keys are channel ids or package names. Observable, so the row redraws as the order changes.
+ * Edit mode for one Home row, which only rearranges it: OK picks an item up, the arrows move it, OK or Back puts it
+ * down. Keys are channel ids or package names. Observable, so the row redraws as the order changes.
  */
 class EditSession(private val initial: List<String>) {
     var order: List<String> by mutableStateOf(initial)
@@ -14,15 +14,17 @@ class EditSession(private val initial: List<String>) {
     var held: String? by mutableStateOf(null)
         private set
 
-    /** The order when the held item was picked up, for [cancelMove]. */
-    private var beforePickUp: List<String>? = null
-
     val changed: Boolean get() = order != initial
+
+    /**
+     * Whether the row still holds exactly the items this edit began with, in any order. Once it does not (a channel
+     * went on or off Home elsewhere, an app was uninstalled), the edit is stale and must not be saved.
+     */
+    fun fits(current: List<String>): Boolean = current.size == order.size && current.toSet() == order.toSet()
 
     fun pickUp(key: String) {
         if (key !in order) return
         held = key
-        beforePickUp = order
     }
 
     /** Moves the held item [delta] places; nothing happens at the ends or with nothing held. */
@@ -36,17 +38,6 @@ class EditSession(private val initial: List<String>) {
 
     fun place() {
         held = null
-        beforePickUp = null
-    }
-
-    fun remove(key: String) {
-        order = order - key
-        if (held == key) place()
-    }
-
-    fun cancelMove() {
-        beforePickUp?.let { order = it }
-        place()
     }
 
     /**

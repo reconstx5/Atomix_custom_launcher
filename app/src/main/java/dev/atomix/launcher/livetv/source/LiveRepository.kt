@@ -82,13 +82,17 @@ class LiveRepository(
     suspend fun unpin(id: String) = change(favouriteIds - id) { it.removeFavourite(id) }
 
     /**
-     * Saves the TV order. The server drops favourites missing from the list, so every non-TV favourite (radio, or
-     * channels the launcher doesn't show) goes after the TV ones in its existing order.
+     * Saves the order of the TV channels on Home. It only rearranges: the list sent is the favourites as they are
+     * now, put in [tvIds]' order. A TV favourite [tvIds] does not name (put on Home elsewhere since the row was read)
+     * keeps its place after those it does; an id that is no longer a favourite (taken off Home elsewhere) is not put
+     * back. The server drops favourites missing from the list, so every non-TV favourite (radio, or channels the
+     * launcher doesn't show) goes after the TV ones in its existing order.
      */
     suspend fun saveOrder(tvIds: List<String>) {
-        // distinct(): with no channel list loaded nothing counts as TV, so a favourite would otherwise appear in
-        // both halves and be sent twice.
-        val order = (tvIds + favouriteIds.filter { !isTv(it) }).distinct()
+        val order = if (_state.value is LiveState.Ready) reordered(tvIds, favouriteIds, ::isTv)
+        // With no channel list loaded nothing counts as TV and the favourites are not known, so there is nothing to
+        // merge with. distinct(): a favourite would otherwise appear in both halves and be sent twice.
+        else (tvIds + favouriteIds.filter { !isTv(it) }).distinct()
         change(order) { it.setFavouriteOrder(order) }
     }
 
@@ -115,4 +119,15 @@ class LiveRepository(
     private fun publishIfReady() {
         if (_state.value is LiveState.Ready) publish()
     }
+}
+
+/**
+ * [favourites] with its TV channels put in the order [named] gives: the named ones that are still favourites first,
+ * then TV favourites [named] leaves out, then everything that is not TV, each group otherwise in its existing order.
+ * Nothing is added and nothing is dropped.
+ */
+internal fun reordered(named: List<String>, favourites: List<String>, isTv: (String) -> Boolean): List<String> {
+    val tv = favourites.filter(isTv)
+    val kept = named.distinct().filter { it in tv }
+    return kept + tv.filter { it !in kept } + favourites.filter { !isTv(it) }
 }

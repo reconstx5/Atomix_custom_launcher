@@ -68,6 +68,9 @@ import dev.atomix.launcher.ui.theme.pxSp
 /** Where the stream is relative to live; [behindMs] > 0 once the viewer has paused or gone back. */
 data class LiveInfo(val paused: Boolean, val behindMs: Long)
 
+/** Whether the picture is live: playing, and no more than a moment behind. Only then does the banner say "Live". */
+fun isLiveNow(live: LiveInfo): Boolean = !live.paused && live.behindMs <= BEHIND_SHOWN_MS
+
 /** What the overlay asks the activity to do. */
 class OverlayActions(
     val togglePause: () -> Unit,
@@ -285,7 +288,8 @@ private fun Banner(
                 ChipButton("Back 30 seconds", actions.back30, icon = LineIcon.Back30)
             }
             if (behind) ChipButton("Jump to live", actions.jumpToLive, lead = "−${mmss(live.behindMs)}")
-            else LiveBadge(Modifier.padding(start = px(if (controls) 8 else 0)))
+            // Paused or behind with the buttons put away: no badge, rather than "Live" over a picture that is not.
+            else if (isLiveNow(live)) LiveBadge(Modifier.padding(start = px(if (controls) 8 else 0)))
             val next = on.upNext?.let { "Next: ${it.title} • ${clockText(it.start, is24)}" }.orEmpty()
             BasicText(
                 next,
@@ -338,7 +342,7 @@ private fun QuickList(
         )
         Spacer(Modifier.height(px(22)))
         if (list.isEmpty()) BasicText("No channels on Home yet.", style = AtomixType.description())
-        WindowColumn(list, { it.id }, window, LIST_ROWS, rowPx = 92, gapPx = 10) { _, ch, slot ->
+        WindowColumn(list, { _, ch -> ch.id }, window, LIST_ROWS, rowPx = 92, gapPx = 10) { _, ch, slot ->
             ChannelRow(
                 ch, nowMs, loader, url,
                 onClick = { pick(ch, tab) },

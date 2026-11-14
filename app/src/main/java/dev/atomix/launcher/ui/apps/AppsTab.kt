@@ -111,7 +111,7 @@ fun AppsTab(
             )
         },
     ) {
-        WindowColumn(rows, { it.first().packageName }, window, ROWS_SHOWN, rowPx = AppTileSize.Grid.height, gapPx = 18, modifier = Modifier.fillMaxWidth()) { rowIndex, row, slot ->
+        WindowColumn(rows, { row, _ -> row }, window, ROWS_SHOWN, rowPx = AppTileSize.Grid.height, gapPx = 18, modifier = Modifier.fillMaxWidth()) { rowIndex, row, slot ->
             Row(slot.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(px(18))) {
                 row.forEachIndexed { column, app ->
                     key(app.packageName) {

@@ -34,6 +34,13 @@ class WindowState(first: Int = 0) {
         }
     }
 
+    /** Whether item [index] of [count] is one of the [visible] that show. Only those are certain to be built. */
+    fun shows(index: Int, count: Int, visible: Int): Boolean {
+        if (index !in 0 until count) return false
+        val start = startFor(count, visible)
+        return index in start until start + visible
+    }
+
     /** [first] kept inside a list of [count] items. */
     fun startFor(count: Int, visible: Int): Int = first.coerceIn(0, max(count - visible, 0))
 }
@@ -53,7 +60,7 @@ class WindowState(first: Int = 0) {
 @Composable
 fun <T> WindowColumn(
     items: List<T>,
-    key: (T) -> Any,
+    key: (index: Int, item: T) -> Any,
     state: WindowState,
     visible: Int,
     rowPx: Int,
@@ -69,7 +76,7 @@ fun <T> WindowColumn(
     Box(modifier.height(px(visible * rowPx + (visible - 1) * gapPx)).onFocusChanged { inside = it.hasFocus }) {
         for (index in firstBuilt..lastBuilt) {
             val item = items[index]
-            key(key(item)) {
+            key(key(index, item)) {
                 val shown = index in first until first + visible
                 row(
                     index, item,

@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -69,4 +70,17 @@ class AppsTabStateTest {
 
     @Test fun menu_forAnAppThatHasGone_isEmpty() =
         assertEquals(emptyList<AppMenuItem>(), AppsTabState(favourites, catalog).menuFor("uninstalled.pkg"))
+
+    @Test fun focusAfterRemove_staysInTheSameRow_soTheTileItLandsOnIsNotRebuilt() {
+        val eight = listOf("a", "b", "c", "d", "e", "f", "g", "h")
+        assertEquals("b", focusAfterRemove(eight, at = 0, columns = 7))   // the next tile slides into its place
+        assertEquals("f", focusAfterRemove(eight, at = 6, columns = 7))   // not "h": that one changes row
+        assertEquals("g", focusAfterRemove(eight, at = 7, columns = 7))   // alone in its row: the row above stays put
+        assertEquals("d", focusAfterRemove(eight, at = 2, columns = 7))
+    }
+
+    @Test fun focusAfterRemove_theLastAppLeft_hasNoTileToGoTo() {
+        assertNull(focusAfterRemove(listOf("a"), at = 0, columns = 7))
+        assertNull(focusAfterRemove(listOf("a", "b"), at = 5, columns = 7))
+    }
 }

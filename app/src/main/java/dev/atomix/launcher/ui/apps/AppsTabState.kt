@@ -33,6 +33,17 @@ class AppsTabState(private val favourites: FavouriteApps, private val catalog: A
     }
 }
 
+/**
+ * Which tile takes focus when the tile at [at] is about to leave a grid of [columns]: one that will still be in the
+ * same row afterwards, so it is not rebuilt (which would drop the focus it was just given). That is the next tile
+ * when it shares the row, else the one before. Null when no tile is left.
+ */
+fun focusAfterRemove(shown: List<String>, at: Int, columns: Int): String? {
+    if (at !in shown.indices || shown.size < 2) return null
+    val next = at + 1
+    return if (next < shown.size && next / columns == at / columns) shown[next] else shown.getOrNull(at - 1) ?: shown[next]
+}
+
 /** Which apps manage apps lists. ("Hidden" joins these when hiding arrives.) */
 enum class AppFilter { All, InRow }
 

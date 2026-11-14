@@ -83,13 +83,22 @@ class HomeViewModelTest {
         assertEquals(listOf("c"), vm.ui.value.apps.map { it.packageName })
     }
 
-    @Test fun saveChannelOrder_writesTheServer_droppingRemoved() {
+    // Edit on Home only rearranges: the save writes the new order and takes nothing off Home.
+    @Test fun saveChannelOrder_writesTheNewOrderToTheServer() {
+        fake.favourites = mutableListOf("1", "2")
+        vm.onVisible(); scope.runCurrent()
+        vm.saveChannelOrder(listOf("2", "1"))
+        scope.runCurrent()
+        assertEquals(listOf("2", "1"), fake.lastOrder)
+        assertEquals(listOf("2", "1"), (vm.ui.value.live as LiveState.Ready).pinned.map { it.id })
+    }
+
+    @Test fun saveChannelOrder_leavingAChannelOut_doesNotTakeItOffHome() {
         fake.favourites = mutableListOf("1", "2")
         vm.onVisible(); scope.runCurrent()
         vm.saveChannelOrder(listOf("2"))
         scope.runCurrent()
-        assertEquals(listOf("2"), fake.lastOrder)
-        assertEquals(listOf("2"), (vm.ui.value.live as LiveState.Ready).pinned.map { it.id })
+        assertEquals(listOf("2", "1"), fake.lastOrder)
     }
 
     @Test fun saveChannelOrder_refused_saysSo_insteadOfSilentlyReverting() {

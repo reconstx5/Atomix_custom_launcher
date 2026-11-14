@@ -113,12 +113,17 @@ fun LiveTvTab(
         runCatching { rowFocus[target.key]?.requestFocus() }
     }
 
-    // Down from the top bar returns to the row focus was on (it is always one of the rows that show).
-    val barDown by rememberUpdatedState {
-        val first = window.startFor(all?.size ?: 0, ROWS_SHOWN)
-        val showing = all?.drop(first)?.take(ROWS_SHOWN)?.any { it.id == focusedId } == true
-        (if (showing) rowFocus[focusedId] else null) ?: FocusRequester.Default
+    /**
+     * The focused channel's row as a focus target, or null when it is not one of the rows showing (the list changed
+     * under it): a row that is not built must never be named as a target.
+     */
+    fun focusedRow(): FocusRequester? {
+        val list = all ?: return null
+        return if (window.shows(list.indexOfFirst { it.id == focusedId }, list.size, ROWS_SHOWN)) rowFocus[focusedId] else null
     }
+
+    // Down from the top bar returns to the row focus was on.
+    val barDown by rememberUpdatedState { focusedRow() ?: FocusRequester.Default }
     DisposableEffect(bar) {
         bar?.down = { barDown() }
         onDispose { bar?.down = null }
@@ -148,7 +153,7 @@ fun LiveTvTab(
             if (ui.live !is LiveState.Loading) EmptyState("Live TV isn't available right now", "Check Live TV in Settings.", emptyList())
             return@ScreenFrame
         }
-        WindowColumn(all, { it.id }, window, ROWS_SHOWN, rowPx = 92, gapPx = 12, modifier = Modifier.width(px(800))) { index, ch, slot ->
+        WindowColumn(all, { _, ch -> ch.id }, window, ROWS_SHOWN, rowPx = 92, gapPx = 12, modifier = Modifier.width(px(800))) { index, ch, slot ->
             ChannelRow(
                 ch, ui.nowMs, loader, url,
                 onClick = { onPlay(ch) },
@@ -175,7 +180,7 @@ fun LiveTvTab(
                     "Show on Home",
                     onClick = { state.switchTarget(focusedId)?.let { state.togglePin(it.id) } },
                     modifier = Modifier.focusRequester(switchFocus).focusProperties {
-                        left = rowFocus[focusedId] ?: FocusRequester.Default
+                        left = focusedRow() ?: FocusRequester.Cancel
                         up = FocusRequester.Cancel
                         down = FocusRequester.Cancel
                         right = FocusRequester.Cancel
