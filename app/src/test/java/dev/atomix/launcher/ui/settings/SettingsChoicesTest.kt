@@ -1,5 +1,8 @@
 package dev.atomix.launcher.ui.settings
 
+import dev.atomix.launcher.prefs.TextSize
+import dev.atomix.launcher.prefs.FocusStyle
+import dev.atomix.launcher.prefs.ClockChoice
 import dev.atomix.launcher.prefs.AccentId
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.prefs.ThemeId
@@ -67,4 +70,46 @@ class SettingsChoicesTest {
     }
 
     @Test fun rowTop_ofARowThatIsNotThere_isNull() = assertNull(rowTop(SettingsItem.Version, groupsOf(SettingsSection.Appearance)))
+
+    @Test fun clock_chosenIndex_followsTheTv_untilChosen() {
+        assertEquals(1, chosenIndex(SettingsItem.Clock, Chosen(Look()), tvIs24 = false))
+        assertEquals(0, chosenIndex(SettingsItem.Clock, Chosen(Look()), tvIs24 = true))
+        assertEquals(2, chosenIndex(SettingsItem.Clock, Chosen(Look(clock = ClockChoice.Hidden)), tvIs24 = true))
+    }
+
+    @Test fun clock_withChoice_savesAnExplicitChoice() =
+        assertEquals(ClockChoice.H12, withChoice(SettingsItem.Clock, 1, Chosen(Look())).look.clock)
+
+    @Test fun clock_options() = assertEquals(listOf("24-hour", "12-hour", "Hidden"), choiceOptions(SettingsItem.Clock))
+
+    @Test fun textSize_options_andChoice() {
+        assertEquals(listOf("Standard", "Large"), choiceOptions(SettingsItem.TextSize))
+        assertEquals(TextSize.Large, withChoice(SettingsItem.TextSize, 1, Chosen(Look())).look.textSize)
+        assertEquals(1, chosenIndex(SettingsItem.TextSize, Chosen(Look(textSize = TextSize.Large))))
+    }
+
+    @Test fun focusHighlight_options_andChoice() {
+        assertEquals(listOf("Ring and glow", "Ring only"), choiceOptions(SettingsItem.FocusHighlight))
+        assertEquals(FocusStyle.RingOnly, withChoice(SettingsItem.FocusHighlight, 1, Chosen(Look())).look.focus)
+    }
+
+    @Test fun focusHighlight_isAStatementWhileReduced() {
+        assertEquals(RowKind.List, kindOf(SettingsItem.FocusHighlight, reduced = false))
+        assertEquals(RowKind.Statement, kindOf(SettingsItem.FocusHighlight, reduced = true))
+    }
+
+    @Test fun textSizeAndClock_stepInPlace_withTheBoardsHints() {
+        assertEquals(RowKind.Stepped, kindOf(SettingsItem.TextSize))
+        assertEquals(RowKind.Stepped, kindOf(SettingsItem.Clock))
+        assertEquals("Change size", stepHintFor(SettingsItem.TextSize))
+        assertEquals("Change", stepHintFor(SettingsItem.Clock))
+    }
+
+    @Test fun appearance_rowsAndGroups_matchItsBoard() {
+        val g = groupsOf(SettingsSection.Appearance)
+        assertEquals(listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock), g[0].items)
+        assertEquals(listOf(SettingsItem.FocusHighlight, SettingsItem.ReducedEffects), g[1].items)
+        assertEquals(listOf("Theme", "Accent colour", "Text size", "Clock", "Focus highlight", "Reduced effects"), rowsIn(SettingsSection.Appearance).map(::titleOf))
+        assertEquals(36 + 3 * 104 + 92 + 72, rowTop(SettingsItem.FocusHighlight, g))
+    }
 }

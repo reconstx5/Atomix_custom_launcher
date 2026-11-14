@@ -57,6 +57,7 @@ import dev.atomix.launcher.ui.kit.HintSpot
 import dev.atomix.launcher.ui.kit.MENU_W
 import dev.atomix.launcher.ui.kit.menuHeight
 import dev.atomix.launcher.ui.kit.menuTop
+import dev.atomix.launcher.ui.kit.textRoom
 import dev.atomix.launcher.ui.kit.OK
 import dev.atomix.launcher.ui.kit.Icon
 import dev.atomix.launcher.ui.kit.LineIcon
@@ -118,6 +119,8 @@ fun SettingsScreen(
     reduced: Boolean,
     /** How the launcher looks now. */
     look: Look,
+    /** The TV's own 12- or 24-hour setting. */
+    tvIs24: Boolean,
     nowMs: Long,
     actions: SettingsActions,
     /** The TV's own pages that can be opened, and what the launcher can say about two of them. */
@@ -225,7 +228,7 @@ fun SettingsScreen(
             fun first(focusable: Boolean): Modifier = if (focusable && !firstTaken) { firstTaken = true; Modifier.focusRequester(rowsFirst) } else Modifier
 
             if (section == SettingsSection.Appearance) AppearancePane(
-                host, now, reduced, openList,
+                host, now, reduced, tvIs24, openList,
                 onStep = ::choose,
                 onOpenList = ::openList,
                 onReduced = actions.setReduced,
@@ -233,7 +236,8 @@ fun SettingsScreen(
             else rowsIn(section).forEach { item ->
                 when (item) {
                     // Drawn by AppearancePane.
-                    SettingsItem.Theme, SettingsItem.Accent, SettingsItem.ReducedEffects -> Unit
+                    SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.FocusHighlight,
+                    SettingsItem.ReducedEffects -> Unit
                     SettingsItem.HomeButton -> {
                         GroupLabel("HOME SCREEN")
                         SettingRow(
@@ -343,11 +347,11 @@ fun SettingsScreen(
             val options = choiceOptions(item)
             val top = rowTop(item, groupsOf(section))
             if (options.isNotEmpty() && top != null) ChoiceList(
-                titleOf(item), options, chosenIndex(item, now),
+                titleOf(item), options, chosenIndex(item, now, tvIs24),
                 chosenFocus = listFocus,
                 onChoose = { choose(item, it); closeList() },
                 onFocused = { },
-                modifier = Modifier.offset(x = px(1720 - MENU_W - 20), y = px(menuTop(top, menuHeight(options.size)))),
+                modifier = Modifier.offset(x = px(1720 - textRoom(MENU_W, look.textSize.scale) - 20), y = px(menuTop(top, menuHeight(options.size)))),
             )
         }
     }

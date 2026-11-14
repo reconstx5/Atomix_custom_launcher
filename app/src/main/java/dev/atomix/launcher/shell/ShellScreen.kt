@@ -44,7 +44,8 @@ val LocalTopBarFocus = staticCompositionLocalOf<TopBarFocus?> { null }
 fun ShellScreen(
     place: Place,
     onPlace: (Place) -> Unit,
-    clock: String,
+    /** The time for the top bar, or null when the clock is hidden. */
+    clock: String?,
     onInputs: () -> Unit,
     onSettings: () -> Unit,
     content: @Composable (Place) -> Unit,

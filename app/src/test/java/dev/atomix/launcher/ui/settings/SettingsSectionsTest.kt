@@ -37,7 +37,7 @@ class SettingsSectionsTest {
 
     @Test fun rows_perSection() {
         assertEquals(listOf(SettingsItem.HomeButton), rowsIn(SettingsSection.Setup))
-        assertEquals(listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.ReducedEffects), rowsIn(SettingsSection.Appearance))
+        assertEquals(listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.FocusHighlight, SettingsItem.ReducedEffects), rowsIn(SettingsSection.Appearance))
         assertEquals(listOf(SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources), rowsIn(SettingsSection.LiveTv))
         assertEquals(listOf(SettingsItem.Server, SettingsItem.FindServer, SettingsItem.SwitchProfile), rowsIn(SettingsSection.Account))
         assertEquals(listOf(SettingsItem.Version), rowsIn(SettingsSection.About))

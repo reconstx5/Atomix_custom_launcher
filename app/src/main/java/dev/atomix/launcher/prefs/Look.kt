@@ -33,3 +33,30 @@ data class Look(
 
 /** The enum value saved under [name], or [default] when nothing is saved or the name is not one this build knows. */
 inline fun <reified E : Enum<E>> enumOr(name: String?, default: E): E = enumValues<E>().firstOrNull { it.name == name } ?: default
+
+/**
+ * Whether times are written in 24-hour form. A choice of 24- or 12-hour wins; until the owner chooses, and with the
+ * clock hidden, the TV's own setting ([tvIs24]) decides, as it always has.
+ */
+fun clockIs24(choice: ClockChoice?, tvIs24: Boolean): Boolean = when (choice) {
+    ClockChoice.H24 -> true
+    ClockChoice.H12 -> false
+    ClockChoice.Hidden, null -> tvIs24
+}
+
+/** The choice the Clock row shows as made: the owner's, or the TV's own format while they have not chosen. */
+fun shownClock(choice: ClockChoice?, tvIs24: Boolean): ClockChoice = choice ?: if (tvIs24) ClockChoice.H24 else ClockChoice.H12
+
+/** Hidden takes the clock off the top bar; nothing else does. */
+fun topBarShowsClock(choice: ClockChoice?): Boolean = choice != ClockChoice.Hidden
+
+/** What the Focus highlight row says and whether it can be changed. */
+data class FocusRow(val value: String, val description: String?, val canFocus: Boolean)
+
+/**
+ * Reduced effects removes the glow whatever is chosen here, so while it is on the row states "Ring only", says why,
+ * and cannot take focus: a choice that would change nothing is not offered.
+ */
+fun focusHighlightRow(style: FocusStyle, reduced: Boolean): FocusRow =
+    if (reduced) FocusRow(FocusStyle.RingOnly.label, "Reduced effects is on", canFocus = false)
+    else FocusRow(style.label, null, canFocus = true)

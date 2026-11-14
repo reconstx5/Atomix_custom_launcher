@@ -17,4 +17,12 @@ class EffectsTest {
         assertFalse(e.glow)
         assertEquals(0, e.motionMs)
     }
+
+    @Test fun glow_needsBothFullEffectsAndTheChoice() {
+        assertTrue(Effects(reduced = false, glowWanted = true).glow)
+        assertFalse(Effects(reduced = false, glowWanted = false).glow)
+        assertFalse(Effects(reduced = true, glowWanted = true).glow)
+    }
+
+    @Test fun glow_isWanted_unlessSettingsSaysOtherwise() = assertTrue(Effects(reduced = false).glowWanted)
 }

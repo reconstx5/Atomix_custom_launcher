@@ -1,6 +1,13 @@
 package dev.atomix.launcher.ui.kit
 
 import kotlin.math.max
+import kotlin.math.roundToInt
+
+/**
+ * A width that holds a fixed set of words, at the chosen text size: [px] as drawn for Standard text, grown by the
+ * same amount as the text ([textScale] is 1 for Standard, 1.15 for Large), so words that fit before still fit.
+ */
+fun textRoom(px: Int, textScale: Float): Int = px * (textScale * 100).roundToInt() / 100
 
 /**
  * How tall a menu panel is with [items] rows: 20 of padding, a 36-high title line, 72-high items 10 apart from the

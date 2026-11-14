@@ -13,4 +13,14 @@ class MenusTest {
     @Test fun menu_staysClearOfTheHintBar() = assertEquals(754 - menuHeight(4), menuTop(700, menuHeight(4)))
 
     @Test fun aMenuTallerThanThePage_startsAtTheTop() = assertEquals(0, menuTop(300, 900))
+
+    @Test fun textRoom_isUnchangedAtStandardText() {
+        assertEquals(470, textRoom(470, 1f))
+        assertEquals(330, textRoom(330, 1f))
+    }
+
+    @Test fun textRoom_growsWithLargeText_soWordsThatFitStillFit() {
+        assertEquals(540, textRoom(470, 1.15f))
+        assertEquals(379, textRoom(330, 1.15f))
+    }
 }

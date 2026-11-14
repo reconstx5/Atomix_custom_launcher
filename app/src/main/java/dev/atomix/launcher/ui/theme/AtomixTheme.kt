@@ -88,9 +88,10 @@ private val LocalUnit = staticCompositionLocalOf { 0.5f }
 
 @Composable fun px(v: Number): Dp = (v.toFloat() * LocalUnit.current).dp
 
+/** A text size. With "Large" text chosen in Settings every text is 15 % bigger; boxes and positions use [px] and do not move. */
 @Composable fun pxSp(v: Number): TextUnit {
     val density = LocalDensity.current
-    return (v.toFloat() * LocalUnit.current / density.fontScale).sp
+    return (v.toFloat() * LookState.look.textSize.scale * LocalUnit.current / density.fontScale).sp
 }
 
 object AtomixType {

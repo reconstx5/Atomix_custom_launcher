@@ -51,6 +51,8 @@ import dev.atomix.launcher.ui.kit.LineIcon
 import dev.atomix.launcher.ui.kit.MENU_W
 import dev.atomix.launcher.ui.kit.menuHeight
 import dev.atomix.launcher.ui.kit.menuTop
+import dev.atomix.launcher.ui.kit.textRoom
+import dev.atomix.launcher.ui.theme.LookState
 import dev.atomix.launcher.ui.kit.ScreenFrame
 import dev.atomix.launcher.ui.kit.SegmentedPills
 import dev.atomix.launcher.ui.kit.WindowColumn
@@ -183,7 +185,8 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
             val tileX = at % APP_COLUMNS * (TILE_W + GAP)
             val tileY = GRID_TOP + (at / APP_COLUMNS - window.startFor(rows.size, ROWS_SHOWN)) * (TILE_H + GAP)
             // Beside the tile on the right, or on the left when the right would cross the page's margin.
-            val x = if (tileX + TILE_W + 14 + MENU_W <= 1720) tileX + TILE_W + 14 else tileX - 14 - MENU_W
+            val menuW = textRoom(MENU_W, LookState.look.textSize.scale)
+            val x = if (tileX + TILE_W + 14 + menuW <= 1720) tileX + TILE_W + 14 else tileX - 14 - menuW
             // 24 above its tile's top, kept on the page and clear of the hint bar: the rule every menu follows.
             val y = menuTop(tileY, menuHeight(menuItems.size))
             AppMenu(
@@ -245,7 +248,7 @@ private fun AppMenu(
 ) {
     val shape = RoundedCornerShape(px(22))
     Column(
-        modifier.width(px(MENU_W)).background(AtomixColors.Panel, shape).border(px(2), AtomixColors.Ice.copy(alpha = 0.24f), shape).padding(px(20)),
+        modifier.width(px(textRoom(MENU_W, LookState.look.textSize.scale))).background(AtomixColors.Panel, shape).border(px(2), AtomixColors.Ice.copy(alpha = 0.24f), shape).padding(px(20)),
         verticalArrangement = Arrangement.spacedBy(px(10)),
     ) {
         BasicText(title, style = AtomixType.rowLabel().copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -271,7 +274,7 @@ private fun AppMenu(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(if (item == AppMenuItem.Info) LineIcon.Info else LineIcon.Plus, AtomixColors.Text, 26)
-                BasicText(item.label, style = AtomixType.button().copy(fontWeight = if (focused) FontWeight.Bold else FontWeight.SemiBold), maxLines = 1)
+                BasicText(item.label, style = AtomixType.button().copy(fontWeight = if (focused) FontWeight.Bold else FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

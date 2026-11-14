@@ -1,8 +1,12 @@
 package dev.atomix.launcher.ui.settings
 
 import dev.atomix.launcher.prefs.AccentId
+import dev.atomix.launcher.prefs.ClockChoice
+import dev.atomix.launcher.prefs.FocusStyle
 import dev.atomix.launcher.prefs.Look
+import dev.atomix.launcher.prefs.TextSize
 import dev.atomix.launcher.prefs.ThemeId
+import dev.atomix.launcher.prefs.shownClock
 
 /** Everything the owner has chosen in Settings that a row can show or change. */
 data class Chosen(val look: Look)
@@ -21,11 +25,13 @@ enum class RowKind {
     List,
 }
 
-fun kindOf(item: SettingsItem): RowKind = when (item) {
+/** [reduced] is whether Reduced effects is on: Focus highlight then has nothing to choose and is a statement. */
+fun kindOf(item: SettingsItem, reduced: Boolean = false): RowKind = when (item) {
     SettingsItem.Server, SettingsItem.Version -> RowKind.Statement
     SettingsItem.ReducedEffects -> RowKind.Switch
-    SettingsItem.Accent -> RowKind.Stepped
+    SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock -> RowKind.Stepped
     SettingsItem.Theme -> RowKind.List
+    SettingsItem.FocusHighlight -> if (reduced) RowKind.Statement else RowKind.List
     SettingsItem.HomeButton, SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources,
     SettingsItem.FindServer, SettingsItem.SwitchProfile, SettingsItem.TvPages -> RowKind.Action
 }
@@ -34,14 +40,22 @@ fun kindOf(item: SettingsItem): RowKind = when (item) {
 fun choiceOptions(item: SettingsItem): List<String> = when (item) {
     SettingsItem.Theme -> ThemeId.entries.map { it.label }
     SettingsItem.Accent -> AccentId.entries.map { it.label }
+    SettingsItem.TextSize -> TextSize.entries.map { it.label }
+    SettingsItem.Clock -> ClockChoice.entries.map { it.label }
+    SettingsItem.FocusHighlight -> FocusStyle.entries.map { it.label }
     else -> emptyList()
 }
 
-/** Which of [choiceOptions] is the one chosen now; -1 for an item that has none. */
-@Suppress("UNUSED_PARAMETER") // tvIs24 is read by the Clock row
+/**
+ * Which of [choiceOptions] is the one chosen now; -1 for an item that has none. [tvIs24] is the TV's own clock
+ * setting, which the Clock row shows as chosen until the owner chooses.
+ */
 fun chosenIndex(item: SettingsItem, now: Chosen, tvIs24: Boolean = true): Int = when (item) {
     SettingsItem.Theme -> now.look.theme.ordinal
     SettingsItem.Accent -> now.look.accent.ordinal
+    SettingsItem.TextSize -> now.look.textSize.ordinal
+    SettingsItem.Clock -> shownClock(now.look.clock, tvIs24).ordinal
+    SettingsItem.FocusHighlight -> now.look.focus.ordinal
     else -> -1
 }
 
@@ -51,6 +65,9 @@ fun withChoice(item: SettingsItem, index: Int, now: Chosen): Chosen {
     return when (item) {
         SettingsItem.Theme -> now.copy(look = now.look.copy(theme = ThemeId.entries[index]))
         SettingsItem.Accent -> now.copy(look = now.look.copy(accent = AccentId.entries[index]))
+        SettingsItem.TextSize -> now.copy(look = now.look.copy(textSize = TextSize.entries[index]))
+        SettingsItem.Clock -> now.copy(look = now.look.copy(clock = ClockChoice.entries[index]))
+        SettingsItem.FocusHighlight -> now.copy(look = now.look.copy(focus = FocusStyle.entries[index]))
         else -> now
     }
 }
@@ -58,6 +75,8 @@ fun withChoice(item: SettingsItem, index: Int, now: Chosen): Chosen {
 /** What Left and Right do on a stepped row, for the hint bar; null for a row they do not change. */
 fun stepHintFor(item: SettingsItem): String? = when (item) {
     SettingsItem.Accent -> "Pick a colour"
+    SettingsItem.TextSize -> "Change size"
+    SettingsItem.Clock -> "Change"
     else -> null
 }
 
@@ -67,8 +86,8 @@ data class PaneGroup(val label: String, val items: List<SettingsItem>)
 /** The groups of a section whose pane is drawn from them, top to bottom; empty for the other sections. */
 fun groupsOf(section: SettingsSection): List<PaneGroup> = when (section) {
     SettingsSection.Appearance -> listOf(
-        PaneGroup("LOOK", listOf(SettingsItem.Theme, SettingsItem.Accent)),
-        PaneGroup("FOCUS AND MOTION", listOf(SettingsItem.ReducedEffects)),
+        PaneGroup("LOOK", listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock)),
+        PaneGroup("FOCUS AND MOTION", listOf(SettingsItem.FocusHighlight, SettingsItem.ReducedEffects)),
     )
     else -> emptyList()
 }
@@ -92,6 +111,9 @@ fun rowTop(item: SettingsItem, groups: List<PaneGroup>): Int? {
 fun titleOf(item: SettingsItem): String = when (item) {
     SettingsItem.Theme -> "Theme"
     SettingsItem.Accent -> "Accent colour"
+    SettingsItem.TextSize -> "Text size"
+    SettingsItem.Clock -> "Clock"
+    SettingsItem.FocusHighlight -> "Focus highlight"
     SettingsItem.ReducedEffects -> "Reduced effects"
     else -> ""
 }

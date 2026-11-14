@@ -36,6 +36,9 @@ import dev.atomix.launcher.atomix.ROUTE_LIVE_SETTINGS
 import dev.atomix.launcher.atomix.atomixIntent
 import dev.atomix.launcher.atomix.stopAtomixProcess
 import dev.atomix.launcher.livetv.source.Channel
+import dev.atomix.launcher.prefs.FocusStyle
+import dev.atomix.launcher.prefs.clockIs24
+import dev.atomix.launcher.prefs.topBarShowsClock
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.livetv.player.PlayerActivity
 import dev.atomix.launcher.livetv.player.ZapSource
@@ -154,7 +157,8 @@ class HomeActivity : ComponentActivity() {
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }
         setContent {
             AtomixTheme {
-                CompositionLocalProvider(LocalEffects provides Effects(reduced.value)) {
+                val look = LookState.look
+                CompositionLocalProvider(LocalEffects provides Effects(reduced.value, look.focus == FocusStyle.RingAndGlow)) {
                     if (splashing.value) {
                         SplashScreen(reduced = reduced.value) { splashing.value = false }
                     } else if (!signedIn.value) {
@@ -168,11 +172,13 @@ class HomeActivity : ComponentActivity() {
                                 graph.store.clearAuth(); signedIn.value = false; stopAtomixProcess(this@HomeActivity)
                             }
                         }
-                        val is24 = DateFormat.is24HourFormat(this)
+                        // Every time the launcher shows follows the Clock setting, or the TV's own until one is chosen.
+                        val tvIs24 = DateFormat.is24HourFormat(this)
+                        val is24 = clockIs24(look.clock, tvIs24)
                         ShellScreen(
                             place = place.value,
                             onPlace = { place.value = it; restoreTick.intValue++ },
-                            clock = clockText(ui.nowMs, is24),
+                            clock = if (topBarShowsClock(look.clock)) clockText(ui.nowMs, is24) else null,
                             onInputs = ::openInputs,
                             onSettings = { openSettings() },
                         ) { current ->
@@ -240,7 +246,8 @@ class HomeActivity : ComponentActivity() {
                                         homeOverrideOn = homeOverrideOn.value,
                                     ),
                                     reduced = reduced.value,
-                                    look = LookState.look,
+                                    look = look,
+                                    tvIs24 = tvIs24,
                                     nowMs = ui.nowMs,
                                     tv = tvFacts.value,
                                     start = settingsSection.value,

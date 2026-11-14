@@ -40,7 +40,9 @@ import coil.request.ImageRequest
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.OnAir
 import dev.atomix.launcher.ui.kit.FocusGlow
+import dev.atomix.launcher.ui.kit.textRoom
 import dev.atomix.launcher.ui.kit.tvFocus
+import dev.atomix.launcher.ui.theme.LookState
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.px
@@ -186,6 +188,13 @@ fun BoxScope.LargeChannelCard(channel: Channel, lines: OnAirLines, artUrl: Strin
     }
 }
 
+/**
+ * How wide the words of a small card may run. Beside artwork they keep to the left of it (330 at Standard text, and
+ * as much more as Large text needs, over the part of the picture that has already faded). With no artwork there is
+ * nothing to stay clear of, so they take the card's width less its 30 px margins.
+ */
+fun smallCardTextRoom(cardW: Int, hasArt: Boolean, textScale: Float): Int = if (hasArt) textRoom(330, textScale) else cardW - 60
+
 /** What a small card shows: words on the left over [ground], the programme's artwork fading in from the right. */
 @Composable
 fun BoxScope.SmallChannelCard(channel: Channel, lines: OnAirLines, artUrl: String?, loader: ImageLoader, ground: Color) {
@@ -196,7 +205,7 @@ fun BoxScope.SmallChannelCard(channel: Channel, lines: OnAirLines, artUrl: Strin
         ),
     )
     NameChip(channel.name, 26, 32, 16, 6, 12, Modifier.padding(start = px(28), top = px(22)))
-    Column(Modifier.padding(start = px(30), top = px(82)).width(px(330))) {
+    Column(Modifier.padding(start = px(30), top = px(82)).width(px(smallCardTextRoom(SMALL_CARD_W, artUrl != null, LookState.look.textSize.scale)))) {
         BasicText(lines.title, style = AtomixType.heading().copy(fontSize = pxSp(32), lineHeight = pxSp(46)), maxLines = 1, overflow = TextOverflow.Ellipsis)
         val meta = AtomixType.description().copy(fontSize = pxSp(26), lineHeight = pxSp(34), color = AtomixColors.TextSoft)
         lines.time?.let { BasicText(it, style = meta, maxLines = 1, overflow = TextOverflow.Ellipsis) }

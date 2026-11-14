@@ -30,9 +30,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
+import dev.atomix.launcher.ui.theme.LookState
 import dev.atomix.launcher.ui.theme.px
 
-/** The width of a menu panel, px at 1920: the manage-apps menu and a settings row's list of choices. */
+/**
+ * The width of a menu panel at Standard text, px at 1920: the manage-apps menu and a settings row's list of choices.
+ * A panel is drawn [textRoom] wide, so its words still fit at Large text.
+ */
 const val MENU_W = 470
 
 /**
@@ -52,7 +56,7 @@ fun ChoiceList(
 ) {
     val shape = RoundedCornerShape(px(22))
     Column(
-        modifier.width(px(MENU_W)).background(AtomixColors.Panel, shape).border(px(2), AtomixColors.Ice.copy(alpha = 0.24f), shape).padding(px(20)),
+        modifier.width(px(textRoom(MENU_W, LookState.look.textSize.scale))).background(AtomixColors.Panel, shape).border(px(2), AtomixColors.Ice.copy(alpha = 0.24f), shape).padding(px(20)),
         verticalArrangement = Arrangement.spacedBy(px(10)),
     ) {
         BasicText(title, style = AtomixType.rowLabel().copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)

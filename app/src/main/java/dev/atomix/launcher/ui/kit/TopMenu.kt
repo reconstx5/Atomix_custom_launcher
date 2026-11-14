@@ -35,7 +35,8 @@ enum class Tab(val label: String) { Home("Home"), LiveTv("Live TV"), Apps("Apps"
 /**
  * Top bar (64 high): the wordmark on the left, the three text tabs in the centre with an ice underline under the open
  * one, and on the right the clock and the round Inputs and Settings buttons. [selected] is the open tab, or null when
- * a round button's screen is open ([current]). [firstFocus] is attached to whichever of those is marked.
+ * a round button's screen is open ([current]). [firstFocus] is attached to whichever of those is marked. A null
+ * [clock] draws no clock (Settings › Appearance › Clock › Hidden).
  */
 @Composable
 fun TopMenu(
@@ -44,7 +45,7 @@ fun TopMenu(
     onSelect: (Tab) -> Unit,
     onInputs: () -> Unit,
     onSettings: () -> Unit,
-    clock: String,
+    clock: String?,
     firstFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
@@ -60,7 +61,7 @@ fun TopMenu(
             }
         }
         Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(px(24))) {
-            BasicText(clock, style = AtomixType.clock(), maxLines = 1)
+            if (clock != null) BasicText(clock, style = AtomixType.clock(), maxLines = 1)
             IconButton(
                 LineIcon.Inputs, "Inputs", onInputs,
                 if (current == TopButton.Inputs) Modifier.focusRequester(firstFocus) else Modifier,
