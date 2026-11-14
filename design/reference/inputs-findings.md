@@ -13,8 +13,8 @@ on and then off. A watcher read the two dumps about every four seconds and wrote
 That part is under "With the owner at the TV" below; its raw dumps are the `-3-baseline` to `-7-end` pairs and
 `inputs-watch.log`, `inputs-watch-2.log` in the same folder.
 
-This answers the five open questions of the design spec's §8. One point is still open: what is printed beside the
-sockets and what, if anything, is in HDMI 1, 2 and 4.
+The owner then sent photos of the receiver's sockets and of the TV's own. With those, the five open questions of the
+design spec's §8 are answered; what stays unknown is listed under each.
 
 ## The readings
 
@@ -98,7 +98,8 @@ are when the watcher first read the change.
   - `cable_connection_status` says nothing; it is 1 on every HDMI socket whatever is done.
 
   Not known: what a device that is fully off (no standby power), or one that does not speak CEC, reads as. None was
-  to hand. Not known: what is in HDMI 1, 2 and 4. They read as an empty socket does. *Not checked: needs the owner.*
+  to hand. Known (the owner's photos of the TV, 14 November): HDMI 1, 2 and 4 are empty. So their `state=1` all day
+  was an empty socket's reading, not something asleep on each.
 
 ## 2. Whether an ordinary app can read a device's name
 
@@ -128,21 +129,27 @@ are when the watcher first read the change.
 - **Known / not known.** Known: a device behind a CEC receiver is named and is attributed to the TV socket the
   receiver is plugged into, so "PlayStation 5, HDMI 3" is what the launcher can say. Known: the receiver itself has
   no name the app can read, so a port with only a receiver on it would be unnamed. Not known: what a device with CEC
-  switched off looks like. None has been identified; if HDMI 1, 2 or 4 holds one, it reads as in section 1.
-  *Not checked: needs the owner* (what is plugged into HDMI 1, 2 and 4).
+  switched off looks like. There is none on this TV to read: HDMI 1, 2 and 4 are empty (the owner's photos).
 
 ## 4. Which of HW4 to HW7 is which printed port
 
 - **What the TV reports.** `HW4` is `hdmi_port=1` (address `0x1000`, the only port with ARC), `HW5` is port 2, `HW6`
   is port 3, `HW7` is port 4. The TV's own labels follow the same order: HW4 "HDMI 1" to HW7 "HDMI 4".
 - **How it was read.** `TvInputHardwareInfo` and `mPortInfo` in the two dumps; the labels in the app's log.
-- **Known / not known.** Known: the TV's numbering, and that HDMI 1 is the ARC socket. **Not known: whether the
-  numbers printed beside the sockets match it.** *Not checked: needs the owner* (read the printed labels; the socket
-  marked ARC should be the one the TV calls HDMI 1, and the receiver's cable should be in the one it calls HDMI 3).
-- **One thing the readings and the photo put side by side.** The receiver's cable leaves its ARC output and arrives
-  at the socket the TV calls HDMI 3, which the TV reports as `arc: false`; only its HDMI 1 reports `arc: true`. If
-  the printed labels agree with the TV's numbering, the TV's sound cannot return to the receiver down this cable.
-  Not a launcher matter, and not checked: it depends on the same printed labels.
+- **What is printed on the TV** (the owner's photos, 14 November).
+  - On the side: one HDMI socket marked "HDMI1(ARC)", empty, beside a USB socket with a memory stick in it.
+  - Underneath, left to right: "OPTICAL", two "USB", "HDMI4" (empty), a socket holding the receiver's cable,
+    "HDMI2" (empty), "AV IN".
+  - The label of the socket with the cable in it is hidden behind the plug. It sits between HDMI4 and HDMI2, and it
+    is the only one left, so it is HDMI3. That is by elimination; the printed word itself was not read.
+- **Known / not known.** Known: the printed numbers match the TV's own. `HW4` is the side socket "HDMI1(ARC)", `HW5`
+  is "HDMI2", `HW6` is the one the receiver is in (HDMI3), `HW7` is "HDMI4". So the launcher can use the TV's labels
+  as they are. Note the order underneath is 4, 3, 2 from the left, and HDMI 1 is not with them.
+- **One thing the readings and the photos put side by side.** The receiver's cable leaves its "HDMI OUT … ARC"
+  socket and arrives at the TV's HDMI 3, which the TV reports as `arc: false`. The TV's only ARC socket, HDMI 1 on
+  the side, is empty. As cabled, the TV's own sound (apps, Live TV) cannot return to the receiver over HDMI. Whether
+  an optical cable carries it instead was not seen. Not a launcher matter. If the cable is ever moved to HDMI 1, the
+  PlayStation 5 will be listed under HDMI 1 instead of HDMI 3, with a new address (`0x1100`).
 
 ## 5. Whether "on" can be told from "plugged in but asleep"
 
@@ -186,13 +193,8 @@ than as "on", unless a later check shows what made it read 0 while asleep.
 
 ## Needs the owner
 
-Done on the evening of 14 November: one cable unplugged (at each end), and one device switched on and off. The
-owner also sent a photo of the receiver's sockets (section 3).
+Nothing more. Done on 14 November: one cable unplugged at each end, one device switched on and off, and photos of
+the receiver's sockets and the TV's.
 
-Still open, a minute at the TV with no readings needed (a photo of the TV's own sockets would do):
-
-1. Read the labels printed beside the four HDMI sockets: which one the receiver's cable is in (the TV calls it
-   HDMI 3), and which is marked ARC (the TV calls that one HDMI 1). That settles section 4.
-2. Say whether the other three sockets are empty. They read as empty sockets do (sections 1 and 3).
-
-Until then section 4 stands as "not checked: needs the owner".
+Left unknown because there was nothing to test it with: a device that is completely off, a device that does not
+speak CEC, and what makes a sleeping console read "connected" (section 5).
