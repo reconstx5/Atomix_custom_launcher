@@ -48,8 +48,8 @@ private fun washBitmap(kind: WashKind, theme: ThemeId): ImageBitmap = washes.get
     bmp.asImageBitmap()
 }
 
-/** The ground colour with its radial wash, filling the screen. */
+/** The ground colour with its radial wash, filling the space it is given; in the theme that is on unless [theme] names one. */
 @Composable
-fun Wash(kind: WashKind = WashKind.Ground, modifier: Modifier = Modifier) {
-    Image(washBitmap(kind, LookState.look.theme), contentDescription = null, modifier = modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
+fun Wash(kind: WashKind = WashKind.Ground, modifier: Modifier = Modifier, theme: ThemeId = LookState.look.theme) {
+    Image(washBitmap(kind, theme), contentDescription = null, modifier = modifier.fillMaxSize(), contentScale = ContentScale.FillBounds)
 }

@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import dev.atomix.launcher.apps.TvFacts
 import dev.atomix.launcher.apps.TvPage
+import dev.atomix.launcher.prefs.FocusStyle
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.kit.ChoiceList
@@ -146,9 +147,12 @@ fun SettingsScreen(
     // The row whose choices are open as a list, and where focus goes in that list as it opens.
     var openList by remember { mutableStateOf<SettingsItem?>(null) }
     val listFocus = remember { FocusRequester() }
+    // Which choice has focus in the open list: the preview shows it before OK.
+    var focusedChoice by remember { mutableStateOf<Int?>(null) }
 
     fun openList(item: SettingsItem) {
         if (choiceOptions(item).isEmpty()) return
+        focusedChoice = null
         openList = item
         scope.launch { withFrameNanos { }; runCatching { listFocus.requestFocus() } }
     }
@@ -158,6 +162,7 @@ fun SettingsScreen(
         val item = openList ?: return
         runCatching { rowFocus[item]?.requestFocus() }
         openList = null
+        focusedChoice = null
     }
 
     /** Makes choice [index] of [item] and saves it. */
@@ -208,8 +213,11 @@ fun SettingsScreen(
         }
         // Focus stays in the rows: Left goes back to the section they belong to (not the nearest one), and the other
         // arrows stop at the edge instead of finding another section. Focus sent elsewhere by the app passes.
+        // With a preview beside them the rows are 760 wide, as on the boards: 430 of sections, 40, the rows, 40, 450.
+        val preview = hasPreview(section)
+        val rowsW = if (preview) 760 else 1250
         Column(
-            Modifier.padding(start = px(470)).fillMaxWidth()
+            Modifier.padding(start = px(470)).width(px(rowsW))
                 .onFocusChanged { inRows = it.hasFocus }
                 .focusProperties {
                     exit = { direction ->
@@ -350,8 +358,18 @@ fun SettingsScreen(
                 titleOf(item), options, chosenIndex(item, now, tvIs24),
                 chosenFocus = listFocus,
                 onChoose = { choose(item, it); closeList() },
-                onFocused = { },
-                modifier = Modifier.offset(x = px(1720 - textRoom(MENU_W, look.textSize.scale) - 20), y = px(menuTop(top, menuHeight(options.size)))),
+                onFocused = { focusedChoice = it },
+                // Over the right end of its row, so it never covers the preview.
+                modifier = Modifier.offset(x = px(470 + rowsW - textRoom(MENU_W, look.textSize.scale) - 20), y = px(menuTop(top, menuHeight(options.size)))),
+            )
+        }
+        if (preview) {
+            val shown = previewChoice(now, openList, focusedChoice)
+            HomePreview(
+                shown,
+                mark = if (inRows || openList != null) previewMark(openList ?: focusedItem) else PreviewMark.None,
+                glow = !reduced && shown.look.focus == FocusStyle.RingAndGlow,
+                modifier = Modifier.offset(x = px(470 + rowsW + 40)),
             )
         }
     }
