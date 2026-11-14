@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.view.KeyEvent
 import android.text.format.DateFormat
 import android.widget.Toast
@@ -259,10 +258,7 @@ class HomeActivity : ComponentActivity() {
 
     /** Opens the Inputs page with the TV's HDMI ports as they are listed now. */
     private fun openInputs() {
-        val inputs = TvInputs(this)
-        hdmiInputs.value = inputs.hdmi()
-        // Everything the TV will tell an ordinary app about its inputs, for reading back with logcat.
-        inputs.describeAll().forEach { Log.i("AtomixInputs", it) }
+        hdmiInputs.value = TvInputs(this).hdmi()
         place.value = Place.Inputs
     }
 
