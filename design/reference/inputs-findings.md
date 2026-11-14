@@ -1,14 +1,14 @@
 # What the TV reports about its inputs
 
 Read on 14 November 2026 from the VEON 4K Android TV (`VEON/MTCMSD6886EU_VEON/bangbae:11/RTO8.260427.001`,
-Android TV 11) with Atomix TV 0.1.0 at commit `9a1f19d` installed. Nothing on the TV was changed: only
+Android TV 11) with Atomix TV 0.1.0 at commit `1c44808` installed. Nothing on the TV was changed: only
 `dumpsys tv_input`, `dumpsys hdmi_control` and `logcat -d` were run, twice, at 13:21:34 and 13:31:35. The two
 readings are identical in every line quoted here. The raw dumps are in
 `.superpowers/sdd/2026-11-14-atomix-tv-redesign/` (`tv_input-1.txt`, `hdmi_control-1.txt`, `app-inputs-1.txt`, and
 the `-2` pair).
 
 The same evening, 21:34 to 21:45, the readings were taken again with the owner at the TV (Atomix TV at commit
-`1b519df`): the receiver's cable was pulled out at each end in turn and put back, and the PlayStation 5 was switched
+`0f29ab2`): the receiver's cable was pulled out at each end in turn and put back, and the PlayStation 5 was switched
 on and then off. A watcher read the two dumps about every four seconds and wrote a line each time something changed.
 That part is under "With the owner at the TV" below; its raw dumps are the `-3-baseline` to `-7-end` pairs and
 `inputs-watch.log`, `inputs-watch-2.log` in the same folder.
@@ -228,7 +228,7 @@ the `-8-receiver-on-hdmi1` pair.
   system setting on, the TV's sound goes to the receiver over this cable.
 
 The app's own per-input listing quoted under "The readings" came from a diagnostic in the launcher
-(`TvInputs.describeAll()`, logged under the tag `AtomixInputs`). It was removed in commit `8fb0549` once these
+(`TvInputs.describeAll()`, logged under the tag `AtomixInputs`). It was removed in commit `066a934` once these
 questions were answered; the one-line list of HDMI ports the launcher has always logged is still there.
 
 ## Needs the owner
