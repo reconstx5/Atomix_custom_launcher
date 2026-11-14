@@ -84,7 +84,8 @@ fun AppTile(
             BasicText(
                 app.label,
                 style = AtomixType.rowLabel().copy(fontSize = pxSp(size.nameSp), lineHeight = pxSp(size.nameLine), fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center),
-                maxLines = 1,
+                // The grid's tiles have room for a long name on two lines, as the Apps board draws them; Home's do not.
+                maxLines = if (size == AppTileSize.Grid) 2 else 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }

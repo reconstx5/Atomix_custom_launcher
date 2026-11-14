@@ -158,7 +158,7 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
         )
         WindowColumn(rows, { it.first().packageName }, window, ROWS_SHOWN, rowPx = TILE_H, gapPx = GAP, modifier = Modifier.padding(top = px(GRID_TOP))) { rowIndex, row, slot ->
             Row(slot, horizontalArrangement = Arrangement.spacedBy(px(GAP))) {
-                row.forEach { app ->
+                row.forEachIndexed { column, app ->
                     key(app.packageName) {
                         ManageTile(
                             app, loader,
@@ -167,8 +167,13 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
                             onClick = { openMenu(app) },
                             onFocused = { onPill = false },
                             modifier = Modifier.focusRequester(tileFocus.getOrPut(app.packageName) { FocusRequester() })
-                                // Up from any tile of the top row goes to the filter that is chosen.
-                                .focusProperties { if (rowIndex == 0) up = pillFocus },
+                                .focusProperties {
+                                    // Up from any tile of the top row goes to the filter that is chosen.
+                                    if (rowIndex == 0) up = pillFocus
+                                    // A row ends at its last tile.
+                                    if (column == 0) left = FocusRequester.Cancel
+                                    if (column == row.lastIndex) right = FocusRequester.Cancel
+                                },
                         )
                     }
                 }
@@ -224,7 +229,8 @@ private fun ManageTile(
                 Icon(LineIcon.Tick, AtomixColors.Ink, 20)
             }
         }
-        BasicText(app.label, style = AtomixType.hint().copy(lineHeight = pxSp(30)), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // A long name takes two lines, as on the board.
+        BasicText(app.label, style = AtomixType.hint().copy(lineHeight = pxSp(30)), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

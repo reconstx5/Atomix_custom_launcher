@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalComposeUiApi::class) // FocusRequester.Cancel
+
 package dev.atomix.launcher.ui.apps
 
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -87,15 +90,17 @@ fun AppsTab(
         onDispose { bar?.down = null }
     }
 
-    val focusedApp = apps.firstOrNull { it.packageName == focusedPkg }
-    val hints = when {
-        onEditAction -> hintsFor(HintSpot.AppsEdit)
-        focusedApp != null -> hintsFor(HintSpot.AppTile(focusedApp.label))
-        else -> emptyList()
-    }
     ScreenFrame(
         heading = "Apps",
-        hints = hints,
+        // Read where the hint bar is drawn, so moving focus across the grid does not redraw all of its tiles.
+        hints = {
+            val focusedApp = apps.firstOrNull { it.packageName == focusedPkg }
+            when {
+                onEditAction -> hintsFor(HintSpot.AppsEdit)
+                focusedApp != null -> hintsFor(HintSpot.AppTile(focusedApp.label))
+                else -> emptyList()
+            }
+        },
         action = {
             TextAction(
                 "Edit", LineIcon.Edit, onEdit,
@@ -120,6 +125,10 @@ fun AppsTab(
                                     if (rowIndex == 0) {
                                         if (column == APP_COLUMNS - 1) up = editFocus else if (bar != null) up = bar.marked
                                     }
+                                    // A row ends at its last tile: Right must not wander off to "Edit" or to a
+                                    // longer row above.
+                                    if (column == 0) left = FocusRequester.Cancel
+                                    if (column == row.lastIndex) right = FocusRequester.Cancel
                                 },
                             onHome = state.isFavourite(app.packageName),
                             onFocused = {

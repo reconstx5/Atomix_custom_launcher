@@ -26,11 +26,13 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import dev.atomix.launcher.apps.InputEntry
+import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.HintSpot
 import dev.atomix.launcher.ui.kit.Icon
@@ -54,7 +56,10 @@ private const val CARD_W = (1720 - 3 * 24) / 4
 @Composable
 fun InputsScreen(hdmi: List<InputEntry>, tuner: InputEntry, onPick: (InputEntry) -> Unit) {
     val first = remember { FocusRequester() }
+    val bar = LocalTopBarFocus.current
     var focused by remember { mutableStateOf<InputEntry?>(null) }
+    // Up from the cards goes to the lit Inputs button, as Up goes to the open tab on the other pages.
+    val toBar = Modifier.focusProperties { if (bar != null) up = bar.marked }
     LaunchedEffect(Unit) { withFrameNanos { }; runCatching { first.requestFocus() } }
 
     ScreenFrame(heading = "Inputs", hints = focused?.let { hintsFor(HintSpot.InputCard(it.label)) }.orEmpty()) {
@@ -64,12 +69,12 @@ fun InputsScreen(hdmi: List<InputEntry>, tuner: InputEntry, onPick: (InputEntry)
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(px(24))) {
                     hdmi.forEachIndexed { i, input ->
-                        InputCard(input.label, { onPick(input) }, { focused = input }, if (i == 0) Modifier.focusRequester(first) else Modifier)
+                        InputCard(input.label, { onPick(input) }, { focused = input }, toBar.then(if (i == 0) Modifier.focusRequester(first) else Modifier))
                     }
                 }
             }
             BasicText("Other sources", Modifier.padding(top = px(30)), style = AtomixType.subheading())
-            SourceTile(tuner.label, { onPick(tuner) }, { focused = tuner }, Modifier.padding(top = px(14)).then(if (hdmi.isEmpty()) Modifier.focusRequester(first) else Modifier))
+            SourceTile(tuner.label, { onPick(tuner) }, { focused = tuner }, Modifier.padding(top = px(14)).then(if (hdmi.isEmpty()) toBar.focusRequester(first) else Modifier))
         }
     }
 }

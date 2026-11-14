@@ -76,6 +76,20 @@ fun ScreenFrame(
     action: (@Composable () -> Unit)? = null,
     more: String? = null,
     content: @Composable BoxScope.() -> Unit,
+) = ScreenFrame(heading, { hints }, barBack, action, more, content)
+
+/**
+ * The same page with its hints read only where they are drawn. A screen whose hint names the focused item (a grid of
+ * apps) passes a function, so moving focus redraws the hint bar and the two items involved, not every item.
+ */
+@Composable
+fun ScreenFrame(
+    heading: String,
+    hints: () -> List<Hint>,
+    barBack: String = "Home",
+    action: (@Composable () -> Unit)? = null,
+    more: String? = null,
+    content: @Composable BoxScope.() -> Unit,
 ) {
     var inside by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
@@ -93,6 +107,12 @@ fun ScreenFrame(
                 BasicText(more, style = AtomixType.description(), maxLines = 1)
             }
         }
-        ScreenHints(if (inside) hints else hintsFor(HintSpot.TopBar(barBack)))
+        FrameHints(inside, hints, barBack)
     }
+}
+
+/** The page's hint bar: the screen's own hints while focus is in the page, the top bar's while it is not. */
+@Composable
+private fun BoxScope.FrameHints(inside: Boolean, hints: () -> List<Hint>, barBack: String) {
+    ScreenHints(if (inside) hints() else hintsFor(HintSpot.TopBar(barBack)))
 }

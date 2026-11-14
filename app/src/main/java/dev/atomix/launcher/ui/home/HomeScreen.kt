@@ -343,6 +343,8 @@ fun HomeScreen(
                     Modifier.width(px(230)).focusRequester(allAppsFocus).focusProperties {
                         // Not an item of the row: it stays put, out of reach, while the row is rearranged.
                         canFocus = !editing
+                        // The row ends here: Right must not wander up to "Edit".
+                        right = FocusRequester.Cancel
                         if (!editing) {
                             if (appsEditShown) up = appsEditFocus else if (topBar != null) up = topBar
                             down = onNowEntry()
