@@ -1,5 +1,6 @@
 package dev.atomix.launcher.ui.settings
 
+import android.content.ComponentName
 import dev.atomix.launcher.data.HttpException
 import dev.atomix.launcher.data.SessionStore
 import dev.atomix.launcher.livetv.source.LiveClient
@@ -83,9 +84,15 @@ class SettingsState(
         return true
     }
 
-    /** Whether the Home-button service is on, from Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES. */
-    fun homeOverrideOn(enabledServices: String?): Boolean =
-        enabledServices.orEmpty().split(':').any { it.trim().equals(HOME_SERVICE, ignoreCase = true) }
+    /**
+     * Whether the Home-button service is on, from Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES. Entries are compared
+     * as components, because the list may hold the service in its short form (package/.home.HomeOverrideService),
+     * which is the same service.
+     */
+    fun homeOverrideOn(enabledServices: String?): Boolean {
+        val home = ComponentName.unflattenFromString(HOME_SERVICE)
+        return enabledServices.orEmpty().split(':').any { ComponentName.unflattenFromString(it.trim()) == home }
+    }
 
     companion object {
         const val HOME_SERVICE = "dev.atomix.launcher/dev.atomix.launcher.home.HomeOverrideService"

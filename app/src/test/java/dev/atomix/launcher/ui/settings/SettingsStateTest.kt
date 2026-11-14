@@ -90,6 +90,10 @@ class SettingsStateTest {
         assertFalse(state.homeOverrideOn(null))
     }
 
+    @Test fun homeOverrideOn_acceptsTheShortComponentForm() {
+        assertTrue(state.homeOverrideOn("a/b:dev.atomix.launcher/.home.HomeOverrideService"))
+    }
+
     @Test fun findServerAgain_storesTheLocatedUrl() = runTest {
         located = "http://192.168.8.70:8787/".toHttpUrl()
         assertTrue(state.findServerAgain())

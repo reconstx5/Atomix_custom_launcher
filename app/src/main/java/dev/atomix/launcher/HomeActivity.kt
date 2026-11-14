@@ -28,6 +28,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.atomix.launcher.apps.InputEntry
 import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.apps.liveTvIntent
+import dev.atomix.launcher.apps.openTvSettings
 import dev.atomix.launcher.apps.safeStart
 import dev.atomix.launcher.atomix.ROUTE_LIVE_SETTINGS
 import dev.atomix.launcher.atomix.atomixIntent
@@ -92,8 +93,8 @@ class HomeActivity : ComponentActivity() {
     private val restoreTick = mutableIntStateOf(0)
     private val place = mutableStateOf(Place.Home)
     private val signedIn = mutableStateOf(false)
-    /** Settings covers the whole shell while open; Back closes it. */
-    private val settingsOpen = mutableStateOf(false)
+    /** Whether the Home-button service is switched on, re-read whenever the launcher comes back to the front. */
+    private val homeOverrideOn = mutableStateOf(false)
     /** The HDMI ports the Inputs page lists, read each time it opens. */
     private val hdmiInputs = mutableStateOf<List<InputEntry>>(emptyList())
     /** Reduced effects, applied at once when Settings changes it. */
@@ -158,26 +159,7 @@ class HomeActivity : ComponentActivity() {
                             }
                         }
                         val is24 = DateFormat.is24HourFormat(this)
-                        if (settingsOpen.value) {
-                            SettingsScreen(
-                                state = settings,
-                                info = SettingsInfo(
-                                    server = { graph.store.serverUrl?.toString()?.removeSuffix("/") },
-                                    profile = graph.store.profileName,
-                                    version = versionName(),
-                                    homeOverrideOn = settings.homeOverrideOn(Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)),
-                                ),
-                                reduced = reduced.value,
-                                nowMs = ui.nowMs,
-                                actions = SettingsActions(
-                                    testChannel = ::testChannel,
-                                    manageSources = { launch(atomixIntent(this, ROUTE_LIVE_SETTINGS)) },
-                                    switchProfile = ::switchProfile,
-                                    setReduced = { settings.reducedEffects = it; reduced.value = it },
-                                    close = ::closeSettings,
-                                ),
-                            )
-                        } else ShellScreen(
+                        ShellScreen(
                             place = place.value,
                             onPlace = { place.value = it; restoreTick.intValue++ },
                             clock = clockText(ui.nowMs, is24),
@@ -240,8 +222,24 @@ class HomeActivity : ComponentActivity() {
                                     // Home first, so coming back from the input lands on Home, not on this list.
                                     onPick = { place.value = Place.Home; openInput(it) },
                                 )
-                                // Settings becomes a place in Task 9.
-                                Place.Settings -> Unit
+                                Place.Settings -> SettingsScreen(
+                                    state = settings,
+                                    info = SettingsInfo(
+                                        server = { graph.store.serverUrl?.toString()?.removeSuffix("/") },
+                                        profile = graph.store.profileName,
+                                        version = versionName(),
+                                        homeOverrideOn = homeOverrideOn.value,
+                                    ),
+                                    reduced = reduced.value,
+                                    nowMs = ui.nowMs,
+                                    actions = SettingsActions(
+                                        testChannel = ::testChannel,
+                                        manageSources = { launch(atomixIntent(this, ROUTE_LIVE_SETTINGS)) },
+                                        switchProfile = ::switchProfile,
+                                        setReduced = { settings.reducedEffects = it; reduced.value = it },
+                                        openAccessibility = { if (!openTvSettings()) toast("Couldn't open that") },
+                                    ),
+                                )
                             }
                         }
                     }
@@ -273,12 +271,7 @@ class HomeActivity : ComponentActivity() {
         else launch(TvInputs(this).intentFor(input))
     }
 
-    private fun openSettings() { settingsOpen.value = true }
-
-    private fun closeSettings() {
-        settingsOpen.value = false
-        restoreTick.intValue++
-    }
+    private fun openSettings() { place.value = Place.Settings }
 
     /** Plays a channel from Settings; Back from the player returns to Settings. */
     private fun testChannel(id: String) {
@@ -289,7 +282,7 @@ class HomeActivity : ComponentActivity() {
 
     /** Keeps the sign-in but forgets the profile, so setup opens on the profile list. */
     private fun switchProfile() {
-        settingsOpen.value = false
+        place.value = Place.Home
         graph.store.profileId = null
         graph.store.profileName = null
         graph.store.cachedChannelsJson = null
@@ -311,14 +304,13 @@ class HomeActivity : ComponentActivity() {
     /** Pressing Home while on another tab returns to the Home tab. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // The Home button means Home, not "Home with Settings still over it".
-        settingsOpen.value = false
         place.value = Place.Home
         restoreTick.intValue++
     }
 
     override fun onResume() {
         super.onResume()
+        homeOverrideOn.value = settings.homeOverrideOn(Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES))
         if (signedIn.value) {
             home.vm.onVisible()
             restoreTick.intValue++

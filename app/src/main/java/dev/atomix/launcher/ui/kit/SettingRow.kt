@@ -49,7 +49,7 @@ sealed interface RowEnding {
 /**
  * One row of a settings list (92 high): a label, an optional one-line description, and an ending. OK calls [onClick];
  * with [RowEnding.Pills] Left and Right choose an option through [onPill]. A null [onClick] makes the row a plain
- * statement that cannot take focus.
+ * statement that cannot take focus. [descriptionColor] is for a description that is a warning.
  */
 @Composable
 fun SettingRow(
@@ -61,6 +61,7 @@ fun SettingRow(
     ending: RowEnding = RowEnding.None,
     onPill: (Int) -> Unit = {},
     onFocused: () -> Unit = {},
+    descriptionColor: Color = Color.Unspecified,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -90,12 +91,16 @@ fun SettingRow(
         if (icon != null) Icon(icon, AtomixColors.Ice, 30)
         Column(Modifier.weight(1f)) {
             BasicText(label, style = AtomixType.rowLabel(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (description != null) BasicText(description, style = AtomixType.description(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (description != null) {
+                val style = AtomixType.description()
+                BasicText(description, style = if (descriptionColor == Color.Unspecified) style else style.copy(color = descriptionColor), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
         when (ending) {
             RowEnding.None -> Unit
             is RowEnding.Value -> {
-                BasicText(ending.text, style = AtomixType.value(), maxLines = 1)
+                // An empty value leaves just the chevron: a row that goes somewhere.
+                if (ending.text.isNotEmpty()) BasicText(ending.text, style = AtomixType.value(), maxLines = 1)
                 if (ending.chevron) Icon(LineIcon.ChevronRight, AtomixColors.TextSecondary, 26)
             }
             is RowEnding.Switch -> {
