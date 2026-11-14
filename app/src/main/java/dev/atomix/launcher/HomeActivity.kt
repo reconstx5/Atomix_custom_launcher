@@ -37,6 +37,7 @@ import dev.atomix.launcher.atomix.atomixIntent
 import dev.atomix.launcher.atomix.stopAtomixProcess
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.prefs.FocusStyle
+import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.clockIs24
 import dev.atomix.launcher.prefs.topBarShowsClock
 import dev.atomix.launcher.livetv.source.LiveState
@@ -109,6 +110,8 @@ class HomeActivity : ComponentActivity() {
     private val hdmiInputs = mutableStateOf<List<InputEntry>>(emptyList())
     /** The TV's own settings pages that can be opened, with its network and free space; read when Settings opens. */
     private val tvFacts = mutableStateOf(TvFacts(emptyList(), "", null))
+    /** How Home is laid out, applied at once when Settings changes it. */
+    private val homeLayout = mutableStateOf(HomeLayout())
     /** Reduced effects, applied at once when Settings changes it. */
     private val reduced = mutableStateOf(false)
     /** The cold-start splash is still on screen; any key skips it. */
@@ -152,6 +155,7 @@ class HomeActivity : ComponentActivity() {
         signedIn.value = graph.store.token != null && graph.store.profileId != null
         reduced.value = graph.prefs.reducedEffects
         LookState.look = graph.prefs.look
+        homeLayout.value = graph.prefs.homeLayout
         splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
         val appsState = AppsTabState(graph.favouriteApps, graph.apps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }
@@ -188,6 +192,7 @@ class HomeActivity : ComponentActivity() {
                                     loader = graph.imageLoader,
                                     url = { graph.liveClient()?.url(it)?.toString() },
                                     is24 = is24,
+                                    layout = homeLayout.value,
                                     memory = homeMemory,
                                     restoreTick = restoreTick.intValue,
                                     actions = HomeActions(

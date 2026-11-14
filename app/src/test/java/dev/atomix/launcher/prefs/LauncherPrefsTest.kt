@@ -89,4 +89,19 @@ class LauncherPrefsTest {
         LauncherPrefs(sp, { null }).look = Look(clock = null)
         assertNull(LauncherPrefs(sp, { null }).look.clock)
     }
+
+    @Test fun homeLayout_roundTrips() {
+        val sp = prefs()
+        val want = HomeLayout(TileSize.Large, TileShape.FullBanner, Spacing.Roomy, false, RowOrder.OnNowFirst, OnNowLayout.SixSmall)
+        LauncherPrefs(sp, { null }).homeLayout = want
+        assertEquals(want, LauncherPrefs(sp, { null }).homeLayout)
+    }
+
+    @Test fun homeLayout_nothingSaved_isTodaysHome() = assertEquals(HomeLayout(), LauncherPrefs(prefs(), { null }).homeLayout)
+
+    @Test fun homeLayout_unknownSavedNames_fallBackToDefaults() {
+        val sp = prefs()
+        sp.edit().putString("home_tile_size", "Huge").putString("home_on_now", "").putString("home_tile_shape", "Round").putString("home_spacing", "x").putString("home_row_order", "y").commit()
+        assertEquals(HomeLayout(), LauncherPrefs(sp, { null }).homeLayout)
+    }
 }

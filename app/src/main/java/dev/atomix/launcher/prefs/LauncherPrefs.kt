@@ -39,6 +39,23 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
                 .apply()
         }
 
+    /** How Home is laid out. A saved name this build does not know reads as that setting's default. */
+    var homeLayout: HomeLayout
+        get() = HomeLayout(
+            tileSize = enumOr(prefs.getString(K_TILE_SIZE, null), TileSize.Medium),
+            tileShape = enumOr(prefs.getString(K_TILE_SHAPE, null), TileShape.Wide),
+            spacing = enumOr(prefs.getString(K_SPACING, null), Spacing.Comfortable),
+            appNames = prefs.getBoolean(K_APP_NAMES, true),
+            rowOrder = enumOr(prefs.getString(K_ROW_ORDER, null), RowOrder.AppsFirst),
+            onNow = enumOr(prefs.getString(K_ON_NOW, null), OnNowLayout.LargeTwo),
+        )
+        set(v) {
+            prefs.edit()
+                .putString(K_TILE_SIZE, v.tileSize.name).putString(K_TILE_SHAPE, v.tileShape.name).putString(K_SPACING, v.spacing.name)
+                .putBoolean(K_APP_NAMES, v.appNames).putString(K_ROW_ORDER, v.rowOrder.name).putString(K_ON_NOW, v.onNow.name)
+                .apply()
+        }
+
     fun focusKey(screen: String): String? = prefs.getString(K_FOCUS + screen, null)
 
     fun setFocusKey(screen: String, key: String?) {
@@ -49,6 +66,12 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
         const val K_FAVOURITES = "favourite_apps"
         const val K_REDUCED = "reduced_effects"
         const val K_FOCUS = "focus_"
+        const val K_TILE_SIZE = "home_tile_size"
+        const val K_TILE_SHAPE = "home_tile_shape"
+        const val K_SPACING = "home_spacing"
+        const val K_APP_NAMES = "home_app_names"
+        const val K_ROW_ORDER = "home_row_order"
+        const val K_ON_NOW = "home_on_now"
         const val K_THEME = "look_theme"
         const val K_ACCENT = "look_accent"
         const val K_TEXT = "look_text"

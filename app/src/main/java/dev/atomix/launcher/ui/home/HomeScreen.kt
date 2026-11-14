@@ -55,8 +55,7 @@ import dev.atomix.launcher.shell.HomeUi
 import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.settings.SettingsSection
 import dev.atomix.launcher.shell.restoresFocus
-import dev.atomix.launcher.ui.kit.AppTile
-import dev.atomix.launcher.ui.kit.AppTileSize
+import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.HintSpot
@@ -110,10 +109,14 @@ fun HomeScreen(
     loader: ImageLoader,
     url: (String?) -> String?,
     is24: Boolean,
+    /** How Home is laid out (Settings › Home layout). */
+    layout: HomeLayout,
     memory: FocusMemory,
     restoreTick: Int,
     actions: HomeActions,
 ) {
+    // Every position and size below comes from here, as the preview in Settings does.
+    val m = remember(layout) { homeMetrics(layout) }
     val area = onNowArea(ui.live)
     val pinned = (area as? OnNowArea.Cards)?.let { listOf(it.large) + it.small }.orEmpty()
     val bar = LocalTopBarFocus.current
@@ -329,22 +332,22 @@ fun HomeScreen(
             }
             else -> null
         }
-        SectionHeading("Your apps", Modifier.padding(start = px(100), end = px(100), top = px(126)), appsAction)
+        SectionHeading("Your apps", Modifier.padding(start = px(100), end = px(100), top = px(m.appsHeadingY)), appsAction)
         LazyRow(
-            Modifier.padding(top = px(208 - GLOW_ROOM)).fillMaxWidth()
+            Modifier.padding(top = px(m.appsY - GLOW_ROOM)).fillMaxWidth()
                 .onFocusChanged { if (!it.hasFocus && editRow == ROW_APPS) endEdit() }
                 .editKeys(appEdit != null) { onEditKey(ROW_APPS, it) }
                 .focusProperties { if (appEdit != null) exit = { FocusRequester.Cancel } }
                 .focusGroup(),
             state = appList,
             contentPadding = PaddingValues(horizontal = px(100), vertical = px(GLOW_ROOM)),
-            horizontalArrangement = Arrangement.spacedBy(px(18)),
+            horizontalArrangement = Arrangement.spacedBy(px(m.gap)),
         ) {
             itemsIndexed(appsShown, key = { _, a -> a.packageName }) { i, app ->
-                AppTile(
-                    app, loader, AppTileSize.Home,
+                HomeAppTile(
+                    app, loader, m,
                     onClick = { actions.openApp(app) },
-                    modifier = Modifier.width(px(230)).lifted(app.packageName == appEdit?.held)
+                    modifier = Modifier.width(px(m.tileW)).lifted(app.packageName == appEdit?.held)
                         .focusRequester(appFocus.getOrPut(app.packageName) { FocusRequester() })
                         .focusProperties {
                             // While editing, the arrows belong to the row: a fixed target would step past its edge.
@@ -357,9 +360,9 @@ fun HomeScreen(
                 )
             }
             item(key = ALL_APPS_KEY) {
-                AllAppsTile(
-                    actions.allApps,
-                    Modifier.width(px(230)).focusRequester(allAppsFocus).focusProperties {
+                HomeAllAppsTile(
+                    m, actions.allApps,
+                    Modifier.width(px(m.tileW)).focusRequester(allAppsFocus).focusProperties {
                         // Not an item of the row: it stays put, out of reach, while the row is rearranged.
                         canFocus = !editing
                         // The row ends here: Right must not wander up to "Edit".
@@ -388,8 +391,8 @@ fun HomeScreen(
             }
             else -> null
         }
-        SectionHeading("On now", Modifier.padding(start = px(100), end = px(100), top = px(379)), channelsAction)
-        Box(Modifier.padding(start = px(100), top = px(463)).size(px(1720), px(506))) {
+        SectionHeading("On now", Modifier.padding(start = px(100), end = px(100), top = px(m.onNowHeadingY)), channelsAction)
+        Box(Modifier.padding(start = px(100), top = px(m.cardsY)).size(px(1720), px(m.cardsH))) {
             when (area) {
                 OnNowArea.Blank -> Unit
                 is OnNowArea.Message -> EmptyState(
@@ -414,7 +417,7 @@ fun HomeScreen(
                         .focusProperties { if (channelEdit != null) exit = { FocusRequester.Cancel } }
                         .focusGroup(),
                 ) {
-                    val smallX = px(LARGE_CARD_W + 24)
+                    val smallX = px(m.smallX)
                     // Every card is the same kind of card and is placed by where its channel is in the order. They are
                     // composed in an order that never changes (by channel id), so rearranging the row only changes
                     // where each one is put: no card is moved or rebuilt, and the held one keeps its focus. Of the
@@ -430,6 +433,8 @@ fun HomeScreen(
                             ChannelCard(
                                 ch, onAirLines(on, is24), url(on.programme?.image), loader,
                                 large = i == 0,
+                                widthPx = if (i == 0) m.largeW else m.smallW,
+                                heightPx = if (i == 0) m.cardsH else m.smallH,
                                 onClick = { actions.play(ch) },
                                 onFocused = {
                                     focusedId = ch.id
@@ -437,7 +442,7 @@ fun HomeScreen(
                                     memory.remember(FocusTarget(ROW_ON_NOW, ch.id, i))
                                 },
                                 modifier = Modifier
-                                    .offset(x = if (i == 0) px(0) else smallX, y = if (i == 0) px(0) else px((small - smallStart) * (SMALL_CARD_H + 18)))
+                                    .offset(x = if (i == 0) px(0) else smallX, y = if (i == 0) px(0) else px((small - smallStart) * (m.smallH + CARD_GAP)))
                                     .graphicsLayer { alpha = if (shown) 1f else 0f }
                                     .lifted(ch.id == channelEdit?.held)
                                     .focusRequester(channelFocus.getOrPut(ch.id) { FocusRequester() })
@@ -465,24 +470,5 @@ fun HomeScreen(
             }
         }
         ScreenHints(hintsFor(edit?.let { HintSpot.HomeEdit(holding = it.held != null) } ?: HintSpot.HomeRest))
-    }
-}
-
-/** The last tile of "Your apps": opens the full list on the Apps tab. */
-@Composable
-private fun AllAppsTile(onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    Column(
-        modifier
-            .tvFocus(focused, cornerPx = 20f, glow = FocusGlow.Card)
-            .height(px(AppTileSize.Home.height))
-            .background(if (focused) AtomixColors.Raised else AtomixColors.Tile, RoundedCornerShape(px(20)))
-            .clickable(interaction, indication = null, onClick = onClick),
-        verticalArrangement = Arrangement.spacedBy(px(12), Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Icon(LineIcon.Grid, AtomixColors.Text, 56)
-        BasicText("All apps", style = AtomixType.rowLabel(), maxLines = 1)
     }
 }

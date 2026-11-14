@@ -75,12 +75,6 @@ fun onAirLines(on: OnAir, is24: Boolean): OnAirLines {
 /** The one line a list row says about what a channel is showing: [onAirLines]' title without the rest. */
 fun onAirTitle(on: OnAir): String = on.programme?.title ?: "No programme information"
 
-/** The sizes of the two "On now" cards, px at 1920. */
-const val LARGE_CARD_W = 1050
-const val LARGE_CARD_H = 506
-const val SMALL_CARD_W = 646
-const val SMALL_CARD_H = 244
-
 /** The fade over full-bleed artwork: a little dark at the top for the channel's name, nearly solid behind the words. */
 internal fun artScrim(): Brush = AtomixColors.Scrim.let { scrim ->
     Brush.verticalGradient(0f to scrim.copy(alpha = 0.25f), 0.26f to scrim.copy(alpha = 0f), 0.52f to scrim.copy(alpha = 0.55f), 1f to scrim.copy(alpha = 0.96f))
@@ -119,9 +113,9 @@ internal fun ProgressBar(progress: Float, heightPx: Int, track: Color, modifier:
 }
 
 /**
- * One "On now" card: the large one (1050×506) when [large], else a small one (646×244). It is one card either way,
- * so a channel that moves between the large slot and a small one while the row is rearranged keeps its focus.
- * [watchHint] is false while the row is being rearranged, when OK does not watch.
+ * One "On now" card, [widthPx] by [heightPx]: drawn as the large card when [large], else as a small one. It is one
+ * card either way, so a channel that moves between the large slot and a small one while the row is rearranged keeps
+ * its focus. [watchHint] is false while the row is being rearranged, when OK does not watch.
  */
 @Composable
 fun ChannelCard(
@@ -130,6 +124,8 @@ fun ChannelCard(
     artUrl: String?,
     loader: ImageLoader,
     large: Boolean,
+    widthPx: Int,
+    heightPx: Int,
     onClick: () -> Unit,
     onFocused: () -> Unit,
     modifier: Modifier = Modifier,
@@ -146,13 +142,13 @@ fun ChannelCard(
             .zIndex(if (focused) 1f else 0f)
             .onFocusChanged { if (it.isFocused) onFocused() }
             .tvFocus(focused, cornerPx = corner.toFloat(), glow = FocusGlow.Card)
-            .size(px(if (large) LARGE_CARD_W else SMALL_CARD_W), px(if (large) LARGE_CARD_H else SMALL_CARD_H))
+            .size(px(widthPx), px(heightPx))
             .clip(RoundedCornerShape(px(corner)))
             .background(ground)
             .clickable(interaction, indication = null, onClick = onClick),
     ) {
-        if (large) LargeChannelCard(channel, lines, artUrl, loader, watchHint = focused && watchHint)
-        else SmallChannelCard(channel, lines, artUrl, loader, ground)
+        if (large) LargeChannelCard(channel, lines, artUrl, loader, watchHint = focused && watchHint, widthPx, heightPx)
+        else SmallChannelCard(channel, lines, artUrl, loader, ground, widthPx, heightPx)
     }
 }
 
@@ -161,13 +157,14 @@ fun ChannelCard(
  * with [watchHint], the one hint Home carries at rest: "OK Watch".
  */
 @Composable
-fun BoxScope.LargeChannelCard(channel: Channel, lines: OnAirLines, artUrl: String?, loader: ImageLoader, watchHint: Boolean) {
-    Artwork(artUrl, loader, LARGE_CARD_W, LARGE_CARD_H, BiasAlignment(0f, -0.6f))
+fun BoxScope.LargeChannelCard(channel: Channel, lines: OnAirLines, artUrl: String?, loader: ImageLoader, watchHint: Boolean, widthPx: Int, heightPx: Int) {
+    Artwork(artUrl, loader, widthPx, heightPx, BiasAlignment(0f, -0.6f))
     Box(Modifier.fillMaxSize().background(artScrim()))
     NameChip(channel.name, 30, 38, 20, 8, 14, Modifier.padding(start = px(28), top = px(24)))
-    Column(Modifier.align(Alignment.BottomStart).padding(start = px(36), bottom = px(30)).width(px(720))) {
+    Column(Modifier.align(Alignment.BottomStart).padding(start = px(36), bottom = px(30)).width(px(minOf(720, widthPx - 72)))) {
         // A long title takes a second line rather than being cut short: this is read from across the room.
-        BasicText(lines.title, style = AtomixType.heading().copy(fontSize = pxSp(64), lineHeight = pxSp(74)), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val titleLines = largeTitleLines(heightPx, LookState.look.textSize.scale)
+        BasicText(lines.title, style = AtomixType.heading().copy(fontSize = pxSp(64), lineHeight = pxSp(74)), maxLines = titleLines, overflow = TextOverflow.Ellipsis)
         val meta = AtomixType.description().copy(fontSize = pxSp(32), lineHeight = pxSp(42), color = AtomixColors.TextBright)
         lines.time?.let { BasicText(it, style = meta, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         lines.next?.let { BasicText(it, style = meta, maxLines = 1, overflow = TextOverflow.Ellipsis) }
@@ -188,28 +185,34 @@ fun BoxScope.LargeChannelCard(channel: Channel, lines: OnAirLines, artUrl: Strin
     }
 }
 
-/**
- * How wide the words of a small card may run. Beside artwork they keep to the left of it (330 at Standard text, and
- * as much more as Large text needs, over the part of the picture that has already faded). With no artwork there is
- * nothing to stay clear of, so they take the card's width less its 30 px margins.
- */
-fun smallCardTextRoom(cardW: Int, hasArt: Boolean, textScale: Float): Int = if (hasArt) textRoom(330, textScale) else cardW - 60
-
 /** What a small card shows: words on the left over [ground], the programme's artwork fading in from the right. */
 @Composable
-fun BoxScope.SmallChannelCard(channel: Channel, lines: OnAirLines, artUrl: String?, loader: ImageLoader, ground: Color) {
-    Artwork(artUrl, loader, 370, SMALL_CARD_H, Alignment.Center, Modifier.align(Alignment.CenterEnd))
-    if (artUrl != null) Box(
-        Modifier.fillMaxSize().background(
-            Brush.horizontalGradient(0f to ground, 0.43f to ground, 0.62f to ground.copy(alpha = 0.55f), 0.82f to ground.copy(alpha = 0f)),
-        ),
-    )
-    NameChip(channel.name, 26, 32, 16, 6, 12, Modifier.padding(start = px(28), top = px(22)))
-    Column(Modifier.padding(start = px(30), top = px(82)).width(px(smallCardTextRoom(SMALL_CARD_W, artUrl != null, LookState.look.textSize.scale)))) {
+fun BoxScope.SmallChannelCard(channel: Channel, lines: OnAirLines, artUrl: String?, loader: ImageLoader, ground: Color, widthPx: Int, heightPx: Int) {
+    val scale = LookState.look.textSize.scale
+    val fit = smallCardFit(heightPx, scale)
+    Artwork(artUrl, loader, smallArtWidth(widthPx), heightPx, Alignment.Center, Modifier.align(Alignment.CenterEnd))
+    if (artUrl != null) {
+        // The card's own colour runs solid to where the artwork begins and fades out over the next 250 px of it. On
+        // the board's 646-wide card these are its stops (0.43, 0.62, 0.82); a narrower card keeps the same distances.
+        val k = 646f / widthPx
+        val start = if (widthPx == 646) 0.43f else (widthPx - smallArtWidth(widthPx) + 2f) / widthPx
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.horizontalGradient(
+                    0f to ground, start to ground,
+                    (start + 0.19f * k).coerceAtMost(1f) to ground.copy(alpha = 0.55f),
+                    (start + 0.39f * k).coerceAtMost(1f) to ground.copy(alpha = 0f),
+                ),
+            ),
+        )
+    }
+    NameChip(channel.name, 26, 32, 16, 6, 12, Modifier.padding(start = px(28), top = px(fit.chipTop)))
+    val room = smallCardTextRoom(widthPx, artUrl != null, scale)
+    Column(Modifier.padding(start = px(30), top = px(fit.textTop)).width(px(room))) {
         BasicText(lines.title, style = AtomixType.heading().copy(fontSize = pxSp(32), lineHeight = pxSp(46)), maxLines = 1, overflow = TextOverflow.Ellipsis)
         val meta = AtomixType.description().copy(fontSize = pxSp(26), lineHeight = pxSp(34), color = AtomixColors.TextSoft)
         lines.time?.let { BasicText(it, style = meta, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        lines.next?.let { BasicText(it, style = meta, maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        lines.progress?.let { ProgressBar(it, 9, AtomixColors.Track, Modifier.padding(top = px(14)).width(px(300))) }
+        if (fit.showNext) lines.next?.let { BasicText(it, style = meta, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        lines.progress?.let { ProgressBar(it, 9, AtomixColors.Track, Modifier.padding(top = px(14)).width(px(minOf(300, room - 30)))) }
     }
 }

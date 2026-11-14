@@ -3,13 +3,14 @@ package dev.atomix.launcher.ui.settings
 import dev.atomix.launcher.prefs.AccentId
 import dev.atomix.launcher.prefs.ClockChoice
 import dev.atomix.launcher.prefs.FocusStyle
+import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.prefs.TextSize
 import dev.atomix.launcher.prefs.ThemeId
 import dev.atomix.launcher.prefs.shownClock
 
 /** Everything the owner has chosen in Settings that a row can show or change. */
-data class Chosen(val look: Look)
+data class Chosen(val look: Look, val layout: HomeLayout = HomeLayout())
 
 /** How a row is worked with the remote. */
 enum class RowKind {
