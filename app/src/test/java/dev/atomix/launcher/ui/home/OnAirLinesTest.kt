@@ -37,4 +37,10 @@ class OnAirLinesTest {
         assertEquals("No programme information", onAirLines(onAir(tvnz(), 0), true).title)
 
     @Test fun twentyFourHourTimes_areZeroPadded() = assertEquals("07:36", clockText(7 * 60 * min + 36 * min, true))
+
+    @Test fun titleAlone_isTheProgramme_orNoInformation() {
+        assertEquals("Fishing and Adventure", onAirTitle(onAir(tvnz(now, next), 6 * min)))
+        assertEquals("No programme information", onAirTitle(onAir(tvnz(), 0)))
+        assertEquals("No programme information", onAirTitle(onAir(tvnz(now), 30 * min)))
+    }
 }

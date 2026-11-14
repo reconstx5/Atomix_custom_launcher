@@ -28,6 +28,7 @@ import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.LocalTopBarFocus
+import dev.atomix.launcher.shell.restoresFocus
 import dev.atomix.launcher.ui.kit.AppTile
 import dev.atomix.launcher.ui.kit.AppTileSize
 import dev.atomix.launcher.ui.kit.HintSpot
@@ -68,11 +69,15 @@ fun AppsTab(
     var focusedPkg by remember { mutableStateOf(memory.current()?.key) }
     var onEditAction by remember { mutableStateOf(false) }
 
+    val restoredAt = remember { intArrayOf(Int.MIN_VALUE) }
     LaunchedEffect(restoreTick, apps.size) {
+        // Coming to the tab always restores. An app installed or removed meanwhile does not take focus from the top bar.
+        if (!restoresFocus(byTick = restoredAt[0] != restoreTick, barHasFocus = bar?.hasFocus == true)) return@LaunchedEffect
         val target = memory.resolve(mapOf(ROW_ALL_APPS to apps.map { it.packageName })) ?: return@LaunchedEffect
         window.show(target.index / APP_COLUMNS, rows.size, ROWS_SHOWN)
         withFrameNanos { }
         runCatching { tileFocus[target.key]?.requestFocus() }
+        restoredAt[0] = restoreTick
     }
 
     /** The tile's requester if its row is one of those showing. */
@@ -121,9 +126,9 @@ fun AppsTab(
                             modifier = Modifier.weight(1f)
                                 .focusRequester(tileFocus.getOrPut(app.packageName) { FocusRequester() })
                                 .focusProperties {
-                                    // Up from the top row: the tile under "Edit" goes to it, the rest to the Apps tab.
+                                    // Up from the top row: its last tile goes to "Edit", the rest to the Apps tab.
                                     if (rowIndex == 0) {
-                                        if (column == APP_COLUMNS - 1) up = editFocus else if (bar != null) up = bar.marked
+                                        if (isUnderEdit(column, row.size)) up = editFocus else if (bar != null) up = bar.marked
                                     }
                                     // A row ends at its last tile: Right must not wander off to "Edit" or to a
                                     // longer row above.

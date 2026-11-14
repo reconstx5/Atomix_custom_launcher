@@ -32,3 +32,9 @@ enum class Place(val tab: Tab?, val button: TopButton?) {
         }
     }
 }
+
+/**
+ * Where the launcher is after an input was picked on the Inputs page. Home if the input opened, so Back from it
+ * lands on Home and not on the list again; still Inputs if it could not be opened, where the message makes sense.
+ */
+fun placeAfterPick(started: Boolean): Place = if (started) Place.Home else Place.Inputs

@@ -49,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.kit.HintSpot
+import dev.atomix.launcher.ui.kit.OK
 import dev.atomix.launcher.ui.kit.Icon
 import dev.atomix.launcher.ui.kit.LineIcon
 import dev.atomix.launcher.ui.kit.RowEnding
@@ -79,18 +80,6 @@ class SettingsActions(
 
 private const val SERVER = "server"
 
-/** What OK does on each row, for the hint bar; null for a row that only states something. */
-private fun actionFor(item: SettingsItem?, reduced: Boolean): String? = when (item) {
-    SettingsItem.HomeButton -> "Open TV settings"
-    SettingsItem.ReducedEffects -> if (reduced) "Turn off" else "Turn on"
-    SettingsItem.LiveSources -> "Refresh"
-    SettingsItem.TestChannel -> "Play"
-    SettingsItem.ManageSources -> "Open Atomix"
-    SettingsItem.FindServer -> "Search"
-    SettingsItem.SwitchProfile -> "Switch"
-    SettingsItem.Server, SettingsItem.Version, null -> null
-}
-
 private fun iconFor(section: SettingsSection): LineIcon = when (section) {
     SettingsSection.Setup -> LineIcon.House
     SettingsSection.Appearance -> LineIcon.Drop
@@ -109,10 +98,18 @@ private fun iconFor(section: SettingsSection): LineIcon = when (section) {
  * level: rows, then the section list, then Home.
  */
 @Composable
-fun SettingsScreen(state: SettingsState, info: SettingsInfo, reduced: Boolean, nowMs: Long, actions: SettingsActions) {
+fun SettingsScreen(
+    state: SettingsState,
+    info: SettingsInfo,
+    reduced: Boolean,
+    nowMs: Long,
+    actions: SettingsActions,
+    /** The section to open on, when Settings was opened about one; otherwise the first. */
+    start: SettingsSection? = null,
+) {
     val live by state.live.collectAsState()
     val sections = remember { listedSections() }
-    var section by remember { mutableStateOf(sections.first()) }
+    var section by remember { mutableStateOf(start?.takeIf { it in sections } ?: sections.first()) }
     val sectionFocus = remember { sections.associateWith { FocusRequester() } }
     val rowsFirst = remember { FocusRequester() }
     val bar = LocalTopBarFocus.current
@@ -136,10 +133,12 @@ fun SettingsScreen(state: SettingsState, info: SettingsInfo, reduced: Boolean, n
         onDispose { bar?.down = null }
     }
 
+    // Read here so the row and its hint agree: with no channel there is nothing for OK to play.
+    val hasTestChannel = state.testChannelId() != null
     val hints = when {
-        inRows -> hintsFor(HintSpot.SettingsRow(actionFor(focusedItem, reduced)))
+        inRows -> hintsFor(HintSpot.SettingsRow(okActionFor(focusedItem, reduced, hasTestChannel)))
         // A section with nothing to move into offers no "OK Open".
-        else -> hintsFor(HintSpot.SettingsSections).filter { hasRowToOpen(section) || it.key != "OK" }
+        else -> hintsFor(HintSpot.SettingsSections).filter { hasRowToOpen(section) || it.key != OK }
     }
     ScreenFrame(heading = "Settings", hints = hints) {
         Column(Modifier.width(px(430)), verticalArrangement = Arrangement.spacedBy(px(8))) {
@@ -220,7 +219,8 @@ fun SettingsScreen(state: SettingsState, info: SettingsInfo, reduced: Boolean, n
                     }
                     SettingsItem.TestChannel -> SettingRow(
                         "Test a channel", { state.testChannelId()?.let(actions.testChannel) }, first(true),
-                        ending = RowEnding.Value("", chevron = true),
+                        description = if (hasTestChannel) null else "No channel to play yet",
+                        ending = if (hasTestChannel) RowEnding.Value("", chevron = true) else RowEnding.None,
                         onFocused = { focusedItem = item },
                     )
                     SettingsItem.ManageSources -> {

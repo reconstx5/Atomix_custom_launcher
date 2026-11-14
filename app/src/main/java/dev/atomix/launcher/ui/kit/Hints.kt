@@ -27,7 +27,8 @@ sealed interface HintSpot {
     data class PlayerList(val channel: String) : HintSpot
 }
 
-private const val OK = "OK"
+/** The key name on the OK chip. */
+internal const val OK = "OK"
 private const val BACK = "Back"
 private const val UP_DOWN = "▲▼"
 

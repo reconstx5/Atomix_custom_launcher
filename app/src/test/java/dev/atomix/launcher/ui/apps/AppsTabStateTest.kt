@@ -83,4 +83,11 @@ class AppsTabStateTest {
         assertNull(focusAfterRemove(listOf("a"), at = 0, columns = 7))
         assertNull(focusAfterRemove(listOf("a", "b"), at = 5, columns = 7))
     }
+
+    @Test fun editIsReachedFromTheLastTileOfTheTopRow_howeverShortTheRow() {
+        assertTrue(isUnderEdit(column = 6, topRowSize = 7))
+        assertFalse(isUnderEdit(column = 5, topRowSize = 7))
+        assertTrue(isUnderEdit(column = 2, topRowSize = 3))   // three apps: there is no seventh column
+        assertTrue(isUnderEdit(column = 0, topRowSize = 1))
+    }
 }

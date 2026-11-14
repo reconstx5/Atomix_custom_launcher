@@ -3,6 +3,8 @@ package dev.atomix.launcher.ui.home
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.LiveState
 import org.junit.Assert.assertEquals
+import dev.atomix.launcher.ui.settings.SettingsSection
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class OnNowAreaTest {
@@ -33,5 +35,14 @@ class OnNowAreaTest {
     @Test fun loadingAndSignedOut_drawNothing() {
         assertEquals(OnNowArea.Blank, onNowArea(LiveState.Loading))
         assertEquals(OnNowArea.Blank, onNowArea(LiveState.SignedOut))
+    }
+
+    @Test fun openSettings_underNotSetUp_opensTheLiveTvSection() =
+        assertEquals(SettingsSection.LiveTv, OnNowAction.OpenSettings.settingsSection())
+
+    @Test fun theOtherButtons_nameNoSection() {
+        assertNull(OnNowAction.Settings.settingsSection())
+        assertNull(OnNowAction.Retry.settingsSection())
+        assertNull(OnNowAction.ChooseChannels.settingsSection())
     }
 }

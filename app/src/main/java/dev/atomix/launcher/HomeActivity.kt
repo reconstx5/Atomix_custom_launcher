@@ -40,6 +40,7 @@ import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeViewModel
 import dev.atomix.launcher.shell.Place
+import dev.atomix.launcher.shell.placeAfterPick
 import dev.atomix.launcher.shell.ShellScreen
 import dev.atomix.launcher.ui.apps.AppsTab
 import dev.atomix.launcher.ui.apps.AppsTabState
@@ -59,6 +60,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.atomix.launcher.ui.settings.SettingsActions
 import dev.atomix.launcher.ui.settings.SettingsInfo
 import dev.atomix.launcher.ui.settings.SettingsScreen
+import dev.atomix.launcher.ui.settings.SettingsSection
 import dev.atomix.launcher.ui.settings.SettingsState
 import dev.atomix.launcher.ui.splash.SplashPolicy
 import dev.atomix.launcher.ui.splash.SplashScreen
@@ -91,6 +93,8 @@ class HomeActivity : ComponentActivity() {
     /** Bumped on every return to Home; the visible screen restores its remembered focus. */
     private val restoreTick = mutableIntStateOf(0)
     private val place = mutableStateOf(Place.Home)
+    /** The Settings section to open on, when Settings was opened about one (a button under a message on Home). */
+    private val settingsSection = mutableStateOf<SettingsSection?>(null)
     private val signedIn = mutableStateOf(false)
     /** Whether the Home-button service is switched on, re-read whenever the launcher comes back to the front. */
     private val homeOverrideOn = mutableStateOf(false)
@@ -163,7 +167,7 @@ class HomeActivity : ComponentActivity() {
                             onPlace = { place.value = it; restoreTick.intValue++ },
                             clock = clockText(ui.nowMs, is24),
                             onInputs = ::openInputs,
-                            onSettings = ::openSettings,
+                            onSettings = { openSettings() },
                         ) { current ->
                             when (current) {
                                 Place.Home -> HomeScreen(
@@ -178,7 +182,7 @@ class HomeActivity : ComponentActivity() {
                                         openApp = { launch(it.launch) },
                                         allApps = { place.value = Place.Apps },
                                         chooseChannels = { place.value = Place.LiveTv },
-                                        openSettings = ::openSettings,
+                                        openSettings = { openSettings(it) },
                                         retry = home.vm::refreshNow,
                                         saveChannels = { order -> home.vm.saveChannelOrder(order) { toast("Couldn't save the channel order. Try again.") } },
                                         saveApps = home.vm::saveAppOrder,
@@ -218,8 +222,7 @@ class HomeActivity : ComponentActivity() {
                                 Place.Inputs -> InputsScreen(
                                     hdmi = hdmiInputs.value,
                                     tuner = InputEntry(TUNER_INPUT, "TV tuner"),
-                                    // Home first, so coming back from the input lands on Home, not on this list.
-                                    onPick = { place.value = Place.Home; openInput(it) },
+                                    onPick = { place.value = placeAfterPick(openInput(it)) },
                                 )
                                 Place.Settings -> SettingsScreen(
                                     state = settings,
@@ -231,6 +234,7 @@ class HomeActivity : ComponentActivity() {
                                     ),
                                     reduced = reduced.value,
                                     nowMs = ui.nowMs,
+                                    start = settingsSection.value,
                                     actions = SettingsActions(
                                         testChannel = ::testChannel,
                                         manageSources = { launch(atomixIntent(this, ROUTE_LIVE_SETTINGS)) },
@@ -262,12 +266,22 @@ class HomeActivity : ComponentActivity() {
         place.value = Place.Inputs
     }
 
-    private fun openInput(input: InputEntry) {
-        if (input.id == TUNER_INPUT) liveTvIntent(packageManager)?.let(::launch) ?: toast("The TV tuner app isn't installed")
-        else launch(TvInputs(this).intentFor(input))
+    /** Opens an input; false when it could not be opened (a message has said why). */
+    private fun openInput(input: InputEntry): Boolean {
+        if (input.id != TUNER_INPUT) return launch(TvInputs(this).intentFor(input))
+        val tuner = liveTvIntent(packageManager)
+        if (tuner == null) {
+            toast("The TV tuner app isn't installed")
+            return false
+        }
+        return launch(tuner)
     }
 
-    private fun openSettings() { place.value = Place.Settings }
+    /** Opens Settings, on [section] when it was opened about one. */
+    private fun openSettings(section: SettingsSection? = null) {
+        settingsSection.value = section
+        place.value = Place.Settings
+    }
 
     /** Plays a channel from Settings; Back from the player returns to Settings. */
     private fun testChannel(id: String) {
@@ -320,7 +334,10 @@ class HomeActivity : ComponentActivity() {
 
     private fun toast(text: String) = Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
 
-    private fun launch(intent: Intent) {
-        if (!safeStart(intent)) toast("Couldn't open that")
+    /** Starts [intent]; false, with a message, when it could not be started. */
+    private fun launch(intent: Intent): Boolean {
+        val started = safeStart(intent)
+        if (!started) toast("Couldn't open that")
+        return started
     }
 }

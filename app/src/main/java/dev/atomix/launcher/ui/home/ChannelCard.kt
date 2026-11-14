@@ -61,7 +61,7 @@ fun clockText(ms: Long, is24: Boolean): String =
 data class OnAirLines(val title: String, val time: String?, val next: String?, val progress: Float?)
 
 fun onAirLines(on: OnAir, is24: Boolean): OnAirLines {
-    val p = on.programme ?: return OnAirLines("No programme information", null, null, null)
+    val p = on.programme ?: return OnAirLines(onAirTitle(on), null, null, null)
     return OnAirLines(
         title = p.title,
         time = "${timeRange(p.start, p.end, is24)} • ${on.minutesLeft} min left",
@@ -69,6 +69,9 @@ fun onAirLines(on: OnAir, is24: Boolean): OnAirLines {
         progress = on.progress,
     )
 }
+
+/** The one line a list row says about what a channel is showing: [onAirLines]' title without the rest. */
+fun onAirTitle(on: OnAir): String = on.programme?.title ?: "No programme information"
 
 /** The sizes of the two "On now" cards, px at 1920. */
 const val LARGE_CARD_W = 1050

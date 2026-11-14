@@ -53,6 +53,8 @@ import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeUi
 import dev.atomix.launcher.shell.LocalTopBarFocus
+import dev.atomix.launcher.ui.settings.SettingsSection
+import dev.atomix.launcher.shell.restoresFocus
 import dev.atomix.launcher.ui.kit.AppTile
 import dev.atomix.launcher.ui.kit.AppTileSize
 import dev.atomix.launcher.ui.kit.EmptyState
@@ -86,7 +88,8 @@ class HomeActions(
     val openApp: (AppEntry) -> Unit,
     val allApps: () -> Unit,
     val chooseChannels: () -> Unit,
-    val openSettings: () -> Unit,
+    /** Opens Settings, at a section when the button is about one. */
+    val openSettings: (SettingsSection?) -> Unit,
     val retry: () -> Unit,
     /** Editing "On now" ended with a new order. */
     val saveChannels: (List<String>) -> Unit,
@@ -164,18 +167,9 @@ fun HomeScreen(
         OnNowArea.Blank -> FocusRequester.Default
     }
 
-    /**
-     * Brings small card [small] (of [count]) into the two that show. Stepping onto the next card turns the page (two
-     * at a time, stopping at the ends); otherwise the window moves just far enough.
-     */
+    /** Brings small card [small] (of [count]) into the two that show; see [smallWindowStart]. */
     fun showSmall(small: Int, count: Int, page: Boolean) {
-        val last = max(count - 2, 0)
-        val start = firstSmall.coerceIn(0, last)
-        firstSmall = when {
-            small < start -> if (page) min(max(start - 2, 0), small) else small
-            small > start + 1 -> if (page) max(min(start + 2, last), small - 1) else small - 1
-            else -> start
-        }
+        firstSmall = smallWindowStart(firstSmall, small, count, page)
     }
 
     /** Brings a channel's card on screen and focuses it; false when it can't be. */
@@ -292,8 +286,11 @@ fun HomeScreen(
 
     // Restore focus on every tick, and again whenever either row's contents change: an item that disappears while
     // Home is on screen (taken off Home on another device, app uninstalled) would otherwise take the focus with it.
+    val restoredAt = remember { intArrayOf(Int.MIN_VALUE) }
     LaunchedEffect(restoreTick, pinned.size, ui.apps.size, area::class) {
         if (edit != null) return@LaunchedEffect
+        // Coming to Home always restores. A list that only changed under it does not take focus from the top bar.
+        if (!restoresFocus(byTick = restoredAt[0] != restoreTick, barHasFocus = bar?.hasFocus == true)) return@LaunchedEffect
         val rows = linkedMapOf(ROW_ON_NOW to pinned.map { it.id }, ROW_APPS to ui.apps.map { it.packageName })
         // With no cards the area holds a message, and its button is what to focus, on a first visit and again when
         // the last channel leaves Home, unless the user was last on an app tile.
@@ -307,7 +304,10 @@ fun HomeScreen(
         }
         // While the first load is still running there is nothing worth focusing: an early OK would open an app
         // instead of the channel the user left.
-        if (ok || area is OnNowArea.Blank) return@LaunchedEffect
+        if (area is OnNowArea.Blank) return@LaunchedEffect
+        // Only now has this visit been answered: a first load that had nothing to focus must still be restored.
+        restoredAt[0] = restoreTick
+        if (ok) return@LaunchedEffect
         runCatching { emptyFocus.requestFocus() }.recoverCatching { allAppsFocus.requestFocus() }
     }
 
@@ -397,7 +397,7 @@ fun HomeScreen(
                     area.text,
                     area.actions.map { action ->
                         action.label to when (action) {
-                            OnNowAction.OpenSettings, OnNowAction.Settings -> actions.openSettings
+                            OnNowAction.OpenSettings, OnNowAction.Settings -> { -> actions.openSettings(action.settingsSection()) }
                             OnNowAction.Retry -> actions.retry
                             OnNowAction.ChooseChannels -> actions.chooseChannels
                         }

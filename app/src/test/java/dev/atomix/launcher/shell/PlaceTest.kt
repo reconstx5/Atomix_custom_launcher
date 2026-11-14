@@ -18,4 +18,9 @@ class PlaceTest {
         assertNull(Place.Inputs.tab); assertEquals(TopButton.Inputs, Place.Inputs.button)
         assertEquals(Place.LiveTv, Place.of(Tab.LiveTv))
     }
+
+    @Test fun pickingAnInput_goesHomeOnlyIfItOpened() {
+        assertEquals(Place.Home, placeAfterPick(started = true))    // so Back from the input lands on Home
+        assertEquals(Place.Inputs, placeAfterPick(started = false)) // "isn't installed": stay where the message makes sense
+    }
 }

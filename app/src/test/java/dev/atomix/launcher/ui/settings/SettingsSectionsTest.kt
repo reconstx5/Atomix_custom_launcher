@@ -3,6 +3,7 @@ package dev.atomix.launcher.ui.settings
 import dev.atomix.launcher.ui.kit.RowEnding
 import dev.atomix.launcher.ui.kit.Tone
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SettingsSectionsTest {
@@ -30,5 +31,17 @@ class SettingsSectionsTest {
 
     @Test fun okOpensASection_onlyWhenARowInItCanTakeFocus() {
         assertEquals(listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.LiveTv, SettingsSection.Account), listedSections().filter(::hasRowToOpen))
+    }
+
+    @Test fun testAChannel_offersPlay_onlyWithAChannelToPlay() {
+        assertEquals("Play", okActionFor(SettingsItem.TestChannel, reduced = false, hasTestChannel = true))
+        assertNull(okActionFor(SettingsItem.TestChannel, reduced = false, hasTestChannel = false))
+    }
+
+    @Test fun okAction_saysWhatOkDoes_andNothingForAStatement() {
+        assertEquals("Turn on", okActionFor(SettingsItem.ReducedEffects, reduced = false, hasTestChannel = true))
+        assertEquals("Turn off", okActionFor(SettingsItem.ReducedEffects, reduced = true, hasTestChannel = true))
+        assertNull(okActionFor(SettingsItem.Version, reduced = false, hasTestChannel = true))
+        assertNull(okActionFor(null, reduced = false, hasTestChannel = true))
     }
 }

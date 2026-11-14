@@ -45,3 +45,18 @@ fun hasRowToOpen(section: SettingsSection): Boolean = rowsIn(section).any { it !
  */
 fun homeButtonEnding(on: Boolean): RowEnding.Status =
     if (on) RowEnding.Status("On", Tone.Good, chevron = true) else RowEnding.Status("Off", Tone.Warn, chevron = true)
+
+/**
+ * What OK does on a row, for the hint bar; null for a row that only states something, and for "Test a channel" when
+ * there is no channel to play ([hasTestChannel] false), so the hint never promises what OK cannot do.
+ */
+fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean): String? = when (item) {
+    SettingsItem.HomeButton -> "Open TV settings"
+    SettingsItem.ReducedEffects -> if (reduced) "Turn off" else "Turn on"
+    SettingsItem.LiveSources -> "Refresh"
+    SettingsItem.TestChannel -> if (hasTestChannel) "Play" else null
+    SettingsItem.ManageSources -> "Open Atomix"
+    SettingsItem.FindServer -> "Search"
+    SettingsItem.SwitchProfile -> "Switch"
+    SettingsItem.Server, SettingsItem.Version, null -> null
+}

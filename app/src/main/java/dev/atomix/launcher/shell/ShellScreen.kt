@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
 import dev.atomix.launcher.ui.kit.TopMenu
 import dev.atomix.launcher.ui.kit.Wash
 import dev.atomix.launcher.ui.theme.px
@@ -22,7 +23,16 @@ import dev.atomix.launcher.ui.theme.px
  */
 class TopBarFocus(val marked: FocusRequester) {
     var down: (() -> FocusRequester)? = null
+    /** Whether focus is on the top bar now. Read when deciding whether a page may take focus back. */
+    var hasFocus: Boolean = false
 }
+
+/**
+ * Whether a page puts focus back on its remembered item. It always does when the user comes to it ([byTick]: a tab
+ * was opened, an app or the player was left). When only its list changed under it, it does so unless the top bar
+ * holds focus: OK there must go on meaning the tab or button the user is on.
+ */
+fun restoresFocus(byTick: Boolean, barHasFocus: Boolean): Boolean = byTick || !barHasFocus
 
 val LocalTopBarFocus = staticCompositionLocalOf<TopBarFocus?> { null }
 
@@ -54,6 +64,7 @@ fun ShellScreen(
             clock = clock,
             firstFocus = menuFocus,
             modifier = Modifier.padding(start = px(100), end = px(100), top = px(28))
+                .onFocusChanged { barFocus.hasFocus = it.hasFocus }
                 .focusProperties { down = barFocus.down?.invoke() ?: FocusRequester.Default },
         )
     }

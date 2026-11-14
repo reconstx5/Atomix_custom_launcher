@@ -59,7 +59,6 @@ object AtomixColors {
     val LogoPlate = Color(0xFFF2F5F9)
     val SwitchOff = Color(0xFF2A3A52)
     val Track = Color.White.copy(alpha = 0.24f)
-
 }
 
 val AVATAR_COLORS = mapOf(
@@ -98,7 +97,6 @@ object AtomixType {
     @Composable fun hint() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(24), color = AtomixColors.Text)
     @Composable fun button() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(26), color = AtomixColors.Text)
     @Composable fun note() = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = pxSp(22), lineHeight = pxSp(28), color = AtomixColors.Text)
-
 }
 
 private fun Double.em() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Em)

@@ -34,6 +34,12 @@ class AppsTabState(private val favourites: FavouriteApps, private val catalog: A
 }
 
 /**
+ * Whether Up from this tile of the Apps top row goes to "Edit": the row's last tile, which is the seventh column only
+ * when there are seven apps or more. With fewer, "Edit" would otherwise have no way to it.
+ */
+fun isUnderEdit(column: Int, topRowSize: Int): Boolean = column == topRowSize - 1
+
+/**
  * Which tile takes focus when the tile at [at] is about to leave a grid of [columns]: one that will still be in the
  * same row afterwards, so it is not rebuilt (which would drop the focus it was just given). That is the next tile
  * when it shares the row, else the one before. Null when no tile is left.

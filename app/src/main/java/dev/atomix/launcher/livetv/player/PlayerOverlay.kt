@@ -45,6 +45,7 @@ import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.onAir
 import dev.atomix.launcher.ui.home.clockText
 import dev.atomix.launcher.ui.home.onAirLines
+import dev.atomix.launcher.ui.home.onAirTitle
 import dev.atomix.launcher.ui.kit.ChipButton
 import dev.atomix.launcher.ui.kit.HintBar
 import dev.atomix.launcher.ui.kit.HintSpot
@@ -373,7 +374,7 @@ private fun NumberChip(typed: String, match: Channel?, nowMs: Long, loader: Imag
             Column {
                 BasicText(match.name, style = AtomixType.heading().copy(fontSize = pxSp(36), lineHeight = pxSp(46)), maxLines = 1)
                 BasicText(
-                    onAirLines(onAir(match, nowMs), is24 = true).title,
+                    onAirTitle(onAir(match, nowMs)),
                     style = AtomixType.description().copy(fontSize = pxSp(26), lineHeight = pxSp(34), color = AtomixColors.TextSoft),
                     maxLines = 1,
                 )

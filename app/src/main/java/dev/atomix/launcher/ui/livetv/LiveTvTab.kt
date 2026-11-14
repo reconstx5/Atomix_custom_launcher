@@ -47,11 +47,13 @@ import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.HomeUi
 import dev.atomix.launcher.shell.LocalTopBarFocus
+import dev.atomix.launcher.shell.restoresFocus
 import dev.atomix.launcher.ui.home.Artwork
 import dev.atomix.launcher.ui.home.NameChip
 import dev.atomix.launcher.ui.home.ProgressBar
 import dev.atomix.launcher.ui.home.artScrim
 import dev.atomix.launcher.ui.home.onAirLines
+import dev.atomix.launcher.ui.home.onAirTitle
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.HintSpot
@@ -105,12 +107,16 @@ fun LiveTvTab(
     var focusedId by remember { mutableStateOf(memory.current()?.key) }
     var onSwitch by remember { mutableStateOf(false) }
 
+    val restoredAt = remember { intArrayOf(Int.MIN_VALUE) }
     LaunchedEffect(restoreTick, all?.size) {
         val ids = all?.map { it.id } ?: return@LaunchedEffect
+        // Coming to the tab always restores. A channel list that only changed does not take focus from the top bar.
+        if (!restoresFocus(byTick = restoredAt[0] != restoreTick, barHasFocus = bar?.hasFocus == true)) return@LaunchedEffect
         val target = memory.resolve(mapOf(ROW_CHANNELS to ids)) ?: return@LaunchedEffect
         window.show(target.index, ids.size, ROWS_SHOWN)
         withFrameNanos { }
         runCatching { rowFocus[target.key]?.requestFocus() }
+        restoredAt[0] = restoreTick
     }
 
     /**
@@ -245,8 +251,7 @@ fun ChannelRow(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    // Only the title is used, so the 12/24-hour style does not matter here.
-    val title = onAirLines(onAir(ch, nowMs), is24 = true).title
+    val title = onAirTitle(onAir(ch, nowMs))
     Row(
         modifier
             .then(focus)
