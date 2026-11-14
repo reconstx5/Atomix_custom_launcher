@@ -37,6 +37,11 @@ class HintsTest {
         assertEquals(h("Back" to "Sections"), hintsFor(HintSpot.SettingsRow(null)))
     }
 
+    @Test fun settingsStep_namesTheArrows() =
+        assertEquals(h("◀ ▶" to "Pick a colour", "Back" to "Sections"), hintsFor(HintSpot.SettingsStep("Pick a colour")))
+
+    @Test fun settingsChoice_selectsOrCloses() = assertEquals(h("OK" to "Select", "Back" to "Close"), hintsFor(HintSpot.SettingsChoice))
+
     @Test fun watching_matchesTheBoards() {
         assertEquals(h("▲▼" to "Change channel", "◀" to "Channels", "Back" to "Hide"), hintsFor(HintSpot.PlayerBanner))
         assertEquals(h("▲▼" to "Change channel", "Back" to "Home"), hintsFor(HintSpot.PlayerTuning))

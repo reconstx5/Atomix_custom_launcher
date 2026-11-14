@@ -48,6 +48,9 @@ import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.HintSpot
 import dev.atomix.launcher.ui.kit.Icon
 import dev.atomix.launcher.ui.kit.LineIcon
+import dev.atomix.launcher.ui.kit.MENU_W
+import dev.atomix.launcher.ui.kit.menuHeight
+import dev.atomix.launcher.ui.kit.menuTop
 import dev.atomix.launcher.ui.kit.ScreenFrame
 import dev.atomix.launcher.ui.kit.SegmentedPills
 import dev.atomix.launcher.ui.kit.WindowColumn
@@ -67,11 +70,7 @@ private const val GAP = 16
 
 /** The grid starts under the pills: 60 of track and 24 of space. */
 private const val GRID_TOP = 84
-private const val MENU_W = 470
 private const val MENU_ITEM_H = 72
-
-/** The content box of a page is 770 high (y 210 to the hint bar at 980); the menu stays 16 clear of the bar. */
-private const val MENU_FLOOR = 770 - 16
 
 /**
  * Manage apps, as far as it goes for now: which apps are in Home's "Your apps" row. OK on an app opens its menu (add
@@ -183,10 +182,10 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
             val at = shown.indexOf(menuApp)
             val tileX = at % APP_COLUMNS * (TILE_W + GAP)
             val tileY = GRID_TOP + (at / APP_COLUMNS - window.startFor(rows.size, ROWS_SHOWN)) * (TILE_H + GAP)
-            val height = 20 + 36 + menuItems.size * (MENU_ITEM_H + 10) + 20
             // Beside the tile on the right, or on the left when the right would cross the page's margin.
             val x = if (tileX + TILE_W + 14 + MENU_W <= 1720) tileX + TILE_W + 14 else tileX - 14 - MENU_W
-            val y = (tileY - 24).coerceIn(0, maxOf(MENU_FLOOR - height, 0))
+            // 24 above its tile's top, kept on the page and clear of the hint bar: the rule every menu follows.
+            val y = menuTop(tileY, menuHeight(menuItems.size))
             AppMenu(
                 menuApp.label, menuItems, menuFirst,
                 onItem = { choose(it, menuApp) },

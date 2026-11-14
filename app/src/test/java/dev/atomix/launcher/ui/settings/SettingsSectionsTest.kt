@@ -37,7 +37,7 @@ class SettingsSectionsTest {
 
     @Test fun rows_perSection() {
         assertEquals(listOf(SettingsItem.HomeButton), rowsIn(SettingsSection.Setup))
-        assertEquals(listOf(SettingsItem.ReducedEffects), rowsIn(SettingsSection.Appearance))
+        assertEquals(listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.ReducedEffects), rowsIn(SettingsSection.Appearance))
         assertEquals(listOf(SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources), rowsIn(SettingsSection.LiveTv))
         assertEquals(listOf(SettingsItem.Server, SettingsItem.FindServer, SettingsItem.SwitchProfile), rowsIn(SettingsSection.Account))
         assertEquals(listOf(SettingsItem.Version), rowsIn(SettingsSection.About))
@@ -63,5 +63,10 @@ class SettingsSectionsTest {
         assertEquals("Turn off", okActionFor(SettingsItem.ReducedEffects, reduced = true, hasTestChannel = true))
         assertNull(okActionFor(SettingsItem.Version, reduced = false, hasTestChannel = true))
         assertNull(okActionFor(null, reduced = false, hasTestChannel = true))
+    }
+
+    @Test fun okOnAListRow_chooses_andAStepRowHasNoOkAction() {
+        assertEquals("Choose", okActionFor(SettingsItem.Theme, reduced = false, hasTestChannel = true))
+        assertNull(okActionFor(SettingsItem.Accent, reduced = false, hasTestChannel = true))
     }
 }

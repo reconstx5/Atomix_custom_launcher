@@ -240,6 +240,7 @@ class HomeActivity : ComponentActivity() {
                                         homeOverrideOn = homeOverrideOn.value,
                                     ),
                                     reduced = reduced.value,
+                                    look = LookState.look,
                                     nowMs = ui.nowMs,
                                     tv = tvFacts.value,
                                     start = settingsSection.value,
@@ -250,6 +251,7 @@ class HomeActivity : ComponentActivity() {
                                         setReduced = { settings.reducedEffects = it; reduced.value = it },
                                         openAccessibility = { if (!openTvSettings()) toast("Couldn't open that") },
                                         openTvPage = { if (!openTvPage(it)) toast("Couldn't open that") },
+                                        setLook = { graph.prefs.look = it; LookState.look = it },
                                     ),
                                 )
                             }

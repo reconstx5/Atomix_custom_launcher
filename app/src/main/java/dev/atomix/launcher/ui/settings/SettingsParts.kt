@@ -17,7 +17,12 @@ import dev.atomix.launcher.ui.theme.px
  * What a section's pane needs from the Settings screen: [first] goes on the row OK or Right on the section lands on,
  * and [onFocused] is told which item has focus, for the hint bar.
  */
-class PaneHost(val first: FocusRequester, val onFocused: (SettingsItem) -> Unit)
+class PaneHost(
+    val first: FocusRequester,
+    val onFocused: (SettingsItem) -> Unit,
+    /** A row's own focus handle, so the screen can send focus back to it (when its list of choices closes). */
+    val rowFocus: (SettingsItem) -> FocusRequester = { FocusRequester() },
+)
 
 /** A group's label over its rows, in its 36-high line. */
 @Composable

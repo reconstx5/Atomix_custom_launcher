@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -49,8 +50,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import dev.atomix.launcher.apps.TvFacts
 import dev.atomix.launcher.apps.TvPage
+import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.shell.LocalTopBarFocus
+import dev.atomix.launcher.ui.kit.ChoiceList
 import dev.atomix.launcher.ui.kit.HintSpot
+import dev.atomix.launcher.ui.kit.MENU_W
+import dev.atomix.launcher.ui.kit.menuHeight
+import dev.atomix.launcher.ui.kit.menuTop
 import dev.atomix.launcher.ui.kit.OK
 import dev.atomix.launcher.ui.kit.Icon
 import dev.atomix.launcher.ui.kit.LineIcon
@@ -81,6 +87,8 @@ class SettingsActions(
     val openAccessibility: () -> Unit,
     /** Opens one of the TV's own settings pages. */
     val openTvPage: (TvPage) -> Unit,
+    /** Saves a change to how the launcher looks and shows it at once. */
+    val setLook: (Look) -> Unit,
 )
 
 private const val SERVER = "server"
@@ -108,6 +116,8 @@ fun SettingsScreen(
     state: SettingsState,
     info: SettingsInfo,
     reduced: Boolean,
+    /** How the launcher looks now. */
+    look: Look,
     nowMs: Long,
     actions: SettingsActions,
     /** The TV's own pages that can be opened, and what the launcher can say about two of them. */
@@ -127,6 +137,31 @@ fun SettingsScreen(
     var serverNote by remember { mutableStateOf<String?>(null) }
     var inRows by remember { mutableStateOf(false) }
     var focusedItem by remember { mutableStateOf<SettingsItem?>(null) }
+    val now = Chosen(look)
+    val rowFocus = remember { HashMap<SettingsItem, FocusRequester>() }
+    val host = PaneHost(rowsFirst, { focusedItem = it }, { item -> rowFocus.getOrPut(item) { FocusRequester() } })
+    // The row whose choices are open as a list, and where focus goes in that list as it opens.
+    var openList by remember { mutableStateOf<SettingsItem?>(null) }
+    val listFocus = remember { FocusRequester() }
+
+    fun openList(item: SettingsItem) {
+        if (choiceOptions(item).isEmpty()) return
+        openList = item
+        scope.launch { withFrameNanos { }; runCatching { listFocus.requestFocus() } }
+    }
+
+    /** Closes the list. Focus goes back to its row first: a focused control that is removed hands focus elsewhere. */
+    fun closeList() {
+        val item = openList ?: return
+        runCatching { rowFocus[item]?.requestFocus() }
+        openList = null
+    }
+
+    /** Makes choice [index] of [item] and saves it. */
+    fun choose(item: SettingsItem, index: Int) {
+        val next = withChoice(item, index, now)
+        if (next.look != look) actions.setLook(next.look)
+    }
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
@@ -135,6 +170,8 @@ fun SettingsScreen(
     }
     // Back in the rows steps out to the section list; in the list it is the shell's, and goes Home.
     BackHandler(enabled = inRows) { runCatching { sectionFocus.getValue(section).requestFocus() } }
+    // With a list of choices open, Back closes it and changes nothing. Declared after, so it is asked first.
+    BackHandler(enabled = openList != null) { closeList() }
     // Down from the top bar returns to the section that is open.
     val barDown by rememberUpdatedState { sectionFocus.getValue(section) }
     DisposableEffect(bar) {
@@ -144,7 +181,10 @@ fun SettingsScreen(
 
     // Read here so the row and its hint agree: with no channel there is nothing for OK to play.
     val hasTestChannel = state.testChannelId() != null
+    val stepHint = focusedItem?.let(::stepHintFor)
     val hints = when {
+        openList != null -> hintsFor(HintSpot.SettingsChoice)
+        inRows && stepHint != null -> hintsFor(HintSpot.SettingsStep(stepHint))
         inRows -> hintsFor(HintSpot.SettingsRow(okActionFor(focusedItem, reduced, hasTestChannel)))
         // A section with nothing to move into offers no "OK Open".
         else -> hintsFor(HintSpot.SettingsSections).filter { hasRowToOpen(section) || it.key != OK }
@@ -184,8 +224,16 @@ fun SettingsScreen(
             var firstTaken = false
             fun first(focusable: Boolean): Modifier = if (focusable && !firstTaken) { firstTaken = true; Modifier.focusRequester(rowsFirst) } else Modifier
 
-            rowsIn(section).forEach { item ->
+            if (section == SettingsSection.Appearance) AppearancePane(
+                host, now, reduced, openList,
+                onStep = ::choose,
+                onOpenList = ::openList,
+                onReduced = actions.setReduced,
+            )
+            else rowsIn(section).forEach { item ->
                 when (item) {
+                    // Drawn by AppearancePane.
+                    SettingsItem.Theme, SettingsItem.Accent, SettingsItem.ReducedEffects -> Unit
                     SettingsItem.HomeButton -> {
                         GroupLabel("HOME SCREEN")
                         SettingRow(
@@ -193,15 +241,6 @@ fun SettingsScreen(
                             // OK can only open the TV's settings at their first page, so the row says where to go.
                             description = "Change it in TV settings: Device Preferences \u203A Accessibility",
                             ending = homeButtonEnding(info.homeOverrideOn),
-                            onFocused = { focusedItem = item },
-                        )
-                    }
-                    SettingsItem.ReducedEffects -> {
-                        GroupLabel("FOCUS AND MOTION")
-                        SettingRow(
-                            "Reduced effects", { actions.setReduced(!reduced) }, first(true),
-                            description = "No glow or animation, for a steadier picture",
-                            ending = RowEnding.Switch(reduced),
                             onFocused = { focusedItem = item },
                         )
                     }
@@ -289,7 +328,7 @@ fun SettingsScreen(
                             onFocused = { focusedItem = item },
                         )
                     }
-                    SettingsItem.TvPages -> TvSettingsPane(PaneHost(rowsFirst) { focusedItem = it }, tv, tvWindow, actions.openTvPage)
+                    SettingsItem.TvPages -> TvSettingsPane(host, tv, tvWindow, actions.openTvPage)
                     SettingsItem.Version -> SettingRow(
                         "Atomix TV", null,
                         description = "Live TV and your apps, from your Atomix server.",
@@ -297,6 +336,19 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
+        // A row's list of choices, over the right end of its row. It is outside the rows' column, so the rows' rule
+        // about where focus may go does not hold it; its own rows keep focus inside it.
+        openList?.let { item ->
+            val options = choiceOptions(item)
+            val top = rowTop(item, groupsOf(section))
+            if (options.isNotEmpty() && top != null) ChoiceList(
+                titleOf(item), options, chosenIndex(item, now),
+                chosenFocus = listFocus,
+                onChoose = { choose(item, it); closeList() },
+                onFocused = { },
+                modifier = Modifier.offset(x = px(1720 - MENU_W - 20), y = px(menuTop(top, menuHeight(options.size)))),
+            )
         }
     }
 }

@@ -21,6 +21,10 @@ sealed interface HintSpot {
     data object SettingsSections : HintSpot
     /** [action] is what OK does on the row; null when the row does nothing on OK. */
     data class SettingsRow(val action: String?) : HintSpot
+    /** A row whose value Left and Right change in place; [what] says what they change. */
+    data class SettingsStep(val what: String) : HintSpot
+    /** A row's list of choices is open. */
+    data object SettingsChoice : HintSpot
     data object PlayerBanner : HintSpot
     data object PlayerTuning : HintSpot
     data class PlayerError(val button: String, val bannerUp: Boolean) : HintSpot
@@ -49,6 +53,8 @@ fun hintsFor(spot: HintSpot): List<Hint> = when (spot) {
     is HintSpot.InputCard -> listOf(Hint(OK, "Switch to ${spot.input}"), Hint(BACK, "Home"))
     HintSpot.SettingsSections -> listOf(Hint(OK, "Open"), Hint(BACK, "Home"))
     is HintSpot.SettingsRow -> listOfNotNull(spot.action?.let { Hint(OK, it) }, Hint(BACK, "Sections"))
+    is HintSpot.SettingsStep -> listOf(Hint("◀ ▶", spot.what), Hint(BACK, "Sections"))
+    HintSpot.SettingsChoice -> listOf(Hint(OK, "Select"), Hint(BACK, "Close"))
     HintSpot.PlayerBanner -> listOf(Hint(UP_DOWN, "Change channel"), Hint("◀", "Channels"), Hint(BACK, "Hide"))
     HintSpot.PlayerTuning -> listOf(Hint(UP_DOWN, "Change channel"), Hint(BACK, "Home"))
     is HintSpot.PlayerError -> listOf(Hint(OK, spot.button), Hint(UP_DOWN, "Change channel"), Hint(BACK, if (spot.bannerUp) "Hide" else "Home"))

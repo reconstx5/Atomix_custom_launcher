@@ -19,7 +19,7 @@ enum class SettingsSection(val title: String) {
 
 /** The rows that work today. */
 enum class SettingsItem {
-    HomeButton, ReducedEffects, LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
+    HomeButton, Theme, Accent, ReducedEffects, LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
     /** The TV's own settings pages, one row each (apps/TvPages.kt). */
     TvPages,
     Version,
@@ -28,7 +28,7 @@ enum class SettingsItem {
 /** The rows a section holds, in order; empty for a section that has nothing working yet. */
 fun rowsIn(section: SettingsSection): List<SettingsItem> = when (section) {
     SettingsSection.Setup -> listOf(SettingsItem.HomeButton)
-    SettingsSection.Appearance -> listOf(SettingsItem.ReducedEffects)
+    SettingsSection.Appearance -> listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.ReducedEffects)
     SettingsSection.LiveTv -> listOf(SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources)
     SettingsSection.Account -> listOf(SettingsItem.Server, SettingsItem.FindServer, SettingsItem.SwitchProfile)
     SettingsSection.TvSettings -> listOf(SettingsItem.TvPages)
@@ -80,5 +80,8 @@ fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean):
     SettingsItem.FindServer -> "Search"
     SettingsItem.SwitchProfile -> "Switch"
     SettingsItem.TvPages -> "Open"
+    SettingsItem.Theme -> "Choose"
+    // Left and Right change it; OK has nothing to do.
+    SettingsItem.Accent -> null
     SettingsItem.Server, SettingsItem.Version, null -> null
 }
