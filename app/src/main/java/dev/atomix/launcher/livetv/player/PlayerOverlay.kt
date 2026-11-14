@@ -164,7 +164,7 @@ fun PlayerOverlay(
     }
 }
 
-private val Scrim = Color(0xFF070E1A)
+private val Scrim: Color get() = AtomixColors.Scrim
 
 /** "Channel 2", or nothing for a channel without a number. */
 @Composable

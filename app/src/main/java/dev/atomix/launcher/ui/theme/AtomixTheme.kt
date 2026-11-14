@@ -25,29 +25,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.atomix.launcher.R
 
-/** The redesign's colours (design spec §4.1). */
+/**
+ * The launcher's colours (design spec §4.1). The ground, the surfaces and the label grey come from the theme that is
+ * on, and [Ice] and [Ring] from the accent (phase 2 spec §6): they are read from [LookState] each time, so a screen
+ * that uses them redraws when Settings changes the look. The rest are the same in every theme.
+ */
 object AtomixColors {
-    val Ground = Color(0xFF0A1322)
-    val Tile = Color(0xFF16243A)
-    val Raised = Color(0xFF1B2C46)
-    val Panel = Color(0xFF101B2C)
-    val Inset = Color(0xFF0E1828)
-    val KeyCap = Color(0xFF24344D)
-    val RoundButton = Color(0xFF1A2638)
+    private val theme: Palette get() = LookState.palette
+    val Ground: Color get() = Color(theme.ground)
+    val Tile: Color get() = Color(theme.tile)
+    val Raised: Color get() = Color(theme.raised)
+    val Panel: Color get() = Color(theme.panel)
+    val Inset: Color get() = Color(theme.inset)
+    val KeyCap: Color get() = Color(theme.keyCap)
+    val RoundButton: Color get() = Color(theme.roundButton)
     /** The card colour under artwork. */
-    val Card = Color(0xFF111D2E)
-    val OverVideo = Color(0xEB0A1220)
-    val OverVideoList = Color(0xF00A1220)
-    val HintChip = Color(0xD60A1220)
-    val Ice = Color(0xFFA9DCFB)
-    val Ring = Color(0xFFBFE6FF)
+    val Card: Color get() = Color(theme.card)
+    /** The panels over a playing picture: the theme's over-video colour at 92 %, 94 % and 84 %. */
+    val OverVideo: Color get() = Color(theme.overVideo).copy(alpha = 0xEB / 255f)
+    val OverVideoList: Color get() = Color(theme.overVideo).copy(alpha = 0xF0 / 255f)
+    val HintChip: Color get() = Color(theme.overVideo).copy(alpha = 0xD6 / 255f)
+    /** The dark colour artwork fades into: the far edge of the ground's wash. */
+    val Scrim: Color get() = Color(theme.wash.last())
+    /** The accent. The name is the default accent's; with another accent chosen it is that colour. */
+    val Ice: Color get() = Color(LookState.look.accent.argb)
+    val Ring: Color get() = Color(ringArgb(LookState.look.accent))
     /** Text and icons on ice. */
     val Ink = Color(0xFF0A1322)
     val Text = Color.White
     val TextBright = Color(0xFFE6ECF3)
     val TextSoft = Color(0xFFD5DDE8)
     val TextSecondary = Color(0xFFC3CEDC)
-    val Label = Color(0xFF9FB0C6)
+    val Label: Color get() = Color(theme.label)
     val Inactive = Color(0xFFA7B2C3)
     val InactiveSoft = Color(0xFF97A3B6)
     val InactiveDim = Color(0xFF8794A8)
@@ -57,7 +66,7 @@ object AtomixColors {
     val LiveRed = Color(0xFFFF5A5F)
     val LiveText = Color(0xFFFFB3B5)
     val LogoPlate = Color(0xFFF2F5F9)
-    val SwitchOff = Color(0xFF2A3A52)
+    val SwitchOff: Color get() = Color(theme.switchOff)
     val Track = Color.White.copy(alpha = 0.24f)
 }
 

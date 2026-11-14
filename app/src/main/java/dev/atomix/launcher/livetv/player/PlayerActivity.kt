@@ -36,6 +36,7 @@ import dev.atomix.launcher.livetv.source.PlayReply
 import dev.atomix.launcher.ui.kit.Effects
 import dev.atomix.launcher.ui.kit.LocalEffects
 import dev.atomix.launcher.ui.theme.AtomixTheme
+import dev.atomix.launcher.ui.theme.LookState
 import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -127,6 +128,8 @@ class PlayerActivity : ComponentActivity() {
         onBackPressedDispatcher.addCallback(this) { back() }
 
         val is24 = DateFormat.is24HourFormat(this)
+        // The overlay wears the launcher's look; set here too, for a player started while the launcher is not alive.
+        LookState.look = graph.prefs.look
         setContent {
             AtomixTheme {
                 CompositionLocalProvider(LocalEffects provides Effects(graph.prefs.reducedEffects)) {

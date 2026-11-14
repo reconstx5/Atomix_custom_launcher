@@ -70,6 +70,7 @@ import dev.atomix.launcher.ui.splash.SplashScreen
 import dev.atomix.launcher.ui.setup.SetupFlow
 import dev.atomix.launcher.ui.setup.SetupViewModel
 import dev.atomix.launcher.ui.theme.AtomixTheme
+import dev.atomix.launcher.ui.theme.LookState
 
 class SetupHolder(graph: AppGraph) : ViewModel() {
     val vm = SetupViewModel(graph::apiFor, graph.locator, graph.store, viewModelScope)
@@ -147,6 +148,7 @@ class HomeActivity : ComponentActivity() {
         graph = AppGraph.get(this)
         signedIn.value = graph.store.token != null && graph.store.profileId != null
         reduced.value = graph.prefs.reducedEffects
+        LookState.look = graph.prefs.look
         splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
         val appsState = AppsTabState(graph.favouriteApps, graph.apps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }

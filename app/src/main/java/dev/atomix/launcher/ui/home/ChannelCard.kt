@@ -79,13 +79,10 @@ const val LARGE_CARD_H = 506
 const val SMALL_CARD_W = 646
 const val SMALL_CARD_H = 244
 
-/** The dark colour artwork fades into. */
-private val Scrim = Color(0xFF070E1A)
-
 /** The fade over full-bleed artwork: a little dark at the top for the channel's name, nearly solid behind the words. */
-internal fun artScrim(): Brush = Brush.verticalGradient(
-    0f to Scrim.copy(alpha = 0.25f), 0.26f to Scrim.copy(alpha = 0f), 0.52f to Scrim.copy(alpha = 0.55f), 1f to Scrim.copy(alpha = 0.96f),
-)
+internal fun artScrim(): Brush = AtomixColors.Scrim.let { scrim ->
+    Brush.verticalGradient(0f to scrim.copy(alpha = 0.25f), 0.26f to scrim.copy(alpha = 0f), 0.52f to scrim.copy(alpha = 0.55f), 1f to scrim.copy(alpha = 0.96f))
+}
 
 /** Programme artwork, asked for at the size it is drawn and cropped to fill; nothing is drawn without a picture. */
 @Composable

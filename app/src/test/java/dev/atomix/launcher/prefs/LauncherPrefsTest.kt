@@ -61,4 +61,32 @@ class LauncherPrefsTest {
         p.setFocusKey("home", null)
         assertNull(p.focusKey("home"))
     }
+
+    @Test fun look_roundTrips_andSurvivesANewInstance() {
+        val sp = prefs()
+        val want = Look(ThemeId.Plum, AccentId.Coral, TextSize.Large, ClockChoice.Hidden, FocusStyle.RingOnly)
+        LauncherPrefs(sp, { null }).look = want
+        assertEquals(want, LauncherPrefs(sp, { null }).look)
+    }
+
+    @Test fun look_nothingSaved_isTodaysLook() = assertEquals(Look(), LauncherPrefs(prefs(), { null }).look)
+
+    @Test fun look_unknownSavedNames_fallBackToDefaults() {
+        val sp = prefs()
+        sp.edit().putString("look_theme", "Sepia").putString("look_accent", "").putString("look_clock", "").putString("look_text", "Huge").putString("look_focus", "Sparkle").commit()
+        assertEquals(Look(), LauncherPrefs(sp, { null }).look)
+    }
+
+    @Test fun look_clockNotChosen_staysNotChosen() {
+        val sp = prefs()
+        LauncherPrefs(sp, { null }).look = Look(theme = ThemeId.Black)
+        assertNull(LauncherPrefs(sp, { null }).look.clock)
+    }
+
+    @Test fun look_aChosenClock_canBeUnchosenAgain() {
+        val sp = prefs()
+        LauncherPrefs(sp, { null }).look = Look(clock = ClockChoice.H24)
+        LauncherPrefs(sp, { null }).look = Look(clock = null)
+        assertNull(LauncherPrefs(sp, { null }).look.clock)
+    }
 }

@@ -22,6 +22,23 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
         get() = prefs.getBoolean(K_REDUCED, false)
         set(v) { prefs.edit().putBoolean(K_REDUCED, v).apply() }
 
+    /** How the launcher looks. A saved name this build does not know reads as that setting's default. */
+    var look: Look
+        get() = Look(
+            theme = enumOr(prefs.getString(K_THEME, null), ThemeId.Midnight),
+            accent = enumOr(prefs.getString(K_ACCENT, null), AccentId.Ice),
+            textSize = enumOr(prefs.getString(K_TEXT, null), TextSize.Standard),
+            clock = ClockChoice.entries.firstOrNull { it.name == prefs.getString(K_CLOCK, null) },
+            focus = enumOr(prefs.getString(K_FOCUS_STYLE, null), FocusStyle.RingAndGlow),
+        )
+        set(v) {
+            prefs.edit()
+                .putString(K_THEME, v.theme.name).putString(K_ACCENT, v.accent.name).putString(K_TEXT, v.textSize.name)
+                .putString(K_FOCUS_STYLE, v.focus.name)
+                .apply { if (v.clock == null) remove(K_CLOCK) else putString(K_CLOCK, v.clock.name) }
+                .apply()
+        }
+
     fun focusKey(screen: String): String? = prefs.getString(K_FOCUS + screen, null)
 
     fun setFocusKey(screen: String, key: String?) {
@@ -32,5 +49,10 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
         const val K_FAVOURITES = "favourite_apps"
         const val K_REDUCED = "reduced_effects"
         const val K_FOCUS = "focus_"
+        const val K_THEME = "look_theme"
+        const val K_ACCENT = "look_accent"
+        const val K_TEXT = "look_text"
+        const val K_CLOCK = "look_clock"
+        const val K_FOCUS_STYLE = "look_focus"
     }
 }
