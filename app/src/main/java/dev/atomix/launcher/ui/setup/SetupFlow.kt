@@ -1,7 +1,6 @@
 package dev.atomix.launcher.ui.setup
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,29 +30,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import dev.atomix.launcher.data.Profile
+import dev.atomix.launcher.ui.kit.ChipButton
+import dev.atomix.launcher.ui.kit.Wash
+import dev.atomix.launcher.ui.kit.tvFocus
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.Avatar
-import dev.atomix.launcher.ui.theme.GlassButton
-import dev.atomix.launcher.ui.theme.atomixFocusRing
 import dev.atomix.launcher.ui.theme.px
 import dev.atomix.launcher.ui.theme.pxSp
+import androidx.compose.ui.unit.em
 
 @Composable
 fun SetupFlow(vm: SetupViewModel, onDone: () -> Unit) {
     val state by vm.state.collectAsState()
     LaunchedEffect(state) { if (state == SetupState.Done) onDone() }
-    Box(Modifier.fillMaxSize().background(AtomixColors.DeepSpace).padding(px(96)), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxSize()) {
+        Wash()
+        Box(Modifier.fillMaxSize().padding(px(96)), contentAlignment = Alignment.Center) {
         when (val s = state) {
             SetupState.FindingServer -> Message("Looking for Atomix on your network…")
             is SetupState.EnterAddress -> AddressScreen(s.error, vm::submitAddress, vm::start)
@@ -62,10 +63,11 @@ fun SetupFlow(vm: SetupViewModel, onDone: () -> Unit) {
             is SetupState.EnterPin -> PinScreen(s.profile, s.error, vm::submitPin, vm::backToProfiles)
             SetupState.Done -> Message("Opening Atomix…")
         }
+        }
     }
 }
 
-@Composable private fun Message(text: String) = BasicText(text, style = AtomixType.title())
+@Composable private fun Message(text: String) = BasicText(text, style = AtomixType.rowLabel())
 
 @Composable
 private fun AddressScreen(error: String?, submit: (String) -> Unit, retry: () -> Unit) {
@@ -73,10 +75,10 @@ private fun AddressScreen(error: String?, submit: (String) -> Unit, retry: () ->
     val field = remember { FocusRequester() }
     LaunchedEffect(Unit) { field.requestFocus() }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(px(28))) {
-        BasicText("Where is Atomix?", style = AtomixType.headline())
+        BasicText("Where is Atomix?", style = AtomixType.heading())
         BasicText(
             "Atomix wasn't found on this network. Type the address of the computer running it, for example 192.168.8.65. If the computer uses a VPN, allow local network access.",
-            style = AtomixType.body().copy(textAlign = TextAlign.Center),
+            style = AtomixType.description().copy(textAlign = TextAlign.Center),
             modifier = Modifier.width(px(1100)),
         )
         val interaction = remember { MutableInteractionSource() }
@@ -86,21 +88,21 @@ private fun AddressScreen(error: String?, submit: (String) -> Unit, retry: () ->
             onValueChange = { text = it.take(80) },
             singleLine = true,
             interactionSource = interaction,
-            textStyle = AtomixType.title(),
+            textStyle = AtomixType.rowLabel(),
             cursorBrush = SolidColor(Color.White),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
             keyboardActions = KeyboardActions(onGo = { submit(text) }),
             modifier = Modifier
                 .focusRequester(field)
-                .atomixFocusRing(focused, 18f)
-                .background(AtomixColors.GlassClear, RoundedCornerShape(px(18)))
+                .tvFocus(focused, cornerPx = 18f)
+                .background(AtomixColors.Inset, RoundedCornerShape(px(18)))
                 .padding(horizontal = px(28), vertical = px(18))
                 .width(px(640)),
         )
-        if (error != null) BasicText(error, style = AtomixType.label().copy(color = AtomixColors.Coral))
+        if (error != null) BasicText(error, style = AtomixType.description().copy(color = AtomixColors.Amber))
         Row(horizontalArrangement = Arrangement.spacedBy(px(20))) {
-            GlassButton("Connect", onClick = { submit(text) }, primary = true)
-            GlassButton("Search again", onClick = retry)
+            ChipButton("Connect", onClick = { submit(text) })
+            ChipButton("Search again", onClick = retry)
         }
     }
 }
@@ -108,19 +110,19 @@ private fun AddressScreen(error: String?, submit: (String) -> Unit, retry: () ->
 @Composable
 private fun QuickConnectScreen(s: SetupState.QuickConnect) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(px(30))) {
-        BasicText("Sign in to Atomix", style = AtomixType.headline())
+        BasicText("Sign in to Atomix", style = AtomixType.heading())
         BasicText(
             s.code.toCharArray().joinToString(" "),
-            style = AtomixType.display().copy(letterSpacing = pxSp(18), color = Color.White),
+            style = AtomixType.heading().copy(fontSize = pxSp(116), lineHeight = pxSp(125), letterSpacing = 0.155.em),
         )
         BasicText(
             "On a device that's signed in, open Settings → Profile → Quick Connect and type this code.",
-            style = AtomixType.body().copy(textAlign = TextAlign.Center),
+            style = AtomixType.description().copy(textAlign = TextAlign.Center),
             modifier = Modifier.width(px(1000)),
         )
         val minutes = s.secondsLeft / 60
         val seconds = s.secondsLeft % 60
-        BasicText("Code changes in %d:%02d · %s".format(minutes, seconds, s.server.trimEnd('/')), style = AtomixType.caption())
+        BasicText("Code changes in %d:%02d · %s".format(minutes, seconds, s.server.trimEnd('/')), style = AtomixType.note().copy(color = AtomixColors.Label))
     }
 }
 
@@ -129,7 +131,7 @@ private fun WhoIsWatching(profiles: List<Profile>, choose: (Profile) -> Unit) {
     val first = remember { FocusRequester() }
     LaunchedEffect(profiles) { runCatching { first.requestFocus() } }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(px(56))) {
-        BasicText("Who's watching?", style = AtomixType.headline())
+        BasicText("Who's watching?", style = AtomixType.heading())
         Row(horizontalArrangement = Arrangement.spacedBy(px(48))) {
             profiles.forEachIndexed { i, p ->
                 val interaction = remember { MutableInteractionSource() }
@@ -142,12 +144,12 @@ private fun WhoIsWatching(profiles: List<Profile>, choose: (Profile) -> Unit) {
                 ) {
                     Avatar(
                         p.name, p.avatar, 180,
-                        Modifier.scale(if (focused) 1.08f else 1f).atomixFocusRing(focused, 90f),
+                        Modifier.tvFocus(focused, cornerPx = 90f),
                     )
                     Spacer(Modifier.height(px(20)))
                     BasicText(
                         p.name + if (p.kids) " · Kids" else "",
-                        style = AtomixType.title().copy(color = if (focused) Color.White else AtomixColors.TextSoft),
+                        style = AtomixType.rowLabel().copy(color = if (focused) Color.White else AtomixColors.TextSoft),
                     )
                 }
             }
@@ -162,16 +164,13 @@ private fun PinScreen(profile: Profile, error: String?, submit: (String) -> Unit
     LaunchedEffect(profile.id, error) { runCatching { first.requestFocus() } }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(px(28))) {
         Avatar(profile.name, profile.avatar, 120)
-        BasicText("Enter ${profile.name}'s PIN", style = AtomixType.headline())
+        BasicText("Enter ${profile.name}'s PIN", style = AtomixType.heading())
         Row(horizontalArrangement = Arrangement.spacedBy(px(18))) {
             repeat(4) { i ->
-                Box(
-                    Modifier.size(px(22)).background(if (i < pin.length) Color.White else AtomixColors.GlassClear, CircleShape)
-                        .border(1.dp(), AtomixColors.GlassEdge, CircleShape),
-                )
+                Box(Modifier.size(px(22)).background(if (i < pin.length) Color.White else AtomixColors.Inset, CircleShape))
             }
         }
-        if (error != null) BasicText(error, style = AtomixType.label().copy(color = AtomixColors.Coral))
+        if (error != null) BasicText(error, style = AtomixType.description().copy(color = AtomixColors.Amber))
         val keys = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "OK")
         Column(verticalArrangement = Arrangement.spacedBy(px(14))) {
             keys.chunked(3).forEachIndexed { r, row ->
@@ -188,7 +187,7 @@ private fun PinScreen(profile: Profile, error: String?, submit: (String) -> Unit
                 }
             }
         }
-        GlassButton("Choose another profile", onClick = back)
+        ChipButton("Choose another profile", onClick = back)
     }
 }
 
@@ -198,14 +197,13 @@ private fun PinKey(label: String, modifier: Modifier, onClick: () -> Unit) {
     val focused by interaction.collectIsFocusedAsState()
     Box(
         modifier
-            .atomixFocusRing(focused, 999f)
+            .tvFocus(focused, cornerPx = 48f)
             .size(px(96))
-            .background(if (focused) Color.White else AtomixColors.GlassClear, CircleShape)
+            .background(if (focused) AtomixColors.Raised else AtomixColors.Tile, CircleShape)
             .clickable(interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        BasicText(label, style = AtomixType.title().copy(fontWeight = FontWeight.SemiBold, color = if (focused) AtomixColors.DeepSpaceInset else Color.White))
+        BasicText(label, style = AtomixType.rowLabel())
     }
 }
 
-@Composable private fun Int.dp() = androidx.compose.ui.unit.Dp(this.toFloat())

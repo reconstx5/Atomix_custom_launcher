@@ -70,6 +70,8 @@ fun SplashScreen(reduced: Boolean, onDone: () -> Unit) {
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = runCatching { ResourcesCompat.getFont(context, R.font.sora) }.getOrNull()
                 ?: Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+            // The name is drawn bold, as the wordmark it lands on is.
+            fontVariationSettings = "'wght' 700"
         }
     }
     val total = if (reduced) SplashTimeline.REDUCED_DURATION else SplashTimeline.DURATION
@@ -225,7 +227,7 @@ private fun wordWidth(paint: Paint, size: Float, tracking: Float): Float {
 /** Draws the word with its tracking, its left edge at [left] and its middle on [cy]. */
 private fun DrawScope.word(paint: Paint, left: Float, cy: Float, size: Float, tracking: Float, alpha: Float) {
     if (alpha <= 0f) return
-    paint.setFor(size, AtomixColors.TextPrimary, alpha)
+    paint.setFor(size, AtomixColors.Text, alpha)
     val baseline = cy - (paint.descent() + paint.ascent()) / 2f
     var x = left
     drawContext.canvas.nativeCanvas.let { canvas ->
@@ -241,10 +243,10 @@ private fun DrawScope.word(paint: Paint, left: Float, cy: Float, size: Float, tr
 
 private fun DrawScope.background(alpha: Float) {
     if (alpha <= 0f) return
-    drawRect(AtomixColors.DeepSpace.copy(alpha = alpha))
+    drawRect(AtomixColors.Ground.copy(alpha = alpha))
     drawCircle(
         Brush.radialGradient(
-            listOf(Color(0x801A1E42).copy(alpha = 0.5f * alpha), Color.Transparent),
+            listOf(Color(0x8014263F).copy(alpha = 0.5f * alpha), Color.Transparent),
             Offset(CX, CY + 20f), 950f,
         ),
         950f, Offset(CX, CY + 20f),
@@ -297,7 +299,7 @@ private fun DrawScope.drawPlayOut(t: Float, paint: Paint) {
 
     if (t < SplashTimeline.HANDOFF_FROM) {
         // Each letter flies out of the tip to its place in the word, growing as it goes.
-        paint.setFor(size, AtomixColors.TextPrimary, 1f)
+        paint.setFor(size, AtomixColors.Text, 1f)
         val baseline = CY - (paint.descent() + paint.ascent()) / 2f
         var x = textLeft
         SplashTimeline.WORD.forEachIndexed { i, ch ->

@@ -131,10 +131,10 @@ object SplashTimeline {
     const val HANDOFF_FROM = 2.6f
     const val HANDOFF_TO = 3.1f
     const val MARK_FADE_TO = 2.9f
-    const val HOME_LEFT = 118f
-    const val HOME_CY = 91f
-    const val HOME_SIZE = 28f
-    const val HOME_TRACKING = 0.2f
+    const val HOME_LEFT = 100f
+    const val HOME_CY = 60f
+    const val HOME_SIZE = 26f
+    const val HOME_TRACKING = 0.24f
 
     /** Reduced effects: the finished logo and name fade in, then Home. */
     const val REDUCED_DURATION = 1.6f
