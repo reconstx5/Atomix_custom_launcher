@@ -119,6 +119,12 @@ are when the watcher first read the change.
 - **What the TV reports.** The PlayStation 5 is behind the receiver: its physical address is `0x3100`, one hop below
   the receiver's `0x3000`, and both are on port 3. It is still listed, by name, as a child of HDMI 3.
 - **How it was read.** The physical addresses in `dumpsys hdmi_control`; the child input in the app's log.
+- **The receiver's own sockets** (the owner's photo of the back of the RX-V483, 14 November). "HDMI OUT (HDCP2.2)
+  ARC" holds the cable that goes to the TV. Of its four HDMI inputs, 1 holds a cable and 2, 3 and 4 are empty. That
+  fits the address: `0x3100` is input 1 of whatever is on the TV's port 3, so the cable in input 1 is the
+  PlayStation 5's. A device in the receiver's input 2 would be `0x3200`. The child input's id, `HDMI310004`, appears
+  to carry the same address (`3100`) and the device's CEC logical address (`04`); that is read off one id, not
+  documented anywhere.
 - **Known / not known.** Known: a device behind a CEC receiver is named and is attributed to the TV socket the
   receiver is plugged into, so "PlayStation 5, HDMI 3" is what the launcher can say. Known: the receiver itself has
   no name the app can read, so a port with only a receiver on it would be unnamed. Not known: what a device with CEC
@@ -133,6 +139,10 @@ are when the watcher first read the change.
 - **Known / not known.** Known: the TV's numbering, and that HDMI 1 is the ARC socket. **Not known: whether the
   numbers printed beside the sockets match it.** *Not checked: needs the owner* (read the printed labels; the socket
   marked ARC should be the one the TV calls HDMI 1, and the receiver's cable should be in the one it calls HDMI 3).
+- **One thing the readings and the photo put side by side.** The receiver's cable leaves its ARC output and arrives
+  at the socket the TV calls HDMI 3, which the TV reports as `arc: false`; only its HDMI 1 reports `arc: true`. If
+  the printed labels agree with the TV's numbering, the TV's sound cannot return to the receiver down this cable.
+  Not a launcher matter, and not checked: it depends on the same printed labels.
 
 ## 5. Whether "on" can be told from "plugged in but asleep"
 
@@ -176,9 +186,10 @@ than as "on", unless a later check shows what made it read 0 while asleep.
 
 ## Needs the owner
 
-Done on the evening of 14 November: one cable unplugged (at each end), and one device switched on and off.
+Done on the evening of 14 November: one cable unplugged (at each end), and one device switched on and off. The
+owner also sent a photo of the receiver's sockets (section 3).
 
-Still open, a minute at the TV with no readings needed:
+Still open, a minute at the TV with no readings needed (a photo of the TV's own sockets would do):
 
 1. Read the labels printed beside the four HDMI sockets: which one the receiver's cable is in (the TV calls it
    HDMI 3), and which is marked ARC (the TV calls that one HDMI 1). That settles section 4.
