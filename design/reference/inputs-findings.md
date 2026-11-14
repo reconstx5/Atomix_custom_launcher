@@ -16,6 +16,10 @@ That part is under "With the owner at the TV" below; its raw dumps are the `-3-b
 The owner then sent photos of the receiver's sockets and of the TV's own. With those, the five open questions of the
 design spec's §8 are answered; what stays unknown is listed under each.
 
+**The cabling has since changed.** At about 21:52 the owner moved the receiver's cable from HDMI 3 to HDMI 1, the ARC
+socket. Sections 1 to 5 describe the TV as it was cabled before that, with the receiver on HDMI 3. "After the move
+to HDMI 1" near the end gives the reading taken afterwards.
+
 ## The readings
 
 **What an ordinary app sees** (the launcher's own log, tag `AtomixInputs`, written when the Inputs page opens; it uses
@@ -190,6 +194,34 @@ So the inputs phase can promise three things from what an ordinary app is told: 
 "something is on this socket" against "nothing is"; and "asleep" for a named device. "On" is the weak one: by the
 design's own rule (fewer states, never a guess shown as fact) a named device reading 0 is safer drawn as "connected"
 than as "on", unless a later check shows what made it read 0 while asleep.
+
+## After the move to HDMI 1
+
+Read at 21:54:51, two minutes after the owner moved the receiver's cable to the side socket, "HDMI1(ARC)". Raw dumps:
+the `-8-receiver-on-hdmi1` pair.
+
+| | Before (receiver on HDMI 3) | After (receiver on HDMI 1) |
+| --- | --- | --- |
+| HDMI 1 (`HW4`), as an app sees it | 1, nothing live | 0, something live |
+| HDMI 3 (`HW6`), as an app sees it | 0, something live | 1, nothing live |
+| HDMI 2 and 4 | 1 | 1 |
+| The PlayStation 5's child input | `HDMI310004`, parent HDMI 3 | `HDMI110004`, parent HDMI 1 |
+| CEC addresses | receiver `0x3000`, PlayStation 5 `0x3100` | receiver `0x1000`, PlayStation 5 `0x1100` |
+
+- The states moved with the cable, as sections 1 and 5 would predict. The console was on at the time (CEC power 0,
+  active source) and its child input read 0.
+- The child input's id changed with the socket. With two ids to go on, it does look like "HDMI", the device's
+  address, then its CEC logical address (`3100`+`04`, then `1100`+`04`). So the launcher must not remember a device
+  by that id: the same console gets a new one when its cable moves. Its name stayed "PlayStation 5".
+- ARC, for the record and not a launcher matter. The TV's CEC log shows the receiver starting ARC at 21:52:47 and the
+  TV reporting it started; a second later the receiver said its sound system was off and ARC was ended again. At the
+  reading, `mArcEstablished` and `mSystemAudioControlFeatureEnabled` were both false. So this socket does ARC, and
+  whether the TV's sound actually goes to the receiver depends on the receiver being on and on the TV's own sound
+  settings, neither of which was looked at.
+
+The app's own per-input listing quoted under "The readings" came from a diagnostic in the launcher
+(`TvInputs.describeAll()`, logged under the tag `AtomixInputs`). It was removed in commit `8fb0549` once these
+questions were answered; the one-line list of HDMI ports the launcher has always logged is still there.
 
 ## Needs the owner
 
