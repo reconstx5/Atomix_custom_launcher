@@ -20,7 +20,7 @@ import dev.atomix.launcher.ui.theme.px
 
 enum class LineIcon {
     Home, Apps, Library, Live, Inputs, Search, Atom, Settings, Edit, Star, StarFilled, Plus, Play, Pause, Back30, Forward30, List,
-    House, ChevronRight, ChevronDown, Tick, Warn, Info, Grid, Bars, Arc, Plug, Tuner, Person, Drop,
+    House, ChevronRight, ChevronDown, Tick, Warn, Info, Grid, Bars, Arc, Plug, Tuner, Person, Drop, Screen,
 }
 
 /** One stroked or filled SVG path on the 24-unit grid, as drawn on the design boards. */
@@ -45,6 +45,8 @@ private val GLYPHS: Map<LineIcon, List<Glyph>> = mapOf(
     LineIcon.Plug to listOf(Glyph("M4 9h16v4.5l-2.5 3h-11L4 13.5V9zM8 12.5h8", 1.7f)),
     LineIcon.Tuner to listOf(Glyph(rrect(3f, 7f, 18f, 12f, 2f) + "M8 3l4 4 4-4")),
     LineIcon.Person to listOf(Glyph(circle(12f, 8.5f, 3.5f) + "M5 19.5c1.2-3.2 3.8-4.8 7-4.8s5.8 1.6 7 4.8")),
+    // A TV on its stand with a small cog on the screen: the TV's own settings.
+    LineIcon.Screen to listOf(Glyph(rrect(3f, 5f, 18f, 12f, 2f) + "M8.5 20.5h7" + circle(12f, 11f, 1.7f) + "M12 7.6v1.1M12 13.3v1.1M8.6 11h1.1M14.3 11h1.1")),
     LineIcon.Drop to listOf(Glyph("M12 3.5c3.2 3.9 5.5 6.8 5.5 9.7a5.5 5.5 0 0 1-11 0c0-2.9 2.3-5.8 5.5-9.7z")),
     LineIcon.Inputs to listOf(Glyph(rrect(3f, 5f, 18f, 12f, 2f) + "M8.5 20.5h7M10.5 9.2l3.6 1.8-3.6 1.8z")),
     LineIcon.Settings to listOf(Glyph(circle(12f, 12f, 3.2f) + "M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7")),

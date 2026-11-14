@@ -25,9 +25,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.atomix.launcher.apps.InputEntry
+import dev.atomix.launcher.apps.TvFacts
 import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.apps.liveTvIntent
+import dev.atomix.launcher.apps.openTvPage
 import dev.atomix.launcher.apps.openTvSettings
+import dev.atomix.launcher.apps.readTvFacts
 import dev.atomix.launcher.apps.safeStart
 import dev.atomix.launcher.atomix.ROUTE_LIVE_SETTINGS
 import dev.atomix.launcher.atomix.atomixIntent
@@ -100,6 +103,8 @@ class HomeActivity : ComponentActivity() {
     private val homeOverrideOn = mutableStateOf(false)
     /** The HDMI ports the Inputs page lists, read each time it opens. */
     private val hdmiInputs = mutableStateOf<List<InputEntry>>(emptyList())
+    /** The TV's own settings pages that can be opened, with its network and free space; read when Settings opens. */
+    private val tvFacts = mutableStateOf(TvFacts(emptyList(), "", null))
     /** Reduced effects, applied at once when Settings changes it. */
     private val reduced = mutableStateOf(false)
     /** The cold-start splash is still on screen; any key skips it. */
@@ -234,6 +239,7 @@ class HomeActivity : ComponentActivity() {
                                     ),
                                     reduced = reduced.value,
                                     nowMs = ui.nowMs,
+                                    tv = tvFacts.value,
                                     start = settingsSection.value,
                                     actions = SettingsActions(
                                         testChannel = ::testChannel,
@@ -241,6 +247,7 @@ class HomeActivity : ComponentActivity() {
                                         switchProfile = ::switchProfile,
                                         setReduced = { settings.reducedEffects = it; reduced.value = it },
                                         openAccessibility = { if (!openTvSettings()) toast("Couldn't open that") },
+                                        openTvPage = { if (!openTvPage(it)) toast("Couldn't open that") },
                                     ),
                                 )
                             }
@@ -280,6 +287,7 @@ class HomeActivity : ComponentActivity() {
     /** Opens Settings, on [section] when it was opened about one. */
     private fun openSettings(section: SettingsSection? = null) {
         settingsSection.value = section
+        tvFacts.value = readTvFacts()
         place.value = Place.Settings
     }
 
@@ -321,6 +329,8 @@ class HomeActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         homeOverrideOn.value = settings.homeOverrideOn(Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES))
+        // Back from one of the TV's pages: the network or the free space may have changed there.
+        if (place.value == Place.Settings) tvFacts.value = readTvFacts()
         if (signedIn.value) {
             home.vm.onVisible()
             restoreTick.intValue++

@@ -47,6 +47,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import dev.atomix.launcher.apps.TvFacts
+import dev.atomix.launcher.apps.TvPage
 import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.kit.HintSpot
 import dev.atomix.launcher.ui.kit.OK
@@ -56,6 +58,7 @@ import dev.atomix.launcher.ui.kit.RowEnding
 import dev.atomix.launcher.ui.kit.ScreenFrame
 import dev.atomix.launcher.ui.kit.SettingRow
 import dev.atomix.launcher.ui.kit.Tone
+import dev.atomix.launcher.ui.kit.WindowState
 import dev.atomix.launcher.ui.kit.hintsFor
 import dev.atomix.launcher.ui.kit.tvFocus
 import dev.atomix.launcher.ui.theme.AtomixColors
@@ -76,6 +79,8 @@ class SettingsActions(
     val setReduced: (Boolean) -> Unit,
     /** Opens the TV's own settings, where the Home-button service is switched (under Accessibility). */
     val openAccessibility: () -> Unit,
+    /** Opens one of the TV's own settings pages. */
+    val openTvPage: (TvPage) -> Unit,
 )
 
 private const val SERVER = "server"
@@ -89,6 +94,7 @@ private fun iconFor(section: SettingsSection): LineIcon = when (section) {
     SettingsSection.Inputs -> LineIcon.Inputs
     SettingsSection.LiveTv -> LineIcon.Tuner
     SettingsSection.Account -> LineIcon.Person
+    SettingsSection.TvSettings -> LineIcon.Screen
     SettingsSection.About -> LineIcon.Info
 }
 
@@ -104,13 +110,16 @@ fun SettingsScreen(
     reduced: Boolean,
     nowMs: Long,
     actions: SettingsActions,
+    /** The TV's own pages that can be opened, and what the launcher can say about two of them. */
+    tv: TvFacts,
     /** The section to open on, when Settings was opened about one; otherwise the first. */
     start: SettingsSection? = null,
 ) {
     val live by state.live.collectAsState()
-    val sections = remember { listedSections() }
+    val sections = remember(tv.pages.isEmpty()) { listedSections(tv.pages.size) }
     var section by remember { mutableStateOf(start?.takeIf { it in sections } ?: sections.first()) }
-    val sectionFocus = remember { sections.associateWith { FocusRequester() } }
+    val sectionFocus = remember { SettingsSection.entries.associateWith { FocusRequester() } }
+    val tvWindow = remember { WindowState() }
     val rowsFirst = remember { FocusRequester() }
     val bar = LocalTopBarFocus.current
     val scope = rememberCoroutineScope()
@@ -140,7 +149,9 @@ fun SettingsScreen(
         // A section with nothing to move into offers no "OK Open".
         else -> hintsFor(HintSpot.SettingsSections).filter { hasRowToOpen(section) || it.key != OK }
     }
-    ScreenFrame(heading = "Settings", hints = hints) {
+    // The TV settings rows are a windowed list; the line names the rows that sit under it.
+    val more = if (section == SettingsSection.TvSettings) moreBelow(tv.pages.map { it.label }, tvWindow.startFor(tv.pages.size, TV_ROWS_SHOWN), TV_ROWS_SHOWN) else null
+    ScreenFrame(heading = "Settings", hints = hints, more = more) {
         Column(Modifier.width(px(430)), verticalArrangement = Arrangement.spacedBy(px(8))) {
             sections.forEachIndexed { i, s ->
                 SectionItem(
@@ -278,6 +289,7 @@ fun SettingsScreen(
                             onFocused = { focusedItem = item },
                         )
                     }
+                    SettingsItem.TvPages -> TvSettingsPane(PaneHost(rowsFirst) { focusedItem = it }, tv, tvWindow, actions.openTvPage)
                     SettingsItem.Version -> SettingRow(
                         "Atomix TV", null,
                         description = "Live TV and your apps, from your Atomix server.",
@@ -287,19 +299,6 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-/** A group's label over its rows, in its 36-high line. */
-@Composable
-private fun GroupLabel(text: String) {
-    // The rows are 12 apart; the label's line already holds the space between it and its first row.
-    Box(Modifier.height(px(36 - 12))) { BasicText(text, style = AtomixType.groupLabel(), maxLines = 1) }
-}
-
-/** One line of plain words under a group's rows. */
-@Composable
-private fun Note(text: String, color: Color = AtomixColors.TextSecondary) {
-    BasicText(text, Modifier.padding(start = px(28), top = px(4)), style = AtomixType.description().copy(color = color), maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /** One section in the list (76 high): the open one sits on a tile in bold; OK or Right moves into its rows. */

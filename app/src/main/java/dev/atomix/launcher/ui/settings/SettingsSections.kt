@@ -13,11 +13,17 @@ enum class SettingsSection(val title: String) {
     Inputs("Inputs"),
     LiveTv("Live TV"),
     Account("Account and server"),
+    TvSettings("TV settings"),
     About("About"),
 }
 
 /** The rows that work today. */
-enum class SettingsItem { HomeButton, ReducedEffects, LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile, Version }
+enum class SettingsItem {
+    HomeButton, ReducedEffects, LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
+    /** The TV's own settings pages, one row each (apps/TvPages.kt). */
+    TvPages,
+    Version,
+}
 
 /** The rows a section holds, in order; empty for a section that has nothing working yet. */
 fun rowsIn(section: SettingsSection): List<SettingsItem> = when (section) {
@@ -25,12 +31,27 @@ fun rowsIn(section: SettingsSection): List<SettingsItem> = when (section) {
     SettingsSection.Appearance -> listOf(SettingsItem.ReducedEffects)
     SettingsSection.LiveTv -> listOf(SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources)
     SettingsSection.Account -> listOf(SettingsItem.Server, SettingsItem.FindServer, SettingsItem.SwitchProfile)
+    SettingsSection.TvSettings -> listOf(SettingsItem.TvPages)
     SettingsSection.About -> listOf(SettingsItem.Version)
     SettingsSection.HomeLayout, SettingsSection.Rows, SettingsSection.Wallpaper, SettingsSection.Inputs -> emptyList()
 }
 
-/** A section appears in the list only when it has at least one working row: no section that does nothing yet. */
-fun listedSections(): List<SettingsSection> = SettingsSection.entries.filter { rowsIn(it).isNotEmpty() }
+/**
+ * A section appears in the list only when it has at least one working row: no section that does nothing yet.
+ * [tvPages] is how many of the TV's own pages can be opened; with none, "TV settings" would be empty and is left out.
+ */
+fun listedSections(tvPages: Int = 1): List<SettingsSection> =
+    SettingsSection.entries.filter { rowsIn(it).isNotEmpty() && (it != SettingsSection.TvSettings || tvPages > 0) }
+
+/**
+ * The "More below" line of a windowed list of rows: the labels under the [visible] rows that show from [first], with
+ * their first letter lowered; null when nothing is below.
+ */
+fun moreBelow(labels: List<String>, first: Int, visible: Int): String? {
+    val below = labels.drop(first + visible)
+    if (below.isEmpty()) return null
+    return "More below: " + below.joinToString(", ") { it.replaceFirstChar(Char::lowercaseChar) }
+}
 
 /** The rows that only state something and never take focus. */
 private val STATEMENTS = setOf(SettingsItem.Server, SettingsItem.Version)
@@ -58,5 +79,6 @@ fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean):
     SettingsItem.ManageSources -> "Open Atomix"
     SettingsItem.FindServer -> "Search"
     SettingsItem.SwitchProfile -> "Switch"
+    SettingsItem.TvPages -> "Open"
     SettingsItem.Server, SettingsItem.Version, null -> null
 }
