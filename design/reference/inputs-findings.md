@@ -218,6 +218,14 @@ the `-8-receiver-on-hdmi1` pair.
   reading, `mArcEstablished` and `mSystemAudioControlFeatureEnabled` were both false. So this socket does ARC, and
   whether the TV's sound actually goes to the receiver depends on the receiver being on and on the TV's own sound
   settings, neither of which was looked at.
+- ARC, read again at 22:19:03 (`dumpsys hdmi_control` and `dumpsys audio`, read only; nothing was changed over ADB).
+  It was working: `mArcEstablished` true, `mSystemAudioActivated` true, `mSystemAudioControlFeatureEnabled` true
+  (false at 21:59), and the receiver on (CEC power 0) with the PlayStation 5 on behind it. The CEC log shows how it
+  got there at 22:14:23 to 22:14:24: the TV asked for the sound system, the receiver turned it on, the TV asked for
+  ARC, the receiver started it and the TV confirmed. The receiver reported its volume as 20, not muted. Between
+  22:01 and 22:06 the sound route went to the receiver and back twice before that; what the owner did at the TV and
+  the receiver in those minutes was not recorded. So with the receiver on HDMI 1, switched on, and the TV's sound
+  system setting on, the TV's sound goes to the receiver over this cable.
 
 The app's own per-input listing quoted under "The readings" came from a diagnostic in the launcher
 (`TvInputs.describeAll()`, logged under the tag `AtomixInputs`). It was removed in commit `8fb0549` once these
