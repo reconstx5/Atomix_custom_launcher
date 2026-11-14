@@ -85,7 +85,7 @@ which allows that one run and changes no setting. The table shows the script par
 | Put the stock Home back | `.\scripts\restore-stock-home.ps1` (also turns off the Home button override; part of `D:\TV\undo.ps1`; Atomix TV stays installed) |
 | Live logs | `D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 logcat --pid=$(D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 shell pidof dev.atomix.launcher)` |
 | Screenshot | `. D:\TV\tvlib.ps1; Save-TvShot name` (saved to `D:\TV\logs\name.png`) |
-| Change the server address | Settings › Account and server › **Find the server again**. If that doesn't find it: `D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 shell pm clear dev.atomix.launcher`, then open the launcher — setup runs again and you can type the address. |
+| Change the server address | Settings › Account and server › **Find the server again**. If that doesn't find it: `D:\TV\platform-tools\adb.exe -s 192.168.8.67:5555 shell pm clear dev.atomix.launcher`, then open the launcher — setup runs again and you can type the address. `pm clear` stops the app as a force-stop does, so expect the Home-button override to be switched off afterwards: turn it back on in TV settings › Device Preferences › Accessibility. |
 
 Never `am force-stop dev.atomix.launcher` on this TV: Android clears `enabled_accessibility_services` with it, which
 switches the Home-button override off. Use `adb install -r`, which restarts the app without that side effect.
@@ -100,7 +100,7 @@ disabled stock launcher is switched back on at boot. That is why the Home button
 
 ## Performance (VEON 4K, Android TV 11, 1.4 GB RAM, Mali-470)
 
-Release build, `dumpsys gfxinfo`, real key presses about 1.5 s apart, each scenario run twice and the second kept.
+Release build, `dumpsys gfxinfo`, real key presses with a 700 ms pause between them, each scenario run twice and the second kept.
 "Before" is the build that was on the TV on 14 November 2026 before the redesign, measured the same day the same way.
 
 | Scenario | Before the redesign | With the redesign |
