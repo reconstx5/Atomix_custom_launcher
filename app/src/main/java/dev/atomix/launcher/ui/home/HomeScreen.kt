@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import coil.ImageLoader
 import dev.atomix.launcher.apps.AppEntry
+import dev.atomix.launcher.apps.InputEntry
 import dev.atomix.launcher.livetv.source.Channel
 import dev.atomix.launcher.livetv.source.onAir
 import dev.atomix.launcher.shell.EditKey
@@ -110,9 +111,14 @@ class HomeActions(
     val saveChannels: (List<String>) -> Unit,
     /** An app row's new order (row id, packages), saved each time a tile is put down. */
     val saveApps: (String, List<String>) -> Unit,
+    /** Switches to an input from the Inputs row, as the Inputs screen does. */
+    val openInput: (InputEntry) -> Unit = {},
 )
 
-/** One app row's own things, kept per row id while Home is composed: its list, its tiles' focus, its last tile. */
+/**
+ * One app row's own things, kept per row id while Home is composed: its list, its tiles' focus, its last tile. The
+ * Inputs row keeps the same, keyed by input id.
+ */
 private class AppRowState(focused: String?) {
     val list = LazyListState()
     val tiles = HashMap<String, FocusRequester>()
@@ -226,8 +232,8 @@ fun HomeScreen(
     /** Where focus lands in the drawn row [id] from another row. */
     fun entryOf(id: String): FocusRequester = when (kindOf(id)) {
         RowKind.OnNow -> onNowEntry()
-        RowKind.Apps -> appEntry(id)
-        else -> FocusRequester.Default
+        RowKind.Apps, RowKind.Inputs -> appEntry(id)
+        null -> FocusRequester.Default
     }
 
     /** Where Up goes from row [id]: the drawn row above, or the top bar's marked item from the first row (null: leave it be). */
@@ -364,14 +370,20 @@ fun HomeScreen(
     // Restore focus on every tick, and again whenever a row's contents change: an item that disappears while Home is
     // on screen (taken off Home on another device, app uninstalled) would otherwise take the focus with it.
     val restoredAt = remember { intArrayOf(Int.MIN_VALUE) }
-    val rowSizes = ui.rows.map { it.spec.id to it.apps.size }
+    val rowSizes = ui.rows.map { it.spec.id to if (it.spec.kind == RowKind.Inputs) ui.inputs.size else it.apps.size }
     LaunchedEffect(restoreTick, pinned.size, rowSizes, area::class) {
         if (edit != null) return@LaunchedEffect
         // Coming to Home always restores. A list that only changed under it does not take focus from the top bar.
         if (!restoresFocus(byTick = restoredAt[0] != restoreTick, barHasFocus = bar?.hasFocus == true)) return@LaunchedEffect
         // In Home's order, so a remembered item that has gone falls back to the first item of the first drawn row.
         val rows = LinkedHashMap<String, List<String>>()
-        ui.rows.forEach { r -> rows[r.spec.id] = if (r.spec.kind == RowKind.OnNow) pinned.map { it.id } else r.apps.map { it.packageName } }
+        ui.rows.forEach { r ->
+            rows[r.spec.id] = when (r.spec.kind) {
+                RowKind.OnNow -> pinned.map { it.id }
+                RowKind.Inputs -> ui.inputs.map { it.id }
+                RowKind.Apps -> r.apps.map { it.packageName }
+            }
+        }
         // With no cards the area holds a message, and its button is what to focus, on a first visit and again when
         // the last channel leaves Home, unless the user was last on an app tile.
         val rememberedApp = memory.current()?.row?.let { it != ROW_ON_NOW } == true
@@ -482,6 +494,41 @@ fun HomeScreen(
                             down = downFrom(id)
                         }
                     },
+                )
+            }
+        }
+    }
+
+    /**
+     * The Inputs row (spec §6.4): the TV's HDMI ports, then the tuner, as tiles of Home's app-tile size. It has no
+     * "Edit": its order is the TV's. OK switches to the input; focus is remembered as on an app row, so coming back
+     * from the input lands on its tile.
+     */
+    @Composable
+    fun InputsRow(row: DrawnRow, place: RowPlace) {
+        val id = row.spec.id
+        val st = rowState(id)
+        SectionHeading(row.spec.name.ifEmpty { "Inputs" }, Modifier.padding(start = px(100), end = px(100)), null)
+        LazyRow(
+            Modifier.padding(top = px(place.y - place.headingY - GLOW_ROOM)).fillMaxWidth().focusGroup(),
+            state = st.list,
+            contentPadding = PaddingValues(horizontal = px(100), vertical = px(GLOW_ROOM)),
+            horizontalArrangement = Arrangement.spacedBy(px(m.gap)),
+        ) {
+            itemsIndexed(ui.inputs, key = { _, input -> input.id }) { i, input ->
+                InputTile(
+                    input, m,
+                    onClick = { actions.openInput(input) },
+                    modifier = Modifier.width(px(m.tileW))
+                        .focusRequester(st.tiles.getOrPut(input.id) { FocusRequester() })
+                        .focusProperties {
+                            if (!editing) {
+                                upFrom(id)?.let { up = it }
+                                down = downFrom(id)
+                            }
+                            if (i == ui.inputs.lastIndex) right = FocusRequester.Cancel
+                        },
+                    onFocused = { st.focused = input.id; memory.remember(FocusTarget(id, input.id, i)) },
                 )
             }
         }
@@ -636,7 +683,7 @@ fun HomeScreen(
                             when (row.spec.kind) {
                                 RowKind.Apps -> AppRow(row, place)
                                 RowKind.OnNow -> OnNowRow(place)
-                                RowKind.Inputs -> Unit
+                                RowKind.Inputs -> InputsRow(row, place)
                             }
                         }
                     }

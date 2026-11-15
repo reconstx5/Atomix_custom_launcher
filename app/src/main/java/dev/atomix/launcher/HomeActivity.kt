@@ -26,6 +26,8 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import dev.atomix.launcher.apps.InputEntry
 import dev.atomix.launcher.apps.TvFacts
+import dev.atomix.launcher.apps.TUNER
+import dev.atomix.launcher.apps.TUNER_INPUT
 import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.apps.liveTvIntent
 import dev.atomix.launcher.apps.openTvPage
@@ -85,10 +87,8 @@ class SetupHolder(graph: AppGraph) : ViewModel() {
 }
 
 class HomeHolder(graph: AppGraph) : ViewModel() {
-    val vm = HomeViewModel(graph.live, graph.rows, graph.hiddenApps, graph.apps, viewModelScope)
+    val vm = HomeViewModel(graph.live, graph.rows, graph.hiddenApps, graph.apps, viewModelScope, hdmi = graph.tvInputs::hdmi)
 }
-
-private const val TUNER_INPUT = "tv-tuner"
 
 class HomeActivity : ComponentActivity() {
     private lateinit var graph: AppGraph
@@ -212,6 +212,7 @@ class HomeActivity : ComponentActivity() {
                                         retry = home.vm::refreshNow,
                                         saveChannels = { order -> home.vm.saveChannelOrder(order) { toast("Couldn't save the channel order. Try again.") } },
                                         saveApps = home.vm::saveAppOrder,
+                                        openInput = { openInput(it) },
                                     ),
                                 )
                                 Place.LiveTv -> LiveTvTab(
@@ -249,14 +250,14 @@ class HomeActivity : ComponentActivity() {
                                 )
                                 Place.Inputs -> InputsScreen(
                                     hdmi = hdmiInputs.value,
-                                    tuner = InputEntry(TUNER_INPUT, "TV tuner"),
+                                    tuner = TUNER,
                                     onPick = { place.value = placeAfterPick(openInput(it)) },
                                 )
                                 Place.Settings -> {
                                 val homeRows by graph.rows.rows.collectAsState()
                                 val installed by graph.apps.apps.collectAsState()
-                                // Read once as Settings opens: the TV's list of ports is slow to ask for on every draw.
-                                val inputCount = remember { runCatching { TvInputs(this).hdmi().size }.getOrDefault(0) }
+                                // What Home's Inputs row holds (the ports and the tuner), as read when the launcher last showed.
+                                val inputCount = ui.inputs.size
                                 val channelCount = (ui.live as? LiveState.Ready)?.pinned?.size ?: 0
                                 SettingsScreen(
                                     rows = homeRows,

@@ -10,6 +10,7 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.InstalledApps
+import dev.atomix.launcher.apps.TvInputs
 import dev.atomix.launcher.data.AtomixApi
 import dev.atomix.launcher.data.AtomixClient
 import dev.atomix.launcher.data.AtomixHttp
@@ -40,6 +41,7 @@ class AppGraph private constructor(private val context: Context) {
     val store = SessionStore(context)
     val locator = ServerLocator(OkHttpServerProbe(http)) { ownIpv4()?.let(::subnetHostsOf).orEmpty() }
     val installedApps = InstalledApps(context.packageManager)
+    val tvInputs = TvInputs(context)
     val prefs = LauncherPrefs(context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)) { store.dock }
     /** Lives as long as the process; for loads that outlast any one screen. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

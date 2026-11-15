@@ -32,6 +32,13 @@ class HomeRowsModelTest {
         assertEquals(listOf(ROW_APPS, ROW_ON_NOW, ROW_INPUTS), ids(rows, inputCount = 5))
     }
 
+    @Test fun shownInputsRow_isDrawn_withItsCount() {
+        val rows = listOf(HomeRowSpec(ROW_APPS, RowKind.Apps, apps = listOf("x")), onNow, inputs)
+        assertEquals(listOf(ROW_APPS, ROW_ON_NOW, ROW_INPUTS), ids(rows, inputCount = 5))
+        assertEquals(listOf(ROW_APPS, ROW_ON_NOW), ids(rows, inputCount = 0))
+        assertEquals(listOf(ROW_APPS, ROW_ON_NOW), ids(rows.map { if (it.kind == RowKind.Inputs) it.copy(shown = false) else it }, inputCount = 5))
+    }
+
     @Test fun firstShownAppRow_isTheOneKept_whenTheFirstIsHidden() {
         val rows = listOf(HomeRowSpec(ROW_APPS, RowKind.Apps, apps = listOf("x"), shown = false), onNow, HomeRowSpec("row-1", RowKind.Apps))
         assertEquals(listOf(ROW_ON_NOW, "row-1"), ids(rows))

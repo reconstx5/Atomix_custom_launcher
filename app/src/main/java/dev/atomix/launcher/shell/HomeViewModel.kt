@@ -1,6 +1,8 @@
 package dev.atomix.launcher.shell
 
 import dev.atomix.launcher.apps.AppCatalog
+import dev.atomix.launcher.apps.InputEntry
+import dev.atomix.launcher.apps.TUNER
 import dev.atomix.launcher.livetv.source.LiveRepository
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.prefs.HiddenApps
@@ -15,8 +17,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Everything Home draws: its rows, in order. [nowMs] ticks so "min left" and progress stay current between guide refreshes. */
-data class HomeUi(val live: LiveState, val rows: List<DrawnRow>, val nowMs: Long)
+/**
+ * Everything Home draws: its rows, in order. [nowMs] ticks so "min left" and progress stay current between guide
+ * refreshes. [inputs] is what the Inputs row holds: the TV's HDMI ports, then the tuner (empty until first read).
+ */
+data class HomeUi(val live: LiveState, val rows: List<DrawnRow>, val nowMs: Long, val inputs: List<InputEntry> = emptyList())
 
 /** Home's data: Live TV (refreshed every minute while Home is visible) and the rows Home draws. */
 class HomeViewModel(
@@ -26,7 +31,11 @@ class HomeViewModel(
     private val catalog: AppCatalog,
     private val scope: CoroutineScope,
     private val now: () -> Long = System::currentTimeMillis,
+    /** The TV's HDMI ports ([dev.atomix.launcher.apps.TvInputs.hdmi]): slow to ask, so read only as Home shows. */
+    private val hdmi: () -> List<InputEntry> = { emptyList() },
 ) {
+    private var inputs = emptyList<InputEntry>()
+
     private val _ui = MutableStateFlow(HomeUi(repo.state.value, drawn(), now()))
     val ui: StateFlow<HomeUi> = _ui
 
@@ -40,7 +49,7 @@ class HomeViewModel(
 
     private fun drawn(): List<DrawnRow> {
         val byPkg = catalog.apps.value.associateBy { it.packageName }
-        return drawnRows(rows.rows.value, byPkg::get, hidden::isHidden, inputs = 0)
+        return drawnRows(rows.rows.value, byPkg::get, hidden::isHidden, inputs = inputs.size)
     }
 
     /** Draws the rows again: after apps are installed or removed, rows change, or apps are hidden or shown. */
@@ -73,7 +82,14 @@ class HomeViewModel(
         refreshApps()
     }
 
+    /** Reads the TV's inputs again (a port may have been renamed or added) and redraws the rows with them. */
+    private fun refreshInputs() {
+        inputs = runCatching(hdmi).getOrDefault(emptyList()) + TUNER
+        _ui.value = _ui.value.copy(inputs = inputs, rows = drawn())
+    }
+
     fun onVisible() {
+        refreshInputs()
         loop?.cancel()
         loop = scope.launch {
             launch {

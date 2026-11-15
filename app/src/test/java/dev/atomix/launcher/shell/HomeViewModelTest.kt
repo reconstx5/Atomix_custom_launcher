@@ -6,6 +6,7 @@ import android.graphics.drawable.ColorDrawable
 import androidx.test.core.app.ApplicationProvider
 import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.AppEntry
+import dev.atomix.launcher.apps.InputEntry
 import dev.atomix.launcher.data.SessionStore
 import dev.atomix.launcher.livetv.source.FakeLiveClient
 import dev.atomix.launcher.livetv.source.LiveRepository
@@ -14,6 +15,8 @@ import dev.atomix.launcher.livetv.source.tv
 import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import dev.atomix.launcher.prefs.ROW_APPS
+import dev.atomix.launcher.prefs.ROW_INPUTS
+import dev.atomix.launcher.prefs.withShown
 import dev.atomix.launcher.prefs.ROW_ON_NOW
 import dev.atomix.launcher.prefs.withApp
 import dev.atomix.launcher.prefs.withRowAdded
@@ -41,6 +44,8 @@ class HomeViewModelTest {
     private lateinit var rows: RowStore
     private lateinit var vm: HomeViewModel
     private var clock = 1_000_000L
+    // The TV's HDMI ports, as TvInputs.hdmi() would list them.
+    private var hdmi = emptyList<InputEntry>()
     private fun app(pkg: String) = AppEntry(pkg, pkg, null, ColorDrawable(), Intent())
 
     @Before fun setUp() {
@@ -53,8 +58,25 @@ class HomeViewModelTest {
         fake = FakeLiveClient(channels = listOf(tv("1", 1), tv("2", 2)), favourites = mutableListOf("2"))
         val repo = LiveRepository({ fake }, store, relocate = {})
         val catalog = AppCatalog({ listOf(app("a"), app("b"), app("c")) }, scope, dispatcher)
-        vm = HomeViewModel(repo, rows, HiddenApps(prefs), catalog, scope, now = { clock })
+        vm = HomeViewModel(repo, rows, HiddenApps(prefs), catalog, scope, now = { clock }, hdmi = { hdmi })
         scope.runCurrent()
+    }
+
+    // Spec §6.4: the Inputs row is the TV's HDMI ports, then the tuner, read each time Home shows.
+    @Test fun inputs_endWithTheTuner() {
+        hdmi = (1..4).map { InputEntry("hdmi$it", "HDMI $it") }
+        vm.onVisible(); scope.runCurrent()
+        assertEquals(listOf("HDMI 1", "HDMI 2", "HDMI 3", "HDMI 4", "TV tuner"), vm.ui.value.inputs.map { it.label })
+        vm.onHidden()
+    }
+
+    @Test fun shownInputsRow_isDrawn_onceInputsAreRead() {
+        rows.update { it.withShown(ROW_INPUTS, true) }
+        scope.runCurrent()
+        assertEquals(false, vm.ui.value.rows.any { it.spec.id == ROW_INPUTS })
+        vm.onVisible(); scope.runCurrent()
+        assertEquals(ROW_INPUTS, vm.ui.value.rows.last().spec.id)
+        vm.onHidden()
     }
 
     @Test fun refreshesEveryMinuteWhileVisible_stopsWhenHidden() {
