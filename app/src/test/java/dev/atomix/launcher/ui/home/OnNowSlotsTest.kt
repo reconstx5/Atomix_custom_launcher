@@ -103,4 +103,23 @@ class OnNowSlotsTest {
         assertEquals(0, onNowEntryIndex(remembered = null, firstRow = 0, channels = 7, layout = OnNowLayout.SixSmall))
         assertNull(onNowEntryIndex(remembered = null, firstRow = 0, channels = 0, layout = OnNowLayout.SixSmall))
     }
+
+    @Test fun moreChannels_countsWhatIsAfterTheLastCardShowing() {
+        assertEquals("4 more channels", moreChannelsLine(7, lastShown = 2))
+        assertEquals("2 more channels", moreChannelsLine(7, lastShown = 4))
+        assertEquals("1 more channel", moreChannelsLine(7, lastShown = 5))
+        assertNull(moreChannelsLine(7, lastShown = 6))
+        assertNull(moreChannelsLine(3, lastShown = 2))
+        assertNull(moreChannelsLine(0, lastShown = -1))
+    }
+
+    @Test fun moreChannels_perLayout_withTheOwnersSeven() {
+        fun line(layout: OnNowLayout, firstRow: Int) = moreChannelsLine(7, lastShownIndex(firstRow, 7, layout))
+        assertEquals("4 more channels", line(OnNowLayout.LargeTwo, 0))
+        assertEquals("2 more channels", line(OnNowLayout.LargeTwo, 2))
+        assertNull(line(OnNowLayout.LargeTwo, 4))
+        assertEquals("2 more channels", line(OnNowLayout.LargeFour, 0))
+        assertEquals("1 more channel", line(OnNowLayout.SixSmall, 0))
+        assertNull(line(OnNowLayout.SixSmall, 1))
+    }
 }

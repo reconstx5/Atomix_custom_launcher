@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -523,6 +524,19 @@ fun HomeScreen(
                         }
                     }
                 }
+            }
+        }
+        // A sign that channels sit beyond the last card showing: one line under the cards, level with the small
+        // cards. Not while a row is being rearranged (the hint bar is there then), nor under a message.
+        val more = if (area is OnNowArea.Cards && !editing) moreChannelsLine(channelsShown.size, lastShownIndex(firstRow, channelsShown.size, onNow)) else null
+        if (more != null) {
+            Row(
+                Modifier.padding(start = px(100 + m.smallX), top = px(m.moreY)).height(px(30)),
+                horizontalArrangement = Arrangement.spacedBy(px(12)),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicText(more, style = AtomixType.description(), maxLines = 1)
+                Icon(LineIcon.ChevronDown, AtomixColors.Label, 24)
             }
         }
         ScreenHints(hintsFor(edit?.let { HintSpot.HomeEdit(holding = it.held != null) } ?: HintSpot.HomeRest))

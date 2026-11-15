@@ -57,13 +57,14 @@ fun clockText(ms: Long, is24: Boolean): String =
 
 /**
  * The lines a card, the Live TV preview and the player banner say about what a channel is showing. Without a
- * programme (no guide data, or the guide has run out while the screen sat open) there is only the title line, so
- * nothing can show a stale time, negative minutes or a full bar.
+ * programme (no guide data, or the guide has run out while the screen sat open) there is the title line and, when
+ * the guide knows it, what is next; never a stale time, negative minutes or a full bar.
  */
 data class OnAirLines(val title: String, val time: String?, val next: String?, val progress: Float?)
 
 fun onAirLines(on: OnAir, is24: Boolean): OnAirLines {
-    val p = on.programme ?: return OnAirLines(onAirTitle(on), null, null, null)
+    // In a gap in the guide the next programme is still named, when the guide knows it; no times and no bar.
+    val p = on.programme ?: return OnAirLines(onAirTitle(on), null, on.upNext?.let { "Next: ${it.title}" }, null)
     return OnAirLines(
         title = p.title,
         time = "${timeRange(p.start, p.end, is24)} • ${on.minutesLeft} min left",

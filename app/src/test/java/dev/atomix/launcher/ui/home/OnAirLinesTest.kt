@@ -43,4 +43,15 @@ class OnAirLinesTest {
         assertEquals("No programme information", onAirTitle(onAir(tvnz(), 0)))
         assertEquals("No programme information", onAirTitle(onAir(tvnz(now), 30 * min)))
     }
+
+    /** A gap in the guide: nothing is on, but the guide knows what is next. The cards say so, as the player's banner does. */
+    @Test fun inAGap_theNextProgrammeIsStillNamed_withNoTimesOrBar() {
+        val later = Programme(title = "Waka Huia", start = 40 * min, end = 70 * min)
+        assertEquals(OnAirLines("No programme information", null, "Next: Waka Huia", null), onAirLines(onAir(tvnz(null, later), 6 * min), is24 = true))
+    }
+
+    @Test fun inAGap_afterTheCurrentProgrammeEnded_theNextIsNamed() {
+        val later = Programme(title = "Waka Huia", start = 40 * min, end = 70 * min)
+        assertEquals("Next: Waka Huia", onAirLines(onAir(tvnz(now, later), 30 * min), is24 = true).next)
+    }
 }

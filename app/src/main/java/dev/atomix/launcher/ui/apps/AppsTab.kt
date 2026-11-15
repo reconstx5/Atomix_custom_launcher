@@ -97,6 +97,7 @@ fun AppsTab(
 
     ScreenFrame(
         heading = "Apps",
+        more = moreAppsLine(rows.size, window.startFor(rows.size, ROWS_SHOWN), ROWS_SHOWN),
         // Read where the hint bar is drawn, so moving focus across the grid does not redraw all of its tiles.
         hints = {
             val focusedApp = apps.firstOrNull { it.packageName == focusedPkg }

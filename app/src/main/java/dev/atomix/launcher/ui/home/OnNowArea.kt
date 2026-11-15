@@ -143,3 +143,16 @@ fun onNowEntryIndex(remembered: Int?, firstRow: Int, channels: Int, layout: OnNo
     if (remembered != null && remembered in 0 until channels && (slotOf(remembered, layout) as Slot.Small).row in firstRow until firstRow + SMALL_ROWS) return remembered
     return indexAt(firstRow, 0, layout).coerceAtMost(channels - 1)
 }
+
+/**
+ * The line under the cards that says channels sit beyond the last one showing: "4 more channels", "1 more channel".
+ * [lastShown] is [lastShownIndex]. Null when every channel on Home is showing.
+ */
+fun moreChannelsLine(channels: Int, lastShown: Int): String? {
+    val more = channels - (lastShown + 1)
+    return when {
+        more <= 0 -> null
+        more == 1 -> "1 more channel"
+        else -> "$more more channels"
+    }
+}

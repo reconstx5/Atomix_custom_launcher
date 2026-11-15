@@ -90,4 +90,11 @@ class AppsTabStateTest {
         assertTrue(isUnderEdit(column = 2, topRowSize = 3))   // three apps: there is no seventh column
         assertTrue(isUnderEdit(column = 0, topRowSize = 1))
     }
+
+    @Test fun moreApps_onlyWhileARowSitsBelow() {
+        assertEquals("More apps below", moreAppsLine(rows = 5, first = 0, visible = 4))
+        assertNull(moreAppsLine(rows = 5, first = 1, visible = 4))
+        assertNull(moreAppsLine(rows = 4, first = 0, visible = 4))
+        assertNull(moreAppsLine(rows = 0, first = 0, visible = 4))
+    }
 }

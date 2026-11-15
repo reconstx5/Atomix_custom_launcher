@@ -59,3 +59,6 @@ enum class AppMenuItem(val label: String) {
     Remove("Remove from Your apps"),
     Info("App info"),
 }
+
+/** The Apps page's "more below" line: shown while a row of apps sits under the [visible] rows that show from [first]. */
+fun moreAppsLine(rows: Int, first: Int, visible: Int): String? = if (first + visible < rows) "More apps below" else null
