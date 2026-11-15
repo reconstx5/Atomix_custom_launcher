@@ -27,8 +27,8 @@ sealed interface HintSpot {
     data object SettingsChoice : HintSpot
     /** A row's entry in Settings › Rows and apps. */
     data object RowsEntry : HintSpot
-    /** One of a row's options there; [label] is the option's words. */
-    data class RowsOption(val label: String) : HintSpot
+    /** One of a row's options there; [label] is the option's words, [back] what Back does ("Close" on a question). */
+    data class RowsOption(val label: String, val back: String = "Sections") : HintSpot
     data object PlayerBanner : HintSpot
     data object PlayerTuning : HintSpot
     data class PlayerError(val button: String, val bannerUp: Boolean) : HintSpot
@@ -60,7 +60,7 @@ fun hintsFor(spot: HintSpot): List<Hint> = when (spot) {
     is HintSpot.SettingsStep -> listOf(Hint("◀ ▶", spot.what), Hint(BACK, "Sections"))
     HintSpot.SettingsChoice -> listOf(Hint(OK, "Select"), Hint(BACK, "Close"))
     HintSpot.RowsEntry -> listOf(Hint(OK, "Show or hide"), Hint("▼", "This row's options"), Hint(BACK, "Sections"))
-    is HintSpot.RowsOption -> listOf(Hint(OK, spot.label), Hint(BACK, "Sections"))
+    is HintSpot.RowsOption -> listOf(Hint(OK, spot.label), Hint(BACK, spot.back))
     HintSpot.PlayerBanner -> listOf(Hint(UP_DOWN, "Change channel"), Hint("◀", "Channels"), Hint(BACK, "Hide"))
     HintSpot.PlayerTuning -> listOf(Hint(UP_DOWN, "Change channel"), Hint(BACK, "Home"))
     is HintSpot.PlayerError -> listOf(Hint(OK, spot.button), Hint(UP_DOWN, "Change channel"), Hint(BACK, if (spot.bannerUp) "Hide" else "Home"))

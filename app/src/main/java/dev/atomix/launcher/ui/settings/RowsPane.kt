@@ -2,7 +2,21 @@
 
 package dev.atomix.launcher.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import dev.atomix.launcher.prefs.nextRowId
+import dev.atomix.launcher.prefs.renamed
+import dev.atomix.launcher.prefs.withRowAdded
+import dev.atomix.launcher.ui.kit.LineIcon
+import dev.atomix.launcher.ui.kit.menuHeight
+import dev.atomix.launcher.ui.kit.menuTop
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -68,6 +82,9 @@ private const val VIEW_H = 780
 private const val ASK_KEEP = "Keep"
 private const val ASK_DELETE = "Delete"
 
+/** What [RowsPane]'s name list is naming when it is "New row" rather than a row. */
+private const val NEW_ROW = "+new"
+
 /**
  * Settings › Rows and apps, as on its board: "ROWS ON HOME", one entry per row in Home's order (its place, name, what
  * it holds and whether it is shown), the focused one with its options under it; then "APPS", whose one entry opens
@@ -97,6 +114,36 @@ fun RowsPane(
     var noteTick by remember { mutableIntStateOf(0) }
     LaunchedEffect(noteTick) { if (note != null) { delay(3000); note = null } }
     var scroll by remember { mutableIntStateOf(0) }
+    val newRowFocus = remember { FocusRequester() }
+    // The row being named ([NEW_ROW] for "New row"), while the name list is open.
+    var naming by remember { mutableStateOf<String?>(null) }
+
+    /** Where focus goes back to when the name list closes: the row's Rename, or "New row". */
+    fun namingHome(id: String): FocusRequester = if (id == NEW_ROW) newRowFocus else option(id, RowOption.Rename.name)
+
+    fun startNaming(id: String) {
+        naming = id
+        onHint(HintSpot.SettingsChoice)
+    }
+
+    /** Closes the name list with nothing changed. Focus goes back first: a focused list that goes hands focus elsewhere. */
+    fun closeNaming() {
+        val id = naming ?: return
+        runCatching { namingHome(id).requestFocus() }
+        naming = null
+    }
+
+    fun named(name: String) {
+        val id = naming ?: return
+        runCatching { namingHome(id).requestFocus() }
+        naming = null
+        if (id == NEW_ROW) {
+            // The new row goes at the end; focus moves onto it. Choose apps opens for it with Task 7.
+            val newId = rows.nextRowId()
+            edit { it.withRowAdded(name) }
+            scope.launch { withFrameNanos { }; runCatching { entry(newId).requestFocus() } }
+        } else edit { it.renamed(id, name) }
+    }
 
     fun toggle(spec: HomeRowSpec) {
         if (spec.shown && !rows.canHide(spec.id)) { note = spec.id; noteTick++; return }
@@ -115,10 +162,13 @@ fun RowsPane(
 
     fun choose(spec: HomeRowSpec, o: RowOption) = when (o) {
         RowOption.ChooseApps -> chooseApps(spec.id)
-        RowOption.Rename -> Unit
+        RowOption.Rename -> startNaming(spec.id)
         RowOption.MoveUp, RowOption.MoveDown -> move(spec, o)
         RowOption.Sort -> edit { it.withSort(spec.id, if (spec.sort == RowSort.AtoZ) RowSort.YourOrder else RowSort.AtoZ) }
         RowOption.Delete -> {
+            // The options give way to the question, so focus first goes to the entry, which stays: a focused button
+            // that goes hands focus out of the card, and leaving the card closes the question.
+            runCatching { entry(spec.id).requestFocus() }
             asking = spec.id
             scope.launch { withFrameNanos { }; runCatching { option(spec.id, ASK_KEEP).requestFocus() } }
             Unit
@@ -133,8 +183,17 @@ fun RowsPane(
         edit { it.deleted(spec.id) }
     }
 
+    // Keep or Back closes the question about deleting, with nothing changed. Declared after Settings' own Back, so
+    // it is asked first.
+    BackHandler(enabled = asking != null && naming == null) {
+        asking?.let { runCatching { entry(it).requestFocus() } }
+        asking = null
+    }
+
     val openIndex = rows.indexOfFirst { it.id == open }.takeIf { it >= 0 }
-    val tops = entryTops(rows.size, openIndex)
+    val newRow = showsNewRow(rows)
+    // "New row" counts as one more entry, after the rows.
+    val tops = entryTops(rows.size + 1, openIndex)
     val unit = with(LocalDensity.current) { px(1).toPx() }
 
     Box(Modifier.fillMaxWidth().height(px(VIEW_H)).clipToBounds()) {
@@ -158,7 +217,9 @@ fun RowsPane(
                                     inCard = it.hasFocus
                                     if (it.hasFocus) { open = spec.id; follow() }
                                     else {
-                                        if (open == spec.id) open = null
+                                        // While its name list is open the row keeps its options: Rename takes focus
+                                        // back when the list closes.
+                                        if (open == spec.id && naming != spec.id) open = null
                                         if (asking == spec.id) asking = null
                                     }
                                 }
@@ -179,7 +240,7 @@ fun RowsPane(
                             )
                             if (note == spec.id) Note(KEEP_ONE_NOTE, AtomixColors.Amber)
                             if (isOpen) {
-                                val next = rows.getOrNull(i + 1)?.let { entry(it.id) } ?: allAppsFocus
+                                val next = rows.getOrNull(i + 1)?.let { entry(it.id) } ?: if (newRow) newRowFocus else allAppsFocus
                                 Row(
                                     Modifier.height(px(56)),
                                     horizontalArrangement = Arrangement.spacedBy(px(12)),
@@ -192,7 +253,7 @@ fun RowsPane(
                                             OptionButton(
                                                 b, null, Modifier.focusRequester(option(spec.id, b)).focusProperties { up = entry(spec.id); down = next },
                                                 onClick = { if (b == ASK_KEEP) { asking = null; runCatching { entry(spec.id).requestFocus() } } else delete(spec) },
-                                                onFocused = { onHint(HintSpot.RowsOption(b)) },
+                                                onFocused = { onHint(HintSpot.RowsOption(b, back = "Close")) },
                                             )
                                         } }
                                     } else options.forEach { o -> key(o.name) {
@@ -211,6 +272,16 @@ fun RowsPane(
                         }
                     }
                 }
+                if (newRow) NewRowEntry(
+                    Modifier.focusRequester(newRowFocus),
+                    onClick = { startNaming(NEW_ROW) },
+                    onFocused = {
+                        if (naming == null) open = null
+                        onHint(HintSpot.RowsOption("New row"))
+                        val top = entryTops(rows.size + 1, null)[rows.size]
+                        scroll = paneScroll(scroll, top - 24, top + ENTRY_H + 24, VIEW_H)
+                    },
+                )
             }
             Spacer(Modifier.height(px(24)))
             GroupLabel("APPS")
@@ -221,12 +292,60 @@ fun RowsPane(
                     if (it.isFocused) {
                         open = null
                         onHint(HintSpot.SettingsRow("Open"))
-                        scroll = paneScroll(scroll, entryTops(rows.size, null).lastOrNull()?.plus(ENTRY_H) ?: 0, (entryTops(rows.size, null).lastOrNull() ?: 0) + ENTRY_H + 24 + 36 + 12 + ENTRY_H + 24, VIEW_H)
+                        // Under the list: 24, the group's label (36), then the 92-high entry.
+                        val end = entryTops(rows.size + 1, null)[rows.size] + (if (newRow) ENTRY_H else -ENTRY_GAP)
+                        scroll = paneScroll(scroll, end, end + 24 + 36 + ENTRY_H + 24, VIEW_H)
                     }
                 },
                 onClick = { chooseApps(null) },
             )
         }
+        // The name list, over the right end of the row it names, as Settings' other lists are.
+        naming?.let { id ->
+            val spec = rows.firstOrNull { it.id == id }
+            val anchor = (if (id == NEW_ROW) tops[rows.size] else tops[rows.indexOf(spec).coerceAtLeast(0)]) - scroll
+            NameChooser(
+                title = if (spec == null) "Name the new row" else "Rename",
+                current = spec?.name,
+                onName = ::named,
+                onClose = ::closeNaming,
+                modifier = Modifier.align(Alignment.TopEnd).offset(x = px(-20), y = px(menuTop(anchor, menuHeight(PRESET_NAMES.size + 1), VIEW_H - 16))),
+            )
+        }
+    }
+}
+
+/** "New row", as the board's: a dashed outline, a plus in a pale disc, its words in the accent. */
+@Composable
+private fun NewRowEntry(modifier: Modifier, onClick: () -> Unit, onFocused: () -> Unit) {
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val dash = AtomixColors.Ice.copy(alpha = 0.40f)
+    Row(
+        modifier.onFocusChanged { if (it.isFocused) onFocused() }
+            .tvFocus(focused, cornerPx = 18f, glow = FocusGlow.Row)
+            .fillMaxWidth().height(px(ENTRY_H))
+            .background(if (focused) AtomixColors.Raised else AtomixColors.Inset, RoundedCornerShape(px(18)))
+            .drawBehind {
+                if (!focused) {
+                    // One board pixel, from the entry's height.
+                    val u = size.height / ENTRY_H
+                    drawRoundRect(
+                        dash, topLeft = Offset(u, u), size = Size(size.width - 2 * u, size.height - 2 * u),
+                        cornerRadius = CornerRadius(17 * u),
+                        style = Stroke(width = 2 * u, pathEffect = PathEffect.dashPathEffect(floatArrayOf(10 * u, 7 * u))),
+                    )
+                }
+            }
+            .clickable(interaction, indication = null, onClick = onClick)
+            .padding(horizontal = px(28)),
+        horizontalArrangement = Arrangement.spacedBy(px(22)),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(px(44)).background(AtomixColors.Ice.copy(alpha = 0.16f), CircleShape), contentAlignment = Alignment.Center) {
+            Icon(LineIcon.Plus, AtomixColors.Ice, 26)
+        }
+        BasicText("New row", style = AtomixType.rowLabel().copy(fontWeight = FontWeight.SemiBold, color = if (focused) AtomixColors.Text else AtomixColors.Ice), maxLines = 1)
     }
 }
 

@@ -3,6 +3,7 @@ package dev.atomix.launcher.ui.settings
 import dev.atomix.launcher.prefs.HomeRowSpec
 import dev.atomix.launcher.prefs.RowKind
 import dev.atomix.launcher.prefs.RowSort
+import dev.atomix.launcher.prefs.canAddRow
 import dev.atomix.launcher.prefs.canDelete
 import dev.atomix.launcher.prefs.moved
 import dev.atomix.launcher.ui.kit.LineIcon
@@ -21,14 +22,17 @@ enum class RowOption(val label: String) {
 /** Shown under the last shown app row when OK would hide it. */
 const val KEEP_ONE_NOTE = "One app row must stay on Home"
 
-/** The options of row [id] of [rows] (spec §7.3). Rename comes with naming. */
+/** The options of row [id] of [rows] (spec §7.3). */
 fun optionsFor(rows: List<HomeRowSpec>, id: String): List<RowOption> {
     val i = rows.indexOfFirst { it.id == id }
     if (i < 0) return emptyList()
     val moves = listOfNotNull(RowOption.MoveUp.takeIf { i > 0 }, RowOption.MoveDown.takeIf { i < rows.lastIndex })
     if (rows[i].kind != RowKind.Apps) return moves
-    return listOf(RowOption.ChooseApps) + moves + RowOption.Sort + listOfNotNull(RowOption.Delete.takeIf { rows.canDelete(id) })
+    return listOf(RowOption.ChooseApps, RowOption.Rename) + moves + RowOption.Sort + listOfNotNull(RowOption.Delete.takeIf { rows.canDelete(id) })
 }
+
+/** Whether "New row" ends the list of rows: not once there are eight app rows. */
+fun showsNewRow(rows: List<HomeRowSpec>): Boolean = rows.canAddRow()
 
 /** An option's words on its button: Sort says which order the row has now. */
 fun optionLabel(o: RowOption, spec: HomeRowSpec): String =

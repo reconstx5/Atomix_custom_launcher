@@ -10,6 +10,8 @@ import dev.atomix.launcher.prefs.base
 import dev.atomix.launcher.prefs.withRowAdded
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RowsPaneModelTest {
@@ -19,12 +21,36 @@ class RowsPaneModelTest {
 
     @Test fun options_appRow_onNow_inputs() {
         val r = base().withRowAdded("Tools")
-        assertEquals(listOf(RowOption.ChooseApps, RowOption.MoveDown, RowOption.Sort, RowOption.Delete), optionsFor(r, ROW_APPS))
+        assertEquals(listOf(RowOption.ChooseApps, RowOption.Rename, RowOption.MoveDown, RowOption.Sort, RowOption.Delete), optionsFor(r, ROW_APPS))
         assertEquals(listOf(RowOption.MoveUp, RowOption.MoveDown), optionsFor(r, ROW_ON_NOW))
         assertEquals(listOf(RowOption.MoveUp, RowOption.MoveDown), optionsFor(r, ROW_INPUTS))   // Tools sits after Inputs
         assertEquals(listOf(RowOption.MoveUp), optionsFor(base(), ROW_INPUTS))
         assertFalse(RowOption.Delete in optionsFor(base(), ROW_APPS))
-        assertEquals(listOf(RowOption.ChooseApps, RowOption.MoveUp, RowOption.Sort, RowOption.Delete), optionsFor(r, "row-1"))
+        assertEquals(listOf(RowOption.ChooseApps, RowOption.Rename, RowOption.MoveUp, RowOption.Sort, RowOption.Delete), optionsFor(r, "row-1"))
+    }
+
+    @Test fun names() {
+        assertNull(cleanName(""))
+        assertNull(cleanName("   "))
+        assertEquals("My row", cleanName("  My   row "))
+        assertEquals(24, cleanName("x".repeat(30))!!.length)
+        assertEquals("Tools", cleanName("Tools"))
+        assertEquals(listOf("Streaming", "Tools", "Games", "Music", "Kids", "News", "Sport"), PRESET_NAMES)
+        assertEquals("Type a name…", TYPE_A_NAME)
+    }
+
+    @Test fun rename_isOfferedOnAppRowsOnly() {
+        assertEquals(RowOption.Rename, optionsFor(base(), ROW_APPS)[1])
+        assertFalse(RowOption.Rename in optionsFor(base(), ROW_ON_NOW))
+        assertFalse(RowOption.Rename in optionsFor(base(), ROW_INPUTS))
+    }
+
+    // "New row" is listed until there are eight app rows.
+    @Test fun newRow_hiddenAtEight() {
+        var r = base()
+        assertTrue(showsNewRow(r))
+        repeat(7) { r = r.withRowAdded("Row $it") }
+        assertFalse(showsNewRow(r))
     }
 
     @Test fun summaries() {

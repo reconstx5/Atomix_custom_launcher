@@ -53,6 +53,8 @@ fun ChoiceList(
     onChoose: (Int) -> Unit,
     onFocused: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** The row [chosenFocus] is attached to; the chosen one, or the first when nothing is chosen ([selected] -1). */
+    focusAt: Int = selected,
 ) {
     val shape = RoundedCornerShape(px(22))
     Column(
@@ -64,7 +66,7 @@ fun ChoiceList(
             val interaction = remember { MutableInteractionSource() }
             val focused by interaction.collectIsFocusedAsState()
             Row(
-                (if (i == selected) Modifier.focusRequester(chosenFocus) else Modifier)
+                (if (i == focusAt) Modifier.focusRequester(chosenFocus) else Modifier)
                     .focusProperties {
                         left = FocusRequester.Cancel
                         right = FocusRequester.Cancel

@@ -42,6 +42,13 @@ class HintsTest {
 
     @Test fun settingsChoice_selectsOrCloses() = assertEquals(h("OK" to "Select", "Back" to "Close"), hintsFor(HintSpot.SettingsChoice))
 
+    // Settings › Rows and apps (spec §7.2, §7.5): an entry, one of its options, and the question about deleting it.
+    @Test fun rowsPane_hints() {
+        assertEquals(h("OK" to "Show or hide", "▼" to "This row's options", "Back" to "Sections"), hintsFor(HintSpot.RowsEntry))
+        assertEquals(h("OK" to "Move up", "Back" to "Sections"), hintsFor(HintSpot.RowsOption("Move up")))
+        assertEquals(h("OK" to "Keep", "Back" to "Close"), hintsFor(HintSpot.RowsOption("Keep", back = "Close")))
+    }
+
     @Test fun watching_matchesTheBoards() {
         assertEquals(h("▲▼" to "Change channel", "◀" to "Channels", "Back" to "Hide"), hintsFor(HintSpot.PlayerBanner))
         assertEquals(h("▲▼" to "Change channel", "Back" to "Home"), hintsFor(HintSpot.PlayerTuning))
