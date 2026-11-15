@@ -1,5 +1,9 @@
 package dev.atomix.launcher.ui.settings
 
+import dev.atomix.launcher.prefs.TileSize
+import dev.atomix.launcher.prefs.TileShape
+import dev.atomix.launcher.prefs.Spacing
+import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.TextSize
 import dev.atomix.launcher.prefs.FocusStyle
 import dev.atomix.launcher.prefs.ClockChoice
@@ -111,5 +115,44 @@ class SettingsChoicesTest {
         assertEquals(listOf(SettingsItem.FocusHighlight, SettingsItem.ReducedEffects), g[1].items)
         assertEquals(listOf("Theme", "Accent colour", "Text size", "Clock", "Focus highlight", "Reduced effects"), rowsIn(SettingsSection.Appearance).map(::titleOf))
         assertEquals(36 + 3 * 104 + 92 + 72, rowTop(SettingsItem.FocusHighlight, g))
+    }
+
+    @Test fun tileSize_options_andNote() {
+        assertEquals(listOf("Small", "Medium", "Large"), choiceOptions(SettingsItem.TileSize))
+        assertEquals("Medium shows 7 across", tileSizeNote(TileSize.Medium))
+        assertEquals("Small shows 9 across", tileSizeNote(TileSize.Small))
+        assertEquals("Large shows 5 across", tileSizeNote(TileSize.Large))
+    }
+
+    @Test fun spacing_withChoice_changesOnlySpacing() {
+        val now = Chosen(Look(theme = ThemeId.Plum), HomeLayout(tileSize = TileSize.Large))
+        assertEquals(now.copy(layout = now.layout.copy(spacing = Spacing.Roomy)), withChoice(SettingsItem.Spacing, 2, now))
+    }
+
+    @Test fun tileSizeAndShape_chosenIndex_andChoice() {
+        val now = Chosen(Look(), HomeLayout(tileSize = TileSize.Small, tileShape = TileShape.FullBanner))
+        assertEquals(0, chosenIndex(SettingsItem.TileSize, now))
+        assertEquals(1, chosenIndex(SettingsItem.TileShape, now))
+        assertEquals(TileSize.Large, withChoice(SettingsItem.TileSize, 2, now).layout.tileSize)
+        assertEquals(TileShape.Wide, withChoice(SettingsItem.TileShape, 0, now).layout.tileShape)
+        assertEquals(now.look, withChoice(SettingsItem.TileShape, 0, now).look)
+    }
+
+    @Test fun tileShape_options() = assertEquals(listOf("Wide tile", "Full banner"), choiceOptions(SettingsItem.TileShape))
+
+    @Test fun theTileRows_kinds_andHints() {
+        assertEquals(RowKind.Stepped, kindOf(SettingsItem.TileSize))
+        assertEquals(RowKind.Stepped, kindOf(SettingsItem.Spacing))
+        assertEquals(RowKind.List, kindOf(SettingsItem.TileShape))
+        assertEquals(RowKind.Switch, kindOf(SettingsItem.AppNames))
+        assertEquals("Change size", stepHintFor(SettingsItem.TileSize))
+        assertEquals("Change", stepHintFor(SettingsItem.Spacing))
+    }
+
+    @Test fun homeLayout_isOneGroupOfFourRows_asOnItsBoard() {
+        val g = groupsOf(SettingsSection.HomeLayout)
+        assertEquals("APP TILES", g[0].label)
+        assertEquals(listOf(SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames), g[0].items)
+        assertEquals(listOf("Tile size", "Tile shape", "Spacing", "App names"), g[0].items.map(::titleOf))
     }
 }

@@ -252,6 +252,7 @@ class HomeActivity : ComponentActivity() {
                                     ),
                                     reduced = reduced.value,
                                     look = look,
+                                    layout = homeLayout.value,
                                     tvIs24 = tvIs24,
                                     nowMs = ui.nowMs,
                                     tv = tvFacts.value,
@@ -264,6 +265,7 @@ class HomeActivity : ComponentActivity() {
                                         openAccessibility = { if (!openTvSettings()) toast("Couldn't open that") },
                                         openTvPage = { if (!openTvPage(it)) toast("Couldn't open that") },
                                         setLook = { graph.prefs.look = it; LookState.look = it },
+                                        setLayout = { graph.prefs.homeLayout = it; homeLayout.value = it },
                                     ),
                                 )
                             }

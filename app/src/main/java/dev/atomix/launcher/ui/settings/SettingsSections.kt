@@ -19,7 +19,9 @@ enum class SettingsSection(val title: String) {
 
 /** The rows that work today. */
 enum class SettingsItem {
-    HomeButton, Theme, Accent, TextSize, Clock, FocusHighlight, ReducedEffects, LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
+    HomeButton, Theme, Accent, TextSize, Clock, FocusHighlight, ReducedEffects,
+    TileSize, TileShape, Spacing, AppNames,
+    LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
     /** The TV's own settings pages, one row each (apps/TvPages.kt). */
     TvPages,
     Version,
@@ -28,12 +30,12 @@ enum class SettingsItem {
 /** The rows a section holds, in order; empty for a section that has nothing working yet. */
 fun rowsIn(section: SettingsSection): List<SettingsItem> = when (section) {
     SettingsSection.Setup -> listOf(SettingsItem.HomeButton)
-    SettingsSection.Appearance -> groupsOf(section).flatMap { it.items }
+    SettingsSection.Appearance, SettingsSection.HomeLayout -> groupsOf(section).flatMap { it.items }
     SettingsSection.LiveTv -> listOf(SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources)
     SettingsSection.Account -> listOf(SettingsItem.Server, SettingsItem.FindServer, SettingsItem.SwitchProfile)
     SettingsSection.TvSettings -> listOf(SettingsItem.TvPages)
     SettingsSection.About -> listOf(SettingsItem.Version)
-    SettingsSection.HomeLayout, SettingsSection.Rows, SettingsSection.Wallpaper, SettingsSection.Inputs -> emptyList()
+    SettingsSection.Rows, SettingsSection.Wallpaper, SettingsSection.Inputs -> emptyList()
 }
 
 /**
@@ -71,7 +73,7 @@ fun homeButtonEnding(on: Boolean): RowEnding.Status =
  * What OK does on a row, for the hint bar; null for a row that only states something, and for "Test a channel" when
  * there is no channel to play ([hasTestChannel] false), so the hint never promises what OK cannot do.
  */
-fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean): String? = when (item) {
+fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean, appNames: Boolean = true): String? = when (item) {
     SettingsItem.HomeButton -> "Open TV settings"
     SettingsItem.ReducedEffects -> if (reduced) "Turn off" else "Turn on"
     SettingsItem.LiveSources -> "Refresh"
@@ -80,8 +82,9 @@ fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean):
     SettingsItem.FindServer -> "Search"
     SettingsItem.SwitchProfile -> "Switch"
     SettingsItem.TvPages -> "Open"
-    SettingsItem.Theme, SettingsItem.FocusHighlight -> "Choose"
+    SettingsItem.Theme, SettingsItem.FocusHighlight, SettingsItem.TileShape -> "Choose"
+    SettingsItem.AppNames -> if (appNames) "Turn off" else "Turn on"
     // Left and Right change these; OK has nothing to do.
-    SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock -> null
+    SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.TileSize, SettingsItem.Spacing -> null
     SettingsItem.Server, SettingsItem.Version, null -> null
 }

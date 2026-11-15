@@ -65,4 +65,12 @@ class HomePreviewTest {
         assertEquals(false, hasPreview(SettingsSection.TvSettings))
         assertEquals(false, hasPreview(SettingsSection.About))
     }
+
+    @Test fun theTileRows_markTheTilesInThePreview() =
+        listOf(SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames).forEach { assertEquals(PreviewMark.Tiles, previewMark(it)) }
+
+    @Test fun homeLayout_hasAPreview() = assertTrue(hasPreview(SettingsSection.HomeLayout))
+
+    @Test fun thePreviewShowsATileShapeWithFocus_beforeOk() =
+        assertEquals(TileShape.FullBanner, previewChoice(Chosen(Look()), open = SettingsItem.TileShape, focused = 1).layout.tileShape)
 }

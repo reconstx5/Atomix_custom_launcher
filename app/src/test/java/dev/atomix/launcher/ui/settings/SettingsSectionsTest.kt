@@ -9,7 +9,7 @@ import org.junit.Test
 
 class SettingsSectionsTest {
     @Test fun onlySectionsWithAWorkingRowAreListed() = assertEquals(
-        listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings, SettingsSection.About),
+        listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.HomeLayout, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings, SettingsSection.About),
         listedSections())
 
     @Test fun tvSettings_isListedAfterAccount_beforeAbout() {
@@ -50,7 +50,7 @@ class SettingsSectionsTest {
     }
 
     @Test fun okOpensASection_onlyWhenARowInItCanTakeFocus() {
-        assertEquals(listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings), listedSections().filter(::hasRowToOpen))
+        assertEquals(listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.HomeLayout, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings), listedSections().filter(::hasRowToOpen))
     }
 
     @Test fun testAChannel_offersPlay_onlyWithAChannelToPlay() {
@@ -68,5 +68,14 @@ class SettingsSectionsTest {
     @Test fun okOnAListRow_chooses_andAStepRowHasNoOkAction() {
         assertEquals("Choose", okActionFor(SettingsItem.Theme, reduced = false, hasTestChannel = true))
         assertNull(okActionFor(SettingsItem.Accent, reduced = false, hasTestChannel = true))
+    }
+
+    @Test fun homeLayout_isListedThird() = assertEquals(SettingsSection.HomeLayout, listedSections()[2])
+
+    @Test fun appNames_hint() {
+        assertEquals("Turn off", okActionFor(SettingsItem.AppNames, reduced = false, hasTestChannel = true, appNames = true))
+        assertEquals("Turn on", okActionFor(SettingsItem.AppNames, reduced = false, hasTestChannel = true, appNames = false))
+        assertEquals("Choose", okActionFor(SettingsItem.TileShape, reduced = false, hasTestChannel = true))
+        assertNull(okActionFor(SettingsItem.TileSize, reduced = false, hasTestChannel = true))
     }
 }

@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import dev.atomix.launcher.apps.TvFacts
 import dev.atomix.launcher.apps.TvPage
 import dev.atomix.launcher.prefs.FocusStyle
+import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.kit.ChoiceList
@@ -91,6 +92,8 @@ class SettingsActions(
     val openTvPage: (TvPage) -> Unit,
     /** Saves a change to how the launcher looks and shows it at once. */
     val setLook: (Look) -> Unit,
+    /** Saves a change to how Home is laid out. */
+    val setLayout: (HomeLayout) -> Unit,
 )
 
 private const val SERVER = "server"
@@ -120,6 +123,8 @@ fun SettingsScreen(
     reduced: Boolean,
     /** How the launcher looks now. */
     look: Look,
+    /** How Home is laid out now. */
+    layout: HomeLayout,
     /** The TV's own 12- or 24-hour setting. */
     tvIs24: Boolean,
     nowMs: Long,
@@ -141,7 +146,7 @@ fun SettingsScreen(
     var serverNote by remember { mutableStateOf<String?>(null) }
     var inRows by remember { mutableStateOf(false) }
     var focusedItem by remember { mutableStateOf<SettingsItem?>(null) }
-    val now = Chosen(look)
+    val now = Chosen(look, layout)
     val rowFocus = remember { HashMap<SettingsItem, FocusRequester>() }
     val host = PaneHost(rowsFirst, { focusedItem = it }, { item -> rowFocus.getOrPut(item) { FocusRequester() } })
     // The row whose choices are open as a list, and where focus goes in that list as it opens.
@@ -169,6 +174,7 @@ fun SettingsScreen(
     fun choose(item: SettingsItem, index: Int) {
         val next = withChoice(item, index, now)
         if (next.look != look) actions.setLook(next.look)
+        if (next.layout != layout) actions.setLayout(next.layout)
     }
 
     LaunchedEffect(Unit) {
@@ -193,7 +199,7 @@ fun SettingsScreen(
     val hints = when {
         openList != null -> hintsFor(HintSpot.SettingsChoice)
         inRows && stepHint != null -> hintsFor(HintSpot.SettingsStep(stepHint))
-        inRows -> hintsFor(HintSpot.SettingsRow(okActionFor(focusedItem, reduced, hasTestChannel)))
+        inRows -> hintsFor(HintSpot.SettingsRow(okActionFor(focusedItem, reduced, hasTestChannel, layout.appNames)))
         // A section with nothing to move into offers no "OK Open".
         else -> hintsFor(HintSpot.SettingsSections).filter { hasRowToOpen(section) || it.key != OK }
     }
@@ -241,11 +247,17 @@ fun SettingsScreen(
                 onOpenList = ::openList,
                 onReduced = actions.setReduced,
             )
+            else if (section == SettingsSection.HomeLayout) HomeLayoutPane(
+                host, now, openList,
+                onStep = ::choose,
+                onOpenList = ::openList,
+                onAppNames = { actions.setLayout(layout.copy(appNames = it)) },
+            )
             else rowsIn(section).forEach { item ->
                 when (item) {
-                    // Drawn by AppearancePane.
+                    // Drawn by AppearancePane and HomeLayoutPane.
                     SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.FocusHighlight,
-                    SettingsItem.ReducedEffects -> Unit
+                    SettingsItem.ReducedEffects, SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames -> Unit
                     SettingsItem.HomeButton -> {
                         GroupLabel("HOME SCREEN")
                         SettingRow(

@@ -5,8 +5,11 @@ import dev.atomix.launcher.prefs.ClockChoice
 import dev.atomix.launcher.prefs.FocusStyle
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.Look
+import dev.atomix.launcher.prefs.Spacing
 import dev.atomix.launcher.prefs.TextSize
 import dev.atomix.launcher.prefs.ThemeId
+import dev.atomix.launcher.prefs.TileShape
+import dev.atomix.launcher.prefs.TileSize as TileSizeChoice
 import dev.atomix.launcher.prefs.shownClock
 
 /** Everything the owner has chosen in Settings that a row can show or change. */
@@ -29,9 +32,9 @@ enum class RowKind {
 /** [reduced] is whether Reduced effects is on: Focus highlight then has nothing to choose and is a statement. */
 fun kindOf(item: SettingsItem, reduced: Boolean = false): RowKind = when (item) {
     SettingsItem.Server, SettingsItem.Version -> RowKind.Statement
-    SettingsItem.ReducedEffects -> RowKind.Switch
-    SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock -> RowKind.Stepped
-    SettingsItem.Theme -> RowKind.List
+    SettingsItem.ReducedEffects, SettingsItem.AppNames -> RowKind.Switch
+    SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.TileSize, SettingsItem.Spacing -> RowKind.Stepped
+    SettingsItem.Theme, SettingsItem.TileShape -> RowKind.List
     SettingsItem.FocusHighlight -> if (reduced) RowKind.Statement else RowKind.List
     SettingsItem.HomeButton, SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources,
     SettingsItem.FindServer, SettingsItem.SwitchProfile, SettingsItem.TvPages -> RowKind.Action
@@ -44,6 +47,9 @@ fun choiceOptions(item: SettingsItem): List<String> = when (item) {
     SettingsItem.TextSize -> TextSize.entries.map { it.label }
     SettingsItem.Clock -> ClockChoice.entries.map { it.label }
     SettingsItem.FocusHighlight -> FocusStyle.entries.map { it.label }
+    SettingsItem.TileSize -> TileSizeChoice.entries.map { it.label }
+    SettingsItem.TileShape -> TileShape.entries.map { it.label }
+    SettingsItem.Spacing -> Spacing.entries.map { it.label }
     else -> emptyList()
 }
 
@@ -57,6 +63,9 @@ fun chosenIndex(item: SettingsItem, now: Chosen, tvIs24: Boolean = true): Int = 
     SettingsItem.TextSize -> now.look.textSize.ordinal
     SettingsItem.Clock -> shownClock(now.look.clock, tvIs24).ordinal
     SettingsItem.FocusHighlight -> now.look.focus.ordinal
+    SettingsItem.TileSize -> now.layout.tileSize.ordinal
+    SettingsItem.TileShape -> now.layout.tileShape.ordinal
+    SettingsItem.Spacing -> now.layout.spacing.ordinal
     else -> -1
 }
 
@@ -69,6 +78,9 @@ fun withChoice(item: SettingsItem, index: Int, now: Chosen): Chosen {
         SettingsItem.TextSize -> now.copy(look = now.look.copy(textSize = TextSize.entries[index]))
         SettingsItem.Clock -> now.copy(look = now.look.copy(clock = ClockChoice.entries[index]))
         SettingsItem.FocusHighlight -> now.copy(look = now.look.copy(focus = FocusStyle.entries[index]))
+        SettingsItem.TileSize -> now.copy(layout = now.layout.copy(tileSize = TileSizeChoice.entries[index]))
+        SettingsItem.TileShape -> now.copy(layout = now.layout.copy(tileShape = TileShape.entries[index]))
+        SettingsItem.Spacing -> now.copy(layout = now.layout.copy(spacing = Spacing.entries[index]))
         else -> now
     }
 }
@@ -76,8 +88,8 @@ fun withChoice(item: SettingsItem, index: Int, now: Chosen): Chosen {
 /** What Left and Right do on a stepped row, for the hint bar; null for a row they do not change. */
 fun stepHintFor(item: SettingsItem): String? = when (item) {
     SettingsItem.Accent -> "Pick a colour"
-    SettingsItem.TextSize -> "Change size"
-    SettingsItem.Clock -> "Change"
+    SettingsItem.TextSize, SettingsItem.TileSize -> "Change size"
+    SettingsItem.Clock, SettingsItem.Spacing -> "Change"
     else -> null
 }
 
@@ -89,6 +101,9 @@ fun groupsOf(section: SettingsSection): List<PaneGroup> = when (section) {
     SettingsSection.Appearance -> listOf(
         PaneGroup("LOOK", listOf(SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock)),
         PaneGroup("FOCUS AND MOTION", listOf(SettingsItem.FocusHighlight, SettingsItem.ReducedEffects)),
+    )
+    SettingsSection.HomeLayout -> listOf(
+        PaneGroup("APP TILES", listOf(SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames)),
     )
     else -> emptyList()
 }
@@ -116,5 +131,12 @@ fun titleOf(item: SettingsItem): String = when (item) {
     SettingsItem.Clock -> "Clock"
     SettingsItem.FocusHighlight -> "Focus highlight"
     SettingsItem.ReducedEffects -> "Reduced effects"
+    SettingsItem.TileSize -> "Tile size"
+    SettingsItem.TileShape -> "Tile shape"
+    SettingsItem.Spacing -> "Spacing"
+    SettingsItem.AppNames -> "App names"
     else -> ""
 }
+
+/** What the Tile size row says under its name: how many tiles the chosen size fits across. */
+fun tileSizeNote(size: TileSizeChoice): String = "${size.label} shows ${size.across} across"

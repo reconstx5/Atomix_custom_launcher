@@ -53,11 +53,12 @@ enum class PreviewMark { None, Tiles, Cards, FocusedCard }
 fun previewMark(item: SettingsItem?): PreviewMark = when (item) {
     // These change the ring, its glow or the colours around it: the first card is shown with focus.
     SettingsItem.Theme, SettingsItem.Accent, SettingsItem.FocusHighlight, SettingsItem.ReducedEffects -> PreviewMark.FocusedCard
+    SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames -> PreviewMark.Tiles
     else -> PreviewMark.None
 }
 
 /** Which sections draw the preview beside their rows. */
-fun hasPreview(section: SettingsSection): Boolean = section == SettingsSection.Appearance
+fun hasPreview(section: SettingsSection): Boolean = section == SettingsSection.Appearance || section == SettingsSection.HomeLayout
 
 /**
  * What the preview draws: with a list of choices [open] it is the choice that has focus in it ([focused]), before OK;
