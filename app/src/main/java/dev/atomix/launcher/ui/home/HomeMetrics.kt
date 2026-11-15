@@ -106,15 +106,26 @@ fun homeMetrics(layout: HomeLayout): HomeMetrics {
 }
 
 /** How wide the artwork at the right of a small card is: 370 on the board's card, less on a narrower one. */
-fun smallArtWidth(cardW: Int): Int = min(370, cardW - 230)
+fun smallArtWidth(cardW: Int): Int = min(370, cardW - 276)
 
 /**
- * How wide the words of a small card may run. Beside artwork they keep to the left of it and 54 into its faded edge
- * (330 on the board's card), and as much more as Large text needs. With no artwork there is nothing to stay clear of,
- * so they take the card's width less its 30 px margins.
+ * How wide the words of a small card may run. Beside artwork they have 330, as on the board's card, and as much more
+ * as Large text needs: on a narrower card it is the artwork that gives way ([smallArtWidth]), never the words. With
+ * no artwork there is nothing to stay clear of, so they take the card's width less its 30 px margins.
  */
 fun smallCardTextRoom(cardW: Int, hasArt: Boolean, textScale: Float): Int =
-    if (hasArt) textRoom(min(330, cardW - smallArtWidth(cardW) + 54), textScale) else cardW - 60
+    if (hasArt) textRoom(330, textScale) else cardW - 60
+
+/**
+ * The fade of a small card's own colour over its artwork, as three stops across the card's width: solid up to 2 px
+ * into the artwork, 55 % at 123 px further, clear at 252 px further. On the board's 646-wide card these are 0.43,
+ * 0.62 and 0.82; a narrower card keeps the same distances, so its words sit on the same strength of colour.
+ */
+fun smallArtFade(cardW: Int): List<Float> {
+    if (cardW == 646) return listOf(0.43f, 0.62f, 0.82f)
+    val start = cardW - smallArtWidth(cardW) + 2
+    return listOf(start, start + 123, start + 252).map { (it / cardW.toFloat()).coerceAtMost(1f) }
+}
 
 /** How a small card's words are fitted to its height: where the channel's name and the lines start, and whether "Next:" shows. */
 data class SmallCardFit(val chipTop: Int, val textTop: Int, val showNext: Boolean)
@@ -141,6 +152,12 @@ fun smallCardFit(heightPx: Int, textScale: Float): SmallCardFit {
  * card's margins take 68.
  */
 fun largeTitleLines(heightPx: Int, textScale: Float): Int = if (78 + (2 * 74 + 2 * 42) * textScale + 68 <= heightPx) 2 else 1
+
+/**
+ * Whether the large card's "OK Watch" chip goes top right instead of bottom right. The words and the progress bar run
+ * up to 720 from the card's 36 px margin; the chip is about 246 wide with its margin, and needs 16 clear of them.
+ */
+fun watchHintOnTop(cardW: Int): Boolean = cardW < 36 + 720 + 16 + 246
 
 /** The two rows of Home. */
 enum class HomeRow { Apps, OnNow }

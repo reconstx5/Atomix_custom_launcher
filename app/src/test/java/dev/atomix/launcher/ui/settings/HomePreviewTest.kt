@@ -73,4 +73,6 @@ class HomePreviewTest {
 
     @Test fun thePreviewShowsATileShapeWithFocus_beforeOk() =
         assertEquals(TileShape.FullBanner, previewChoice(Chosen(Look()), open = SettingsItem.TileShape, focused = 1).layout.tileShape)
+
+    @Test fun onNowLayout_marksTheCardsInThePreview() = assertEquals(PreviewMark.Cards, previewMark(SettingsItem.OnNowLayout))
 }

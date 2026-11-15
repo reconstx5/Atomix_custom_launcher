@@ -56,6 +56,8 @@ import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.settings.SettingsSection
 import dev.atomix.launcher.shell.restoresFocus
 import dev.atomix.launcher.prefs.HomeLayout
+import dev.atomix.launcher.prefs.OnNowLayout
+import dev.atomix.launcher.prefs.SMALL_ROWS
 import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.FocusGlow
@@ -136,17 +138,36 @@ fun HomeScreen(
     var edit by remember { mutableStateOf<EditSession?>(null) }
     var focusedId by remember { mutableStateOf(memory.current()?.takeIf { it.row == ROW_ON_NOW }?.key) }
     var focusedApp by remember { mutableStateOf(memory.current()?.takeIf { it.row == ROW_APPS }?.key) }
-    // Which of the small cards is the upper of the two that show.
-    var firstSmall by remember { mutableIntStateOf(0) }
-    // Whether focus is on a channel card: only then can the cards just off the two-card window take focus.
+    // Which row of small cards is the first of the two rows that show, as last asked for; read through firstRow.
+    var firstRowWanted by remember { mutableIntStateOf(0) }
+    // Whether focus is on a channel card: only then can the cards just off the rows that show take focus.
     var inCards by remember { mutableStateOf(false) }
     val editing = edit != null
     val channelEdit = edit?.takeIf { editRow == ROW_ON_NOW }
     val appEdit = edit?.takeIf { editRow == ROW_APPS }
     val channelsShown = channelEdit?.order?.mapNotNull { id -> pinned.firstOrNull { it.id == id } } ?: pinned
     val appsShown = appEdit?.order?.mapNotNull { p -> ui.apps.firstOrNull { it.packageName == p } } ?: ui.apps
-    val smalls = channelsShown.drop(1)
-    val smallStart = firstSmall.coerceIn(0, max(smalls.size - 2, 0))
+    // The "On now" layout: where each channel's card goes, and which rows of small cards show.
+    val onNow = layout.onNow
+    val firstRow = firstRowFor(firstRowWanted, channelsShown.size, onNow)
+    val lastRow = smallRowCount(channelsShown.size, onNow) - 1
+
+    // The functions below answer "where does this key go?" at the moment a key is pressed, and are called from tiles
+    // and cards that may have been built before the cards last moved or the rows last changed. So they read what is
+    // on screen now from these, never from a value they were built with: a link worked out earlier could name a card
+    // that has since gone out of view, and the key would do nothing (seen on the TV: Up from an app tile, with "Six
+    // small" paged down).
+    val shownNow by rememberUpdatedState(channelsShown)
+    val areaNow by rememberUpdatedState(area)
+    val layoutNow by rememberUpdatedState(layout)
+    fun firstRowNow(): Int = firstRowFor(firstRowWanted, shownNow.size, layoutNow.onNow)
+
+    /** The focus handle of the small card at [row] and [column], or of the last card when that slot is empty; null with no small card. */
+    fun smallAt(row: Int, column: Int): FocusRequester? {
+        val index = min(indexAt(row, column, layoutNow.onNow), shownNow.lastIndex)
+        if (index < 0 || slotOf(index, layoutNow.onNow) !is Slot.Small) return null
+        return channelFocus[shownNow[index].id]
+    }
     val appsEditShown = appEdit == null && ui.apps.size >= 2
     val channelsEditShown = channelEdit == null && pinned.size >= 2
     val saveChannels by rememberUpdatedState(actions.saveChannels)
@@ -164,23 +185,30 @@ fun HomeScreen(
         }
     }
 
-    /** Where focus lands below the apps row: the large card, or the first button of a message. */
-    fun onNowEntry(): FocusRequester = when (area) {
-        is OnNowArea.Cards -> channelsShown.firstOrNull()?.let { channelFocus[it.id] } ?: FocusRequester.Default
+    /** Where focus lands in "On now" from outside it: a card ([onNowEntryIndex]), or the first button of a message. */
+    fun onNowEntry(): FocusRequester = when (areaNow) {
+        is OnNowArea.Cards -> {
+            val remembered = focusedId?.let { id -> shownNow.indexOfFirst { it.id == id }.takeIf { it >= 0 } }
+            onNowEntryIndex(remembered, firstRowNow(), shownNow.size, layoutNow.onNow)?.let { channelFocus[shownNow[it].id] } ?: FocusRequester.Default
+        }
         is OnNowArea.Message -> emptyFocus
         OnNowArea.Blank -> FocusRequester.Default
     }
 
-    /** Brings small card [small] (of [count]) into the two that show; see [smallWindowStart]. */
-    fun showSmall(small: Int, count: Int, page: Boolean) {
-        firstSmall = smallWindowStart(firstSmall, small, count, page)
+    /**
+     * Brings the row of small cards holding channel [index] (of [channels]) into the two rows that show; see
+     * [smallWindowStart]. The large card is always showing, so it moves nothing.
+     */
+    fun showCard(index: Int, channels: Int, page: Boolean) {
+        val slot = slotOf(index, onNow) as? Slot.Small ?: return
+        firstRowWanted = smallWindowStart(firstRowFor(firstRowWanted, channels, onNow), slot.row, smallRowCount(channels, onNow), page)
     }
 
     /** Brings a channel's card on screen and focuses it; false when it can't be. */
     suspend fun focusChannel(id: String, ids: List<String>): Boolean {
         val i = ids.indexOf(id)
         if (i < 0) return false
-        if (i > 0) showSmall(i - 1, ids.size - 1, page = false)
+        showCard(i, ids.size, page = false)
         withFrameNanos { }
         return runCatching { channelFocus[id]?.requestFocus() ?: error("not composed") }.isSuccess
     }
@@ -257,7 +285,7 @@ fun HomeScreen(
                 val held = s.held
                 // The held item keeps focus as it moves; the row follows it.
                 val at = if (held == null) -1 else s.order.indexOf(held)
-                if (row == ROW_ON_NOW && at > 0) showSmall(at - 1, s.order.size - 1, page = false)
+                if (row == ROW_ON_NOW && at >= 0) showCard(at, s.order.size, page = false)
                 else if (row == ROW_APPS && at >= 0 && key != EditKey.Ok) keepInView(at)
                 true
             }
@@ -319,13 +347,13 @@ fun HomeScreen(
     fun entryOf(row: HomeRow): FocusRequester = if (row == HomeRow.Apps) appEntry() else onNowEntry()
 
     /** Where Up goes from [row]: the row above, or the top bar's marked item from the first row (null: leave it be). */
-    fun upFrom(row: HomeRow): FocusRequester? = rowAbove(row, layout.rowOrder)?.let(::entryOf) ?: topBar
+    fun upFrom(row: HomeRow): FocusRequester? = rowAbove(row, layoutNow.rowOrder)?.let(::entryOf) ?: topBar
 
     /** Where Down goes from [row]: the row below; from the last row, nowhere. */
-    fun downFrom(row: HomeRow): FocusRequester = rowBelow(row, layout.rowOrder)?.let(::entryOf) ?: FocusRequester.Cancel
+    fun downFrom(row: HomeRow): FocusRequester = rowBelow(row, layoutNow.rowOrder)?.let(::entryOf) ?: FocusRequester.Cancel
 
     // Down from the top bar lands on the first row's remembered item, not on whichever item is nearest.
-    val barDown by rememberUpdatedState { entryOf(rowsInOrder(layout.rowOrder).first()) }
+    val barDown by rememberUpdatedState { entryOf(rowsInOrder(layoutNow.rowOrder).first()) }
     DisposableEffect(bar) {
         bar?.down = { barDown() }
         onDispose { bar?.down = null }
@@ -341,7 +369,7 @@ fun HomeScreen(
                         if (!editing) {
                             if (appVisible(ALL_APPS_KEY)) down = allAppsFocus
                             // Under "On now", the nearest thing above is the lower small card; go to the cards' entry.
-                            if (rowAbove(HomeRow.Apps, layout.rowOrder) != null) up = (smalls.getOrNull(smallStart + 1) ?: smalls.getOrNull(smallStart))?.let { channelFocus[it.id] } ?: onNowEntry()
+                            if (rowAbove(HomeRow.Apps, layoutNow.rowOrder) != null) up = smallAt(firstRowNow() + 1, layoutNow.onNow.columns - 1) ?: onNowEntry()
                         }
                     },
                 )
@@ -400,8 +428,9 @@ fun HomeScreen(
                     Modifier.focusRequester(channelsEditFocus).focusProperties {
                         if (!editing) {
                             // Under the apps row, Up is "All apps", the tile under this action; as the first row, the top bar.
-                            if (rowAbove(HomeRow.OnNow, layout.rowOrder) != null && appVisible(ALL_APPS_KEY)) up = allAppsFocus
-                            smalls.getOrNull(smallStart)?.let { channelFocus[it.id] }?.let { down = it }
+                            if (rowAbove(HomeRow.OnNow, layoutNow.rowOrder) != null && appVisible(ALL_APPS_KEY)) up = allAppsFocus
+                            // Down is the small card under this action: the last one of the first row that shows.
+                            smallAt(firstRowNow(), layoutNow.onNow.columns - 1)?.let { down = it }
                         }
                     },
                 )
@@ -434,52 +463,58 @@ fun HomeScreen(
                         .focusProperties { if (channelEdit != null) exit = { FocusRequester.Cancel } }
                         .focusGroup(),
                 ) {
-                    val smallX = px(m.smallX)
                     // Every card is the same kind of card and is placed by where its channel is in the order. They are
                     // composed in an order that never changes (by channel id), so rearranging the row only changes
                     // where each one is put: no card is moved or rebuilt, and the held one keeps its focus. Of the
-                    // small cards only the two that show are drawn; the one just above and the one just below are
-                    // there, unseen, so that Up and Down have somewhere to go, and stepping onto one turns the page.
+                    // small cards only the two rows that show are drawn; the row just above and the row just below
+                    // are there, unseen, so that Up and Down have somewhere to go, and stepping onto one moves the
+                    // rows that show (two at a time in the one-column layout, a row at a time in the grids).
+                    val largeFocus = if (onNow.large) channelsShown.firstOrNull()?.let { channelFocus[it.id] } else null
                     channelsShown.sortedBy { it.id }.forEach { ch ->
                         key(ch.id) {
                             val i = channelsShown.indexOf(ch)
-                            val small = i - 1
-                            val shown = i == 0 || small in smallStart..smallStart + 1
-                            if (shown || small in smallStart - 1..smallStart + 2) {
+                            val slot = slotOf(i, onNow)
+                            val small = slot as? Slot.Small
+                            if (isBuilt(slot, firstRow)) {
+                            val place = cardPlace(slot, firstRow, m)
                             val on = onAir(ch, ui.nowMs)
                             ChannelCard(
                                 ch, onAirLines(on, is24), url(on.programme?.image), loader,
-                                large = i == 0,
-                                widthPx = if (i == 0) m.largeW else m.smallW,
-                                heightPx = if (i == 0) m.cardsH else m.smallH,
+                                large = small == null,
+                                widthPx = place.w,
+                                heightPx = place.h,
                                 onClick = { actions.play(ch) },
                                 onFocused = {
                                     focusedId = ch.id
-                                    if (i > 0) showSmall(small, channelsShown.size - 1, page = true)
+                                    showCard(i, channelsShown.size, page = onNow == OnNowLayout.LargeTwo)
                                     memory.remember(FocusTarget(ROW_ON_NOW, ch.id, i))
                                 },
                                 modifier = Modifier
-                                    .offset(x = if (i == 0) px(0) else smallX, y = if (i == 0) px(0) else px((small - smallStart) * (m.smallH + CARD_GAP)))
-                                    .graphicsLayer { alpha = if (shown) 1f else 0f }
+                                    .offset(x = px(place.x), y = px(place.y))
+                                    .graphicsLayer { alpha = if (place.shown) 1f else 0f }
                                     .lifted(ch.id == channelEdit?.held)
                                     .focusRequester(channelFocus.getOrPut(ch.id) { FocusRequester() })
                                     .focusProperties {
-                                        canFocus = shown || inCards
-                                        if (i == 0) {
-                                            // Nothing is under the large card; the nearest thing below is an unseen
-                                            // small card, off to the right.
+                                        canFocus = place.shown || inCards
+                                        if (small == null) {
                                             // Under the large card is the row below, or nothing; never the unseen
                                             // small card off to its right.
                                             down = if (editing) FocusRequester.Cancel else downFrom(HomeRow.OnNow)
                                             if (!editing) upFrom(HomeRow.OnNow)?.let { up = it }
                                         } else {
-                                            if (small == 0 && channelsEditShown && !editing) up = channelsEditFocus
-                                            // A key that arrives before the next unseen card has been built stops
+                                            if (small.row == 0 && !editing) {
+                                                if (channelsEditShown) up = channelsEditFocus else upFrom(HomeRow.OnNow)?.let { up = it }
+                                            }
+                                            // A key that arrives before the next unseen row has been built stops
                                             // here for a frame rather than finding something outside the cards.
-                                            if (small > 0 && small == smallStart - 1) up = FocusRequester.Cancel
-                                            if (small == smallStart + 2 && small < smalls.lastIndex) down = FocusRequester.Cancel
-                                            // From the last small card Down goes on to the row below, when there is one.
-                                            if (small == smalls.lastIndex && !editing) down = downFrom(HomeRow.OnNow)
+                                            if (small.row > 0 && small.row == firstRow - 1) up = FocusRequester.Cancel
+                                            if (small.row == firstRow + SMALL_ROWS && small.row < lastRow) down = FocusRequester.Cancel
+                                            // From the last row Down goes on to the row of Home below, when there is one.
+                                            if (small.row == lastRow && !editing) down = downFrom(HomeRow.OnNow)
+                                            // A row of cards ends at its last card; its first card is beside the large
+                                            // card, when there is one.
+                                            if (small.column == onNow.columns - 1 || i == channelsShown.lastIndex) right = FocusRequester.Cancel
+                                            if (small.column == 0) left = largeFocus ?: FocusRequester.Cancel
                                         }
                                     },
                                 watchHint = !editing,

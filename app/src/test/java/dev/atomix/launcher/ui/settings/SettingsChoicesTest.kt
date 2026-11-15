@@ -1,5 +1,6 @@
 package dev.atomix.launcher.ui.settings
 
+import dev.atomix.launcher.prefs.OnNowLayout
 import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.prefs.TileSize
 import dev.atomix.launcher.prefs.TileShape
@@ -170,5 +171,14 @@ class SettingsChoicesTest {
         assertEquals(listOf("APP TILES", "ROWS"), g.map { it.label })
         assertEquals(SettingsItem.RowOrder, g[1].items.first())
         assertEquals(36 + 3 * 104 + 92 + 72, rowTop(SettingsItem.RowOrder, g))
+    }
+
+    @Test fun onNow_options_kind_andChoice() {
+        assertEquals(listOf("One large, two small", "One large, four small", "Six small"), choiceOptions(SettingsItem.OnNowLayout))
+        assertEquals(RowKind.List, kindOf(SettingsItem.OnNowLayout))
+        assertEquals(OnNowLayout.SixSmall, withChoice(SettingsItem.OnNowLayout, 2, Chosen(Look())).layout.onNow)
+        assertEquals(1, chosenIndex(SettingsItem.OnNowLayout, Chosen(Look(), HomeLayout(onNow = OnNowLayout.LargeFour))))
+        assertEquals("On now layout", titleOf(SettingsItem.OnNowLayout))
+        assertEquals(listOf(SettingsItem.RowOrder, SettingsItem.OnNowLayout), groupsOf(SettingsSection.HomeLayout)[1].items)
     }
 }

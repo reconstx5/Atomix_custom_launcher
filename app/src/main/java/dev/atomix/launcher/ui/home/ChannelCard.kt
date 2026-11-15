@@ -172,7 +172,9 @@ fun BoxScope.LargeChannelCard(channel: Channel, lines: OnAirLines, artUrl: Strin
     }
     if (watchHint) {
         Row(
-            Modifier.align(Alignment.BottomEnd).padding(end = px(24), bottom = px(26)).height(px(64))
+            // Bottom right, as on the board; on a narrower card that is where the progress bar ends, so top right.
+            (if (watchHintOnTop(widthPx)) Modifier.align(Alignment.TopEnd).padding(end = px(24), top = px(20)) else Modifier.align(Alignment.BottomEnd).padding(end = px(24), bottom = px(26)))
+                .height(px(64))
                 .background(AtomixColors.HintChip, RoundedCornerShape(px(16))).padding(horizontal = px(8)),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -192,17 +194,11 @@ fun BoxScope.SmallChannelCard(channel: Channel, lines: OnAirLines, artUrl: Strin
     val fit = smallCardFit(heightPx, scale)
     Artwork(artUrl, loader, smallArtWidth(widthPx), heightPx, Alignment.Center, Modifier.align(Alignment.CenterEnd))
     if (artUrl != null) {
-        // The card's own colour runs solid to where the artwork begins and fades out over the next 250 px of it. On
-        // the board's 646-wide card these are its stops (0.43, 0.62, 0.82); a narrower card keeps the same distances.
-        val k = 646f / widthPx
-        val start = if (widthPx == 646) 0.43f else (widthPx - smallArtWidth(widthPx) + 2f) / widthPx
+        // The card's own colour runs solid to where the artwork begins and fades out over it.
+        val fade = smallArtFade(widthPx)
         Box(
             Modifier.fillMaxSize().background(
-                Brush.horizontalGradient(
-                    0f to ground, start to ground,
-                    (start + 0.19f * k).coerceAtMost(1f) to ground.copy(alpha = 0.55f),
-                    (start + 0.39f * k).coerceAtMost(1f) to ground.copy(alpha = 0f),
-                ),
+                Brush.horizontalGradient(0f to ground, fade[0] to ground, fade[1] to ground.copy(alpha = 0.55f), fade[2] to ground.copy(alpha = 0f)),
             ),
         )
     }

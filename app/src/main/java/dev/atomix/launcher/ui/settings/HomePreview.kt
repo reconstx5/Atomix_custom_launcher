@@ -54,6 +54,7 @@ fun previewMark(item: SettingsItem?): PreviewMark = when (item) {
     // These change the ring, its glow or the colours around it: the first card is shown with focus.
     SettingsItem.Theme, SettingsItem.Accent, SettingsItem.FocusHighlight, SettingsItem.ReducedEffects -> PreviewMark.FocusedCard
     SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames -> PreviewMark.Tiles
+    SettingsItem.OnNowLayout -> PreviewMark.Cards
     else -> PreviewMark.None
 }
 
