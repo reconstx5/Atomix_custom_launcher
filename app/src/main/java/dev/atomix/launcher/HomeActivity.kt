@@ -91,7 +91,8 @@ class HomeActivity : ComponentActivity() {
     private val home: HomeHolder by lazy {
         ViewModelProvider(this, viewModelFactory { initializer { HomeHolder(graph) } })[HomeHolder::class.java]
     }
-    private val homeMemory by lazy { FocusMemory(graph.prefs, "home") }
+    /** Home is what a new window opens on, and the window's own first focus must not replace the remembered item. */
+    private val homeMemory by lazy { FocusMemory(graph.prefs, "home", untilRestored = true) }
     private val liveTabMemory by lazy { FocusMemory(graph.prefs, "liveTab") }
     private val appsTabMemory by lazy { FocusMemory(graph.prefs, "appsTab") }
 

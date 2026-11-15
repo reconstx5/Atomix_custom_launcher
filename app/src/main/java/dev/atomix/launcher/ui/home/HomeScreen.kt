@@ -340,6 +340,8 @@ fun HomeScreen(
         if (area is OnNowArea.Blank) return@LaunchedEffect
         // Only now has this visit been answered: a first load that had nothing to focus must still be restored.
         restoredAt[0] = restoreTick
+        // Only from here on is focus the user's: until now it may be the new window's own first focus.
+        memory.restored(target.takeIf { ok })
         if (ok) return@LaunchedEffect
         runCatching { emptyFocus.requestFocus() }.recoverCatching { allAppsFocus.requestFocus() }
     }

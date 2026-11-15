@@ -60,6 +60,32 @@ class FocusMemoryTest {
         assertEquals(FocusTarget("apps", "a|b", 1), FocusMemory(prefs, "home").resolve(mapOf("apps" to listOf("x", "a|b"))))
     }
 
+    @Test fun untilRestored_focusBeforeRestoreIsNotRemembered() {
+        mem.remember(FocusTarget("onNow", "c3", 2))
+        // A new window: the system focuses the first item before the screen has restored its own.
+        val held = FocusMemory(prefs, "home", untilRestored = true)
+        held.remember(FocusTarget("apps", "a1", 0))
+        assertEquals(FocusTarget("onNow", "c3", 2), held.resolve(rows))
+        assertEquals(FocusTarget("onNow", "c3", 2), FocusMemory(prefs, "home").resolve(rows))
+    }
+
+    @Test fun untilRestored_remembersOnceRestored() {
+        mem.remember(FocusTarget("onNow", "c3", 0))
+        val held = FocusMemory(prefs, "home", untilRestored = true)
+        held.restored(FocusTarget("onNow", "c3", 2))
+        assertEquals(FocusTarget("onNow", "c3", 2), held.current())
+        held.remember(FocusTarget("apps", "a2", 1))
+        assertEquals(FocusTarget("apps", "a2", 1), held.resolve(rows))
+        assertEquals(FocusTarget("apps", "a2", 1), FocusMemory(prefs, "home").resolve(rows))
+    }
+
+    @Test fun untilRestored_restoredWithNothingToFocus_stillOpens() {
+        val held = FocusMemory(prefs, "home", untilRestored = true)
+        held.restored(null)
+        held.remember(FocusTarget("apps", "a2", 1))
+        assertEquals(FocusTarget("apps", "a2", 1), held.current())
+    }
+
     @Test fun screensAreSeparate() {
         mem.remember(FocusTarget("apps", "a2", 1))
         assertEquals(FocusTarget("onNow", "c1", 0), FocusMemory(prefs, "liveTab").resolve(rows))
