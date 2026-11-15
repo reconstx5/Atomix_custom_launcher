@@ -19,7 +19,9 @@ the arrows do right now. One thing on screen has the focus ring; nothing is reac
 
 **Home** is one fixed page. **Your apps** comes first: a row of tiles (banner and name) that ends with "All apps".
 Under it, **On now**: the first channel you have on Home as a large card over its programme's artwork, and the rest
-as small cards beside it, two at a time (Down past the second turns the page). OK on a card plays the channel.
+as small cards beside it, two at a time (Down past the second turns the page). OK on a card plays the channel. A line
+under the cards says how many channels are past the last one showing. Settings › Home layout changes all of this:
+tile size and shape, which row comes first, and four small cards or six small ones instead.
 
 **Edit** at the right of either row rearranges it, and only that: OK picks an item up, the arrows move it, OK or Back
 puts it down, Back again is done. An app leaves "Your apps" in manage apps; a channel leaves Home with "Show on Home"
@@ -41,11 +43,36 @@ own page for that app).
 **Inputs** is a page of the TV's HDMI ports and the TV tuner. OK switches to one; the Home button comes back.
 
 **Settings** has a list of sections on the left and their rows on the right; OK or Right moves into the rows, Back
-steps out one level. Today: **Set-up and launcher** (whether the Home button opens Atomix TV, and the way to the TV's
-own settings where that is switched), **Appearance** (Reduced effects), **Live TV** (sources, their last refresh and
-any errors, Refresh and "Manage sources in Atomix" for admins, "Test a channel"), **Account and server** (the server's
-address, "Find the server again", "Switch profile") and **About**. A section appears once it has something that
-works.
+steps out one level. There are seven sections; a section appears once it has something that works.
+
+- **Set-up and launcher**: whether the Home button opens Atomix TV, and the way to the TV's own settings where that is
+  switched.
+- **Appearance**: Theme (Midnight, Black, Graphite, Plum), Accent (Ice, Mint, Amber, Coral, Violet), Text size
+  (Standard, Large), Clock (24-hour, 12-hour, Hidden; until one is chosen it follows the TV), Focus highlight (Ring and
+  glow, Ring only) and Reduced effects.
+- **Home layout**: Tile size (Small 9 across, Medium 7, Large 5), Tile shape (Wide tile, Full banner), Spacing
+  (Compact, Comfortable, Roomy), App names, Row order (which of "Your apps" and "On now" comes first) and the On now
+  layout (One large and two small, One large and four small, Six small).
+- **Live TV**: sources, their last refresh and any errors, Refresh and "Manage sources in Atomix" for admins, "Test a
+  channel".
+- **Account and server**: the server's address, "Find the server again", "Switch profile".
+- **TV settings**: opens the TV's own pages for Network & Internet (with whether it is on Ethernet or Wi-Fi), Display
+  & Sound, Remotes & accessories, Apps, Storage (with the free space), Date & time, Language, Keyboard and About this
+  TV.
+- **About**.
+
+Rows with a list of choices open the list beside the row: Up and Down move through it, OK chooses, Back closes it
+unchanged. In Appearance and Home layout a small picture of Home on the right shows the focused choice before it is
+chosen. Rows with a few short choices change with Left and Right. Every choice takes effect at once and is kept in
+the launcher's own preferences (`look_theme`, `look_accent`, `look_text`, `look_clock`, `look_focus`,
+`home_tile_size`, `home_tile_shape`, `home_spacing`, `home_app_names`, `home_row_order`, `home_on_now`); a value the
+launcher no longer knows falls back to the default.
+
+The TV settings pages were each opened from the launcher on this VEON TV and seen to show their page, with Back
+coming straight back to Settings; they open in a fresh task (`FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK`).
+The TV has no page of its own for remotes and accessories, so that row opens the TV's main settings page and says so.
+A page the TV cannot open is left out of the list; the factory-reset page and the accessory pairing search are
+deliberately not offered.
 
 **Reduced effects** (Settings › Appearance) removes the glow around the focused item and all animation, keeping the
 ring and every function. It is off by default and never switches itself on.
