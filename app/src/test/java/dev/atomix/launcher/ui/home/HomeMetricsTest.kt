@@ -1,5 +1,6 @@
 package dev.atomix.launcher.ui.home
 
+import org.junit.Assert.assertNull
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.OnNowLayout
 import dev.atomix.launcher.prefs.RowOrder
@@ -92,5 +93,21 @@ class HomeMetricsTest {
                 assertTrue(what, m.smallX + m.columns * m.smallW + (m.columns - 1) * CARD_GAP <= 1720)
                 assertTrue(what, m.smallH * 2 + CARD_GAP <= m.cardsH)
             }
+    }
+
+    @Test fun rowsInOrder_followsTheSetting() {
+        assertEquals(listOf(HomeRow.Apps, HomeRow.OnNow), rowsInOrder(RowOrder.AppsFirst))
+        assertEquals(listOf(HomeRow.OnNow, HomeRow.Apps), rowsInOrder(RowOrder.OnNowFirst))
+    }
+
+    @Test fun neighbours_followTheOrder() {
+        assertNull(rowAbove(HomeRow.Apps, RowOrder.AppsFirst))
+        assertEquals(HomeRow.OnNow, rowBelow(HomeRow.Apps, RowOrder.AppsFirst))
+        assertEquals(HomeRow.Apps, rowAbove(HomeRow.OnNow, RowOrder.AppsFirst))
+        assertNull(rowBelow(HomeRow.OnNow, RowOrder.AppsFirst))
+        assertEquals(HomeRow.OnNow, rowAbove(HomeRow.Apps, RowOrder.OnNowFirst))
+        assertNull(rowBelow(HomeRow.Apps, RowOrder.OnNowFirst))
+        assertNull(rowAbove(HomeRow.OnNow, RowOrder.OnNowFirst))
+        assertEquals(HomeRow.Apps, rowBelow(HomeRow.OnNow, RowOrder.OnNowFirst))
     }
 }

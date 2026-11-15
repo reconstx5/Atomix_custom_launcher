@@ -56,6 +56,7 @@ import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.settings.SettingsSection
 import dev.atomix.launcher.shell.restoresFocus
 import dev.atomix.launcher.prefs.HomeLayout
+import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.HintSpot
@@ -314,8 +315,17 @@ fun HomeScreen(
         runCatching { emptyFocus.requestFocus() }.recoverCatching { allAppsFocus.requestFocus() }
     }
 
-    // Down from the top bar lands on the app tile last used, not on whichever tile is nearest.
-    val barDown by rememberUpdatedState { appEntry() }
+    // Up and Down between the rows follow the order chosen in Settings: where focus lands in a row from outside it.
+    fun entryOf(row: HomeRow): FocusRequester = if (row == HomeRow.Apps) appEntry() else onNowEntry()
+
+    /** Where Up goes from [row]: the row above, or the top bar's marked item from the first row (null: leave it be). */
+    fun upFrom(row: HomeRow): FocusRequester? = rowAbove(row, layout.rowOrder)?.let(::entryOf) ?: topBar
+
+    /** Where Down goes from [row]: the row below; from the last row, nowhere. */
+    fun downFrom(row: HomeRow): FocusRequester = rowBelow(row, layout.rowOrder)?.let(::entryOf) ?: FocusRequester.Cancel
+
+    // Down from the top bar lands on the first row's remembered item, not on whichever item is nearest.
+    val barDown by rememberUpdatedState { entryOf(rowsInOrder(layout.rowOrder).first()) }
     DisposableEffect(bar) {
         bar?.down = { barDown() }
         onDispose { bar?.down = null }
@@ -327,7 +337,13 @@ fun HomeScreen(
             appsEditShown -> { ->
                 TextAction(
                     "Edit", LineIcon.Edit, { startEdit(ROW_APPS) },
-                    Modifier.focusRequester(appsEditFocus).focusProperties { if (!editing && appVisible(ALL_APPS_KEY)) down = allAppsFocus },
+                    Modifier.focusRequester(appsEditFocus).focusProperties {
+                        if (!editing) {
+                            if (appVisible(ALL_APPS_KEY)) down = allAppsFocus
+                            // Under "On now", the nearest thing above is the lower small card; go to the cards' entry.
+                            if (rowAbove(HomeRow.Apps, layout.rowOrder) != null) up = (smalls.getOrNull(smallStart + 1) ?: smalls.getOrNull(smallStart))?.let { channelFocus[it.id] } ?: onNowEntry()
+                        }
+                    },
                 )
             }
             else -> null
@@ -352,8 +368,8 @@ fun HomeScreen(
                         .focusProperties {
                             // While editing, the arrows belong to the row: a fixed target would step past its edge.
                             if (!editing) {
-                                if (topBar != null) up = topBar
-                                down = onNowEntry()
+                                upFrom(HomeRow.Apps)?.let { up = it }
+                                down = downFrom(HomeRow.Apps)
                             }
                         },
                     onFocused = { focusedApp = app.packageName; memory.remember(FocusTarget(ROW_APPS, app.packageName, i)) },
@@ -368,8 +384,8 @@ fun HomeScreen(
                         // The row ends here: Right must not wander up to "Edit".
                         right = FocusRequester.Cancel
                         if (!editing) {
-                            if (appsEditShown) up = appsEditFocus else if (topBar != null) up = topBar
-                            down = onNowEntry()
+                            if (appsEditShown) up = appsEditFocus else upFrom(HomeRow.Apps)?.let { up = it }
+                            down = downFrom(HomeRow.Apps)
                         }
                     },
                 )
@@ -383,7 +399,8 @@ fun HomeScreen(
                     "Edit", LineIcon.Edit, { startEdit(ROW_ON_NOW) },
                     Modifier.focusRequester(channelsEditFocus).focusProperties {
                         if (!editing) {
-                            if (appVisible(ALL_APPS_KEY)) up = allAppsFocus
+                            // Under the apps row, Up is "All apps", the tile under this action; as the first row, the top bar.
+                            if (rowAbove(HomeRow.OnNow, layout.rowOrder) != null && appVisible(ALL_APPS_KEY)) up = allAppsFocus
                             smalls.getOrNull(smallStart)?.let { channelFocus[it.id] }?.let { down = it }
                         }
                     },
@@ -451,14 +468,18 @@ fun HomeScreen(
                                         if (i == 0) {
                                             // Nothing is under the large card; the nearest thing below is an unseen
                                             // small card, off to the right.
-                                            down = FocusRequester.Cancel
-                                            if (!editing) up = appEntry()
+                                            // Under the large card is the row below, or nothing; never the unseen
+                                            // small card off to its right.
+                                            down = if (editing) FocusRequester.Cancel else downFrom(HomeRow.OnNow)
+                                            if (!editing) upFrom(HomeRow.OnNow)?.let { up = it }
                                         } else {
                                             if (small == 0 && channelsEditShown && !editing) up = channelsEditFocus
                                             // A key that arrives before the next unseen card has been built stops
                                             // here for a frame rather than finding something outside the cards.
                                             if (small > 0 && small == smallStart - 1) up = FocusRequester.Cancel
                                             if (small == smallStart + 2 && small < smalls.lastIndex) down = FocusRequester.Cancel
+                                            // From the last small card Down goes on to the row below, when there is one.
+                                            if (small == smalls.lastIndex && !editing) down = downFrom(HomeRow.OnNow)
                                         }
                                     },
                                 watchHint = !editing,

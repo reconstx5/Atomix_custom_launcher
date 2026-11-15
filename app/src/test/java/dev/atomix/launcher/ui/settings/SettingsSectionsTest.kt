@@ -77,5 +77,6 @@ class SettingsSectionsTest {
         assertEquals("Turn on", okActionFor(SettingsItem.AppNames, reduced = false, hasTestChannel = true, appNames = false))
         assertEquals("Choose", okActionFor(SettingsItem.TileShape, reduced = false, hasTestChannel = true))
         assertNull(okActionFor(SettingsItem.TileSize, reduced = false, hasTestChannel = true))
+        assertEquals("Choose", okActionFor(SettingsItem.RowOrder, reduced = false, hasTestChannel = true))
     }
 }

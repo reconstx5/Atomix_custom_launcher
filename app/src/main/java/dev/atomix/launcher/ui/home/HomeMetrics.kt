@@ -141,3 +141,16 @@ fun smallCardFit(heightPx: Int, textScale: Float): SmallCardFit {
  * card's margins take 68.
  */
 fun largeTitleLines(heightPx: Int, textScale: Float): Int = if (78 + (2 * 74 + 2 * 42) * textScale + 68 <= heightPx) 2 else 1
+
+/** The two rows of Home. */
+enum class HomeRow { Apps, OnNow }
+
+/** Home's rows from top to bottom, as chosen in Settings › Home layout › Row order. */
+fun rowsInOrder(order: RowOrder): List<HomeRow> =
+    if (order == RowOrder.AppsFirst) listOf(HomeRow.Apps, HomeRow.OnNow) else listOf(HomeRow.OnNow, HomeRow.Apps)
+
+/** The row over [row], or null when it is the first: Up from it then goes to the top bar. */
+fun rowAbove(row: HomeRow, order: RowOrder): HomeRow? = rowsInOrder(order).let { it.getOrNull(it.indexOf(row) - 1) }
+
+/** The row under [row], or null when it is the last: Down from it then goes nowhere. */
+fun rowBelow(row: HomeRow, order: RowOrder): HomeRow? = rowsInOrder(order).let { it.getOrNull(it.indexOf(row) + 1) }

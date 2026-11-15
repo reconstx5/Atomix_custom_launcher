@@ -257,7 +257,8 @@ fun SettingsScreen(
                 when (item) {
                     // Drawn by AppearancePane and HomeLayoutPane.
                     SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.FocusHighlight,
-                    SettingsItem.ReducedEffects, SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames -> Unit
+                    SettingsItem.ReducedEffects, SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames,
+                    SettingsItem.RowOrder -> Unit
                     SettingsItem.HomeButton -> {
                         GroupLabel("HOME SCREEN")
                         SettingRow(

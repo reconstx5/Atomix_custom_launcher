@@ -1,5 +1,6 @@
 package dev.atomix.launcher.ui.settings
 
+import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.prefs.TileSize
 import dev.atomix.launcher.prefs.TileShape
 import dev.atomix.launcher.prefs.Spacing
@@ -149,10 +150,25 @@ class SettingsChoicesTest {
         assertEquals("Change", stepHintFor(SettingsItem.Spacing))
     }
 
-    @Test fun homeLayout_isOneGroupOfFourRows_asOnItsBoard() {
+    @Test fun homeLayout_firstGroupIsFourTileRows_asOnItsBoard() {
         val g = groupsOf(SettingsSection.HomeLayout)
         assertEquals("APP TILES", g[0].label)
         assertEquals(listOf(SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames), g[0].items)
         assertEquals(listOf("Tile size", "Tile shape", "Spacing", "App names"), g[0].items.map(::titleOf))
+    }
+
+    @Test fun rowOrder_options_kind_andChoice() {
+        assertEquals(listOf("Apps, then On now", "On now, then Apps"), choiceOptions(SettingsItem.RowOrder))
+        assertEquals(RowKind.List, kindOf(SettingsItem.RowOrder))
+        assertEquals(0, chosenIndex(SettingsItem.RowOrder, Chosen(Look())))
+        assertEquals(RowOrder.OnNowFirst, withChoice(SettingsItem.RowOrder, 1, Chosen(Look())).layout.rowOrder)
+        assertEquals("Row order", titleOf(SettingsItem.RowOrder))
+    }
+
+    @Test fun homeLayout_hasASecondGroup_rows() {
+        val g = groupsOf(SettingsSection.HomeLayout)
+        assertEquals(listOf("APP TILES", "ROWS"), g.map { it.label })
+        assertEquals(SettingsItem.RowOrder, g[1].items.first())
+        assertEquals(36 + 3 * 104 + 92 + 72, rowTop(SettingsItem.RowOrder, g))
     }
 }

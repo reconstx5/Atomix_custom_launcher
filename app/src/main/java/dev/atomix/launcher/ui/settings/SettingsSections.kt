@@ -20,7 +20,7 @@ enum class SettingsSection(val title: String) {
 /** The rows that work today. */
 enum class SettingsItem {
     HomeButton, Theme, Accent, TextSize, Clock, FocusHighlight, ReducedEffects,
-    TileSize, TileShape, Spacing, AppNames,
+    TileSize, TileShape, Spacing, AppNames, RowOrder,
     LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
     /** The TV's own settings pages, one row each (apps/TvPages.kt). */
     TvPages,
@@ -82,7 +82,7 @@ fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean, 
     SettingsItem.FindServer -> "Search"
     SettingsItem.SwitchProfile -> "Switch"
     SettingsItem.TvPages -> "Open"
-    SettingsItem.Theme, SettingsItem.FocusHighlight, SettingsItem.TileShape -> "Choose"
+    SettingsItem.Theme, SettingsItem.FocusHighlight, SettingsItem.TileShape, SettingsItem.RowOrder -> "Choose"
     SettingsItem.AppNames -> if (appNames) "Turn off" else "Turn on"
     // Left and Right change these; OK has nothing to do.
     SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.TileSize, SettingsItem.Spacing -> null
