@@ -71,13 +71,12 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
             tileShape = enumOr(prefs.getString(K_TILE_SHAPE, null), TileShape.Wide),
             spacing = enumOr(prefs.getString(K_SPACING, null), Spacing.Comfortable),
             appNames = prefs.getBoolean(K_APP_NAMES, true),
-            rowOrder = enumOr(prefs.getString(K_ROW_ORDER, null), RowOrder.AppsFirst),
             onNow = enumOr(prefs.getString(K_ON_NOW, null), OnNowLayout.LargeTwo),
         )
         set(v) {
             prefs.edit()
                 .putString(K_TILE_SIZE, v.tileSize.name).putString(K_TILE_SHAPE, v.tileShape.name).putString(K_SPACING, v.spacing.name)
-                .putBoolean(K_APP_NAMES, v.appNames).putString(K_ROW_ORDER, v.rowOrder.name).putString(K_ON_NOW, v.onNow.name)
+                .putBoolean(K_APP_NAMES, v.appNames).putString(K_ON_NOW, v.onNow.name)
                 .apply()
         }
 

@@ -36,8 +36,8 @@ data class PreviewBlock(val kind: BlockKind, val x: Int, val y: Int, val w: Int,
  * The blocks Home would show with [layout]: as many app tiles as fit across, and every card slot of the "On now"
  * layout filled. It comes from the same [homeMetrics] Home is drawn from, so the preview cannot disagree with Home.
  */
-fun previewBlocks(layout: HomeLayout): List<PreviewBlock> {
-    val m = homeMetrics(layout)
+fun previewBlocks(layout: HomeLayout, onNowFirst: Boolean = false): List<PreviewBlock> {
+    val m = homeMetrics(layout, onNowFirst)
     val blocks = ArrayList<PreviewBlock>()
     repeat(layout.tileSize.across) { i -> blocks += PreviewBlock(BlockKind.Tile, 100 + i * (m.tileW + m.gap), m.appsY, m.tileW, m.tileH) }
     if (m.largeW > 0) blocks += PreviewBlock(BlockKind.LargeCard, 100, m.cardsY, m.largeW, m.cardsH)
@@ -79,11 +79,11 @@ private const val SCALE = PREVIEW_W / 1920f
  * takes focus. [glow] is whether the focus glow would show.
  */
 @Composable
-fun HomePreview(shown: Chosen, mark: PreviewMark, glow: Boolean, modifier: Modifier = Modifier) {
+fun HomePreview(shown: Chosen, mark: PreviewMark, glow: Boolean, onNowFirst: Boolean = false, modifier: Modifier = Modifier) {
     val palette = paletteFor(shown.look.theme)
     val accent = Color(shown.look.accent.argb)
     val ring = Color(ringArgb(shown.look.accent))
-    val blocks = previewBlocks(shown.layout)
+    val blocks = previewBlocks(shown.layout, onNowFirst)
     val shape = RoundedCornerShape(px(18))
     Column(modifier.width(px(PREVIEW_W)), verticalArrangement = Arrangement.spacedBy(px(12))) {
         GroupLabel("PREVIEW")

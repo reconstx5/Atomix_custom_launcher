@@ -133,6 +133,8 @@ fun SettingsScreen(
     tv: TvFacts,
     /** The section to open on, when Settings was opened about one; otherwise the first. */
     start: SettingsSection? = null,
+    /** Whether Home's first drawn row is "On now", so Home layout's preview shows the rows as Home has them. */
+    onNowFirst: Boolean = false,
 ) {
     val live by state.live.collectAsState()
     val sections = remember(tv.pages.isEmpty()) { listedSections(tv.pages.size) }
@@ -258,7 +260,7 @@ fun SettingsScreen(
                     // Drawn by AppearancePane and HomeLayoutPane.
                     SettingsItem.Theme, SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.FocusHighlight,
                     SettingsItem.ReducedEffects, SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames,
-                    SettingsItem.RowOrder, SettingsItem.OnNowLayout -> Unit
+                    SettingsItem.OnNowLayout -> Unit
                     SettingsItem.HomeButton -> {
                         GroupLabel("HOME SCREEN")
                         SettingRow(
@@ -382,6 +384,7 @@ fun SettingsScreen(
                 shown,
                 mark = if (inRows || openList != null) previewMark(openList ?: focusedItem) else PreviewMark.None,
                 glow = !reduced && shown.look.focus == FocusStyle.RingAndGlow,
+                onNowFirst = onNowFirst,
                 modifier = Modifier.offset(x = px(470 + rowsW + 40)),
             )
         }

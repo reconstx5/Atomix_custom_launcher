@@ -2,9 +2,10 @@ package dev.atomix.launcher.ui.home
 
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.OnNowLayout
-import dev.atomix.launcher.prefs.RowOrder
+import dev.atomix.launcher.prefs.RowKind
 import dev.atomix.launcher.prefs.TileShape
 import dev.atomix.launcher.ui.kit.textRoom
+import kotlin.math.max
 import kotlin.math.min
 
 /** The space between "On now" cards, across and down. */
@@ -23,7 +24,7 @@ private const val LAST_ROW_END = 969
 private const val HEADING_TO_ROW = 84
 private const val ROW_TO_HEADING = 30
 
-/** With "On now" first, the cards are followed by a band for the "more channels" line before the next heading. */
+/** "On now" is followed by a band for the "more channels" line before the next heading. */
 private const val MORE_BAND = 64
 
 /**
@@ -58,7 +59,11 @@ data class HomeMetrics(
     val columns: Int,
 )
 
-fun homeMetrics(layout: HomeLayout): HomeMetrics {
+/**
+ * Phase 2's Home with [layout]: "Your apps" over "On now", or with [onNowFirst] "On now" over "Your apps". Home's rows
+ * are placed by [rowPlaces], which keeps these heights.
+ */
+fun homeMetrics(layout: HomeLayout, onNowFirst: Boolean = false): HomeMetrics {
     val size = layout.tileSize
     val gap = layout.spacing.gap
     val tileW = (CONTENT_W - (size.across - 1) * gap) / size.across
@@ -71,7 +76,7 @@ fun homeMetrics(layout: HomeLayout): HomeMetrics {
     val onNowHeadingY: Int
     val cardsY: Int
     val cardsH: Int
-    if (layout.rowOrder == RowOrder.AppsFirst) {
+    if (!onNowFirst) {
         appsHeadingY = FIRST_HEADING_Y
         appsY = FIRST_ROW_Y
         onNowHeadingY = appsY + rowH + ROW_TO_HEADING
@@ -159,15 +164,50 @@ fun largeTitleLines(heightPx: Int, textScale: Float): Int = if (78 + (2 * 74 + 2
  */
 fun watchHintOnTop(cardW: Int): Boolean = cardW < 36 + 720 + 16 + 246
 
-/** The two rows of Home. */
-enum class HomeRow { Apps, OnNow }
+/** Home's view: rows show between the top bar and the bottom of the screen, px at 1920. */
+const val VIEW_TOP = 110
+const val VIEW_BOTTOM = 1040
 
-/** Home's rows from top to bottom, as chosen in Settings › Home layout › Row order. */
-fun rowsInOrder(order: RowOrder): List<HomeRow> =
-    if (order == RowOrder.AppsFirst) listOf(HomeRow.Apps, HomeRow.OnNow) else listOf(HomeRow.OnNow, HomeRow.Apps)
+/** The "more channels" line under "On now" and its space: 16 under the cards, 30 high. */
+private const val MORE_LINE = 46
 
-/** The row over [row], or null when it is the first: Up from it then goes to the top bar. */
-fun rowAbove(row: HomeRow, order: RowOrder): HomeRow? = rowsInOrder(order).let { it.getOrNull(it.indexOf(row) - 1) }
+/** Where one drawn row goes on Home's content, before scrolling: its heading, its row, and "On now"'s more line. */
+data class RowPlace(val id: String, val kind: RowKind, val headingY: Int, val y: Int, val h: Int, val moreY: Int?)
 
-/** The row under [row], or null when it is the last: Down from it then goes nowhere. */
-fun rowBelow(row: HomeRow, order: RowOrder): HomeRow? = rowsInOrder(order).let { it.getOrNull(it.indexOf(row) + 1) }
+/**
+ * Places [rows] (id and kind, in Home's order) one under another, as phase 2 placed its two: the first heading at 126
+ * and its row at 208; every later heading 84 above its row and 30 under the row before it, or 64 under "On now" (its band for
+ * the "more channels" line). App and Inputs rows are an app row high. "On now" keeps a phase 2 height: "On now first"'s
+ * when it is the first row, "Apps first"'s anywhere else. With phase 2's two rows this is phase 2's Home exactly.
+ */
+fun rowPlaces(layout: HomeLayout, rows: List<Pair<String, RowKind>>): List<RowPlace> {
+    val appsFirst = homeMetrics(layout)
+    val onNowFirst = homeMetrics(layout, onNowFirst = true)
+    var nextHeadingY = FIRST_HEADING_Y
+    return rows.mapIndexed { i, (id, kind) ->
+        val headingY = nextHeadingY
+        // The first row is at 208, as on the board; every later row is 84 under its heading.
+        val y = if (i == 0) FIRST_ROW_Y else headingY + HEADING_TO_ROW
+        val onNow = kind == RowKind.OnNow
+        val h = if (!onNow) appsFirst.rowH else if (i == 0) onNowFirst.cardsH else appsFirst.cardsH
+        nextHeadingY = y + h + if (onNow) MORE_BAND else ROW_TO_HEADING
+        RowPlace(id, kind, headingY = headingY, y = y, h = h, moreY = if (onNow) y + h + 16 else null)
+    }
+}
+
+/** Where a row ends, counting "On now"'s more line under it. */
+private fun RowPlace.end(): Int = y + h + if (moreY != null) MORE_LINE else 0
+
+/**
+ * How far Home's content is scrolled up (px) with the row at [focused] of [places] focused, from [current]: 0 for the
+ * first row; otherwise the least move that shows the row whole between [VIEW_TOP] and [VIEW_BOTTOM]. A row below ends
+ * at the bottom; a heading above lands where the first heading sits (126). Never past the content's end, never below 0.
+ */
+fun scrollFor(current: Int, places: List<RowPlace>, focused: Int): Int {
+    if (focused <= 0 || focused > places.lastIndex) return 0
+    val p = places[focused]
+    var s = current
+    if (p.end() - s > VIEW_BOTTOM) s = p.end() - VIEW_BOTTOM
+    if (p.headingY - s < VIEW_TOP) s = p.headingY - FIRST_HEADING_Y
+    return s.coerceIn(0, max(0, places.last().end() - VIEW_BOTTOM))
+}

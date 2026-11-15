@@ -90,4 +90,11 @@ class FocusMemoryTest {
         mem.remember(FocusTarget("apps", "a2", 1))
         assertEquals(FocusTarget("onNow", "c1", 0), FocusMemory(prefs, "liveTab").resolve(rows))
     }
+
+    // Phase 3: rows can be deleted or hidden. The same app in another row, else the first item of the first drawn row.
+    @Test fun rememberedRowGone_fallsBackToSameAppElsewhere_thenFirst() {
+        mem.remember(FocusTarget("row-1", "tvbro", 0))
+        assertEquals(FocusTarget("apps", "tvbro", 1), mem.resolve(mapOf("apps" to listOf("a1", "tvbro"), "onNow" to listOf("c1"))))
+        assertEquals(FocusTarget("apps", "a1", 0), mem.resolve(mapOf("apps" to listOf("a1"), "onNow" to listOf("c1"))))
+    }
 }

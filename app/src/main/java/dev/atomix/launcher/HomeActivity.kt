@@ -55,6 +55,7 @@ import dev.atomix.launcher.ui.apps.ManageAppsScreen
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
 import dev.atomix.launcher.prefs.ROW_ON_NOW
+import dev.atomix.launcher.prefs.RowKind
 import dev.atomix.launcher.ui.home.clockText
 import dev.atomix.launcher.ui.inputs.InputsScreen
 import dev.atomix.launcher.ui.kit.Effects
@@ -254,6 +255,7 @@ class HomeActivity : ComponentActivity() {
                                     reduced = reduced.value,
                                     look = look,
                                     layout = homeLayout.value,
+                                    onNowFirst = ui.rows.firstOrNull()?.spec?.kind == RowKind.OnNow,
                                     tvIs24 = tvIs24,
                                     nowMs = ui.nowMs,
                                     tv = tvFacts.value,

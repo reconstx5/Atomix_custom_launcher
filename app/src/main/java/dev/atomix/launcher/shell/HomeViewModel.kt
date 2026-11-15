@@ -1,13 +1,9 @@
 package dev.atomix.launcher.shell
 
 import dev.atomix.launcher.apps.AppCatalog
-import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.livetv.source.LiveRepository
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.prefs.HiddenApps
-import dev.atomix.launcher.prefs.HomeRowSpec
-import dev.atomix.launcher.prefs.ROW_APPS
-import dev.atomix.launcher.prefs.RowSort
 import dev.atomix.launcher.prefs.RowStore
 import dev.atomix.launcher.prefs.reordered
 import kotlinx.coroutines.CancellationException
@@ -19,20 +15,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/** Everything Home draws. [nowMs] ticks so "min left" and progress stay current between guide refreshes. */
-data class HomeUi(val live: LiveState, val apps: List<AppEntry>, val nowMs: Long)
+/** Everything Home draws: its rows, in order. [nowMs] ticks so "min left" and progress stay current between guide refreshes. */
+data class HomeUi(val live: LiveState, val rows: List<DrawnRow>, val nowMs: Long)
 
-/**
- * What an app row draws: its apps that are installed and not hidden from Atomix TV, in the row's order, or by name
- * (ignoring case) when the row is sorted "A to Z".
- */
-fun drawnApps(row: HomeRowSpec, installed: List<AppEntry>, isHidden: (String) -> Boolean): List<AppEntry> {
-    val byPkg = installed.associateBy { it.packageName }
-    val apps = row.apps.filterNot(isHidden).mapNotNull { byPkg[it] }
-    return if (row.sort == RowSort.AtoZ) apps.sortedBy { it.label.lowercase() } else apps
-}
-
-/** Home's data: Live TV (refreshed every minute while Home is visible) and the apps of the "Your apps" row. */
+/** Home's data: Live TV (refreshed every minute while Home is visible) and the rows Home draws. */
 class HomeViewModel(
     private val repo: LiveRepository,
     private val rows: RowStore,
@@ -41,7 +27,7 @@ class HomeViewModel(
     private val scope: CoroutineScope,
     private val now: () -> Long = System::currentTimeMillis,
 ) {
-    private val _ui = MutableStateFlow(HomeUi(repo.state.value, yourApps(), now()))
+    private val _ui = MutableStateFlow(HomeUi(repo.state.value, drawn(), now()))
     val ui: StateFlow<HomeUi> = _ui
 
     private var loop: Job? = null
@@ -52,10 +38,13 @@ class HomeViewModel(
         scope.launch { rows.rows.collect { refreshApps() } }
     }
 
-    private fun yourApps(): List<AppEntry> =
-        rows.rows.value.firstOrNull { it.id == ROW_APPS }?.let { drawnApps(it, catalog.apps.value, hidden::isHidden) }.orEmpty()
+    private fun drawn(): List<DrawnRow> {
+        val byPkg = catalog.apps.value.associateBy { it.packageName }
+        return drawnRows(rows.rows.value, byPkg::get, hidden::isHidden, inputs = 0)
+    }
 
-    fun refreshApps() { _ui.value = _ui.value.copy(apps = yourApps()) }
+    /** Draws the rows again: after apps are installed or removed, rows change, or apps are hidden or shown. */
+    fun refreshApps() { _ui.value = _ui.value.copy(rows = drawn()) }
 
     fun refreshNow() { scope.launch { repo.refresh() } }
 
@@ -77,10 +66,10 @@ class HomeViewModel(
         }
     }
 
-    /** Saves the apps row's order at once (local only); apps missing from [order] leave Home. */
-    fun saveAppOrder(order: List<String>) {
-        val drawn = yourApps().map { it.packageName }.toSet()
-        rows.update { it.reordered(ROW_APPS, order) { pkg -> pkg in drawn } }
+    /** Saves an app row's order at once (local only); its drawn apps missing from [order] leave that row only. */
+    fun saveAppOrder(rowId: String, order: List<String>) {
+        val drawn = _ui.value.rows.firstOrNull { it.spec.id == rowId }?.apps.orEmpty().map { it.packageName }.toSet()
+        rows.update { it.reordered(rowId, order) { pkg -> pkg in drawn } }
         refreshApps()
     }
 

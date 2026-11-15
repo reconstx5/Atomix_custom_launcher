@@ -16,6 +16,7 @@ enum class TileShape(val label: String) { Wide("Wide tile"), FullBanner("Full ba
 /** The space between app tiles. */
 enum class Spacing(val label: String, val gap: Int) { Compact("Compact", 12), Comfortable("Comfortable", 18), Roomy("Roomy", 28) }
 
+/** Phase 2's order of its two rows; read once, to build the rows (phase 3). */
 enum class RowOrder(val label: String) { AppsFirst("Apps, then On now"), OnNowFirst("On now, then Apps") }
 
 /** Every "On now" layout shows this many rows of small cards at a time. */
@@ -34,6 +35,5 @@ data class HomeLayout(
     val tileShape: TileShape = TileShape.Wide,
     val spacing: Spacing = Spacing.Comfortable,
     val appNames: Boolean = true,
-    val rowOrder: RowOrder = RowOrder.AppsFirst,
     val onNow: OnNowLayout = OnNowLayout.LargeTwo,
 )

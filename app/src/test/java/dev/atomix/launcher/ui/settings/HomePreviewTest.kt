@@ -4,7 +4,6 @@ import dev.atomix.launcher.prefs.AccentId
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.prefs.OnNowLayout
-import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.prefs.Spacing
 import dev.atomix.launcher.prefs.ThemeId
 import dev.atomix.launcher.prefs.TileShape
@@ -38,8 +37,8 @@ class HomePreviewTest {
     }
 
     @Test fun everyBlock_isInsideTheMargins_inEveryCombination() {
-        for (s in TileSize.entries) for (sh in TileShape.entries) for (o in RowOrder.entries) for (l in OnNowLayout.entries)
-            previewBlocks(HomeLayout(s, sh, Spacing.Roomy, true, o, l)).forEach {
+        for (s in TileSize.entries) for (sh in TileShape.entries) for (o in listOf(false, true)) for (l in OnNowLayout.entries)
+            previewBlocks(HomeLayout(s, sh, Spacing.Roomy, true, l), onNowFirst = o).forEach {
                 assertTrue("$s $sh $o $l $it", it.x >= 100 && it.x + it.w <= 1820 && it.y >= 208 && it.y + it.h <= 969)
             }
     }

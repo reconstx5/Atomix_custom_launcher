@@ -5,7 +5,7 @@ import org.junit.Test
 
 class HomeLayoutTest {
     @Test fun defaults_areTodaysHome() =
-        assertEquals(HomeLayout(TileSize.Medium, TileShape.Wide, Spacing.Comfortable, true, RowOrder.AppsFirst, OnNowLayout.LargeTwo), HomeLayout())
+        assertEquals(HomeLayout(TileSize.Medium, TileShape.Wide, Spacing.Comfortable, true, OnNowLayout.LargeTwo), HomeLayout())
 
     @Test fun labels_areTheWordsSettingsShows() {
         assertEquals(listOf("Small", "Medium", "Large"), TileSize.entries.map { it.label })

@@ -6,7 +6,6 @@ import dev.atomix.launcher.prefs.FocusStyle
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.prefs.OnNowLayout as OnNowChoice
-import dev.atomix.launcher.prefs.RowOrder as RowOrderChoice
 import dev.atomix.launcher.prefs.Spacing
 import dev.atomix.launcher.prefs.TextSize
 import dev.atomix.launcher.prefs.ThemeId
@@ -36,7 +35,7 @@ fun kindOf(item: SettingsItem, reduced: Boolean = false): RowKind = when (item) 
     SettingsItem.Server, SettingsItem.Version -> RowKind.Statement
     SettingsItem.ReducedEffects, SettingsItem.AppNames -> RowKind.Switch
     SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.TileSize, SettingsItem.Spacing -> RowKind.Stepped
-    SettingsItem.Theme, SettingsItem.TileShape, SettingsItem.RowOrder, SettingsItem.OnNowLayout -> RowKind.List
+    SettingsItem.Theme, SettingsItem.TileShape, SettingsItem.OnNowLayout -> RowKind.List
     SettingsItem.FocusHighlight -> if (reduced) RowKind.Statement else RowKind.List
     SettingsItem.HomeButton, SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources,
     SettingsItem.FindServer, SettingsItem.SwitchProfile, SettingsItem.TvPages -> RowKind.Action
@@ -52,7 +51,6 @@ fun choiceOptions(item: SettingsItem): List<String> = when (item) {
     SettingsItem.TileSize -> TileSizeChoice.entries.map { it.label }
     SettingsItem.TileShape -> TileShape.entries.map { it.label }
     SettingsItem.Spacing -> Spacing.entries.map { it.label }
-    SettingsItem.RowOrder -> RowOrderChoice.entries.map { it.label }
     SettingsItem.OnNowLayout -> OnNowChoice.entries.map { it.label }
     else -> emptyList()
 }
@@ -70,7 +68,6 @@ fun chosenIndex(item: SettingsItem, now: Chosen, tvIs24: Boolean = true): Int = 
     SettingsItem.TileSize -> now.layout.tileSize.ordinal
     SettingsItem.TileShape -> now.layout.tileShape.ordinal
     SettingsItem.Spacing -> now.layout.spacing.ordinal
-    SettingsItem.RowOrder -> now.layout.rowOrder.ordinal
     SettingsItem.OnNowLayout -> now.layout.onNow.ordinal
     else -> -1
 }
@@ -87,7 +84,6 @@ fun withChoice(item: SettingsItem, index: Int, now: Chosen): Chosen {
         SettingsItem.TileSize -> now.copy(layout = now.layout.copy(tileSize = TileSizeChoice.entries[index]))
         SettingsItem.TileShape -> now.copy(layout = now.layout.copy(tileShape = TileShape.entries[index]))
         SettingsItem.Spacing -> now.copy(layout = now.layout.copy(spacing = Spacing.entries[index]))
-        SettingsItem.RowOrder -> now.copy(layout = now.layout.copy(rowOrder = RowOrderChoice.entries[index]))
         SettingsItem.OnNowLayout -> now.copy(layout = now.layout.copy(onNow = OnNowChoice.entries[index]))
         else -> now
     }
@@ -112,7 +108,7 @@ fun groupsOf(section: SettingsSection): List<PaneGroup> = when (section) {
     )
     SettingsSection.HomeLayout -> listOf(
         PaneGroup("APP TILES", listOf(SettingsItem.TileSize, SettingsItem.TileShape, SettingsItem.Spacing, SettingsItem.AppNames)),
-        PaneGroup("ROWS", listOf(SettingsItem.RowOrder, SettingsItem.OnNowLayout)),
+        PaneGroup("ROWS", listOf(SettingsItem.OnNowLayout)),
     )
     else -> emptyList()
 }
@@ -144,7 +140,6 @@ fun titleOf(item: SettingsItem): String = when (item) {
     SettingsItem.TileShape -> "Tile shape"
     SettingsItem.Spacing -> "Spacing"
     SettingsItem.AppNames -> "App names"
-    SettingsItem.RowOrder -> "Row order"
     SettingsItem.OnNowLayout -> "On now layout"
     else -> ""
 }

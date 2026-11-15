@@ -1,7 +1,6 @@
 package dev.atomix.launcher.ui.settings
 
 import dev.atomix.launcher.prefs.OnNowLayout
-import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.prefs.TileSize
 import dev.atomix.launcher.prefs.TileShape
 import dev.atomix.launcher.prefs.Spacing
@@ -13,6 +12,7 @@ import dev.atomix.launcher.prefs.AccentId
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.prefs.ThemeId
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -158,19 +158,13 @@ class SettingsChoicesTest {
         assertEquals(listOf("Tile size", "Tile shape", "Spacing", "App names"), g[0].items.map(::titleOf))
     }
 
-    @Test fun rowOrder_options_kind_andChoice() {
-        assertEquals(listOf("Apps, then On now", "On now, then Apps"), choiceOptions(SettingsItem.RowOrder))
-        assertEquals(RowKind.List, kindOf(SettingsItem.RowOrder))
-        assertEquals(0, chosenIndex(SettingsItem.RowOrder, Chosen(Look())))
-        assertEquals(RowOrder.OnNowFirst, withChoice(SettingsItem.RowOrder, 1, Chosen(Look())).layout.rowOrder)
-        assertEquals("Row order", titleOf(SettingsItem.RowOrder))
-    }
-
-    @Test fun homeLayout_hasASecondGroup_rows() {
+    // Phase 3: "Row order" leaves Home layout; the rows are moved in Rows and apps.
+    @Test fun homeLayout_secondGroup_isOnNowLayoutOnly() {
         val g = groupsOf(SettingsSection.HomeLayout)
         assertEquals(listOf("APP TILES", "ROWS"), g.map { it.label })
-        assertEquals(SettingsItem.RowOrder, g[1].items.first())
-        assertEquals(36 + 3 * 104 + 92 + 72, rowTop(SettingsItem.RowOrder, g))
+        assertEquals(listOf(SettingsItem.OnNowLayout), g[1].items)
+        assertEquals(36 + 3 * 104 + 92 + 72, rowTop(SettingsItem.OnNowLayout, g))
+        assertFalse(SettingsItem.entries.any { it.name == "RowOrder" })
     }
 
     @Test fun onNow_options_kind_andChoice() {
@@ -179,6 +173,5 @@ class SettingsChoicesTest {
         assertEquals(OnNowLayout.SixSmall, withChoice(SettingsItem.OnNowLayout, 2, Chosen(Look())).layout.onNow)
         assertEquals(1, chosenIndex(SettingsItem.OnNowLayout, Chosen(Look(), HomeLayout(onNow = OnNowLayout.LargeFour))))
         assertEquals("On now layout", titleOf(SettingsItem.OnNowLayout))
-        assertEquals(listOf(SettingsItem.RowOrder, SettingsItem.OnNowLayout), groupsOf(SettingsSection.HomeLayout)[1].items)
     }
 }

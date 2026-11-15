@@ -1,6 +1,9 @@
 package dev.atomix.launcher.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
@@ -20,7 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -42,7 +45,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import coil.ImageLoader
 import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.livetv.source.Channel
@@ -61,7 +67,12 @@ import dev.atomix.launcher.prefs.OnNowLayout
 import dev.atomix.launcher.prefs.SMALL_ROWS
 import dev.atomix.launcher.prefs.ROW_APPS
 import dev.atomix.launcher.prefs.ROW_ON_NOW
-import dev.atomix.launcher.prefs.RowOrder
+import dev.atomix.launcher.prefs.RowKind
+import dev.atomix.launcher.prefs.RowSort
+import dev.atomix.launcher.shell.DrawnRow
+import dev.atomix.launcher.shell.rowAbove
+import dev.atomix.launcher.shell.rowBelow
+import dev.atomix.launcher.ui.kit.LocalEffects
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.HintSpot
@@ -77,6 +88,7 @@ import dev.atomix.launcher.ui.theme.AtomixType
 import dev.atomix.launcher.ui.theme.px
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
 private const val ALL_APPS_KEY = "all-apps"
@@ -95,15 +107,24 @@ class HomeActions(
     val retry: () -> Unit,
     /** Editing "On now" ended with a new order. */
     val saveChannels: (List<String>) -> Unit,
-    /** The "Your apps" row's new order, saved each time a tile is put down. */
-    val saveApps: (List<String>) -> Unit,
+    /** An app row's new order (row id, packages), saved each time a tile is put down. */
+    val saveApps: (String, List<String>) -> Unit,
 )
 
+/** One app row's own things, kept per row id while Home is composed: its list, its tiles' focus, its last tile. */
+private class AppRowState(focused: String?) {
+    val list = LazyListState()
+    val tiles = HashMap<String, FocusRequester>()
+    val editFocus = FocusRequester()
+    var focused by mutableStateOf(focused)
+}
+
 /**
- * Home, one fixed page: "Your apps" (tiles, ending with "All apps") over "On now" (the first channel on Home as a
- * large card, the rest as small cards in a column that shows two). Each row's "Edit" rearranges it and nothing more.
- * Remembers focus and restores it whenever [restoreTick] changes (returning from an app, from playback, or switching
- * back to this tab).
+ * Home: the rows of [HomeUi.rows] one under another, each where [rowPlaces] puts it. An app row is tiles (the first
+ * app row drawn ends with "All apps"); "On now" is the first channel on Home as a large card and the rest as small
+ * cards. Each row's "Edit" rearranges it and nothing more. When the rows are taller than the screen, Home scrolls a
+ * row at a time ([scrollFor]) by moving all of them as one layer under the fixed top bar. Remembers focus and restores
+ * it whenever [restoreTick] changes (returning from an app, from playback, or switching back to this tab).
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -120,33 +141,35 @@ fun HomeScreen(
 ) {
     // Every position and size below comes from here, as the preview in Settings does.
     val m = remember(layout) { homeMetrics(layout) }
+    val rowKinds = ui.rows.map { it.spec.id to it.spec.kind }
+    val places = remember(layout, rowKinds) { rowPlaces(layout, rowKinds) }
+    // "On now" keeps phase 2's "On now first" height when it is the first row, its "Apps first" height anywhere else.
+    val onNowFirst = ui.rows.firstOrNull()?.spec?.kind == RowKind.OnNow
+    val mOnNow = remember(layout, onNowFirst) { homeMetrics(layout, onNowFirst) }
+    val firstAppRow = ui.rows.firstOrNull { it.spec.kind == RowKind.Apps }?.spec?.id
     val area = onNowArea(ui.live)
     val pinned = (area as? OnNowArea.Cards)?.let { listOf(it.large) + it.small }.orEmpty()
     val bar = LocalTopBarFocus.current
     val topBar = bar?.marked
     val channelFocus = remember { HashMap<String, FocusRequester>() }
-    val appFocus = remember { HashMap<String, FocusRequester>() }
+    val appRows = remember { HashMap<String, AppRowState>() }
+    fun rowState(id: String): AppRowState = appRows.getOrPut(id) { AppRowState(memory.current()?.takeIf { it.row == id }?.key) }
     val allAppsFocus = remember { FocusRequester() }
     val emptyFocus = remember { FocusRequester() }
-    val appsEditFocus = remember { FocusRequester() }
     val channelsEditFocus = remember { FocusRequester() }
-    val appList = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Edit mode: one row at a time. The row draws the session's order; keys are channel ids / package names.
+    // Edit mode: one row at a time, by row id. The row draws the session's order; keys are channel ids / package names.
     var editRow by remember { mutableStateOf<String?>(null) }
     var edit by remember { mutableStateOf<EditSession?>(null) }
     var focusedId by remember { mutableStateOf(memory.current()?.takeIf { it.row == ROW_ON_NOW }?.key) }
-    var focusedApp by remember { mutableStateOf(memory.current()?.takeIf { it.row == ROW_APPS }?.key) }
     // Which row of small cards is the first of the two rows that show, as last asked for; read through firstRow.
     var firstRowWanted by remember { mutableIntStateOf(0) }
     // Whether focus is on a channel card: only then can the cards just off the rows that show take focus.
     var inCards by remember { mutableStateOf(false) }
     val editing = edit != null
     val channelEdit = edit?.takeIf { editRow == ROW_ON_NOW }
-    val appEdit = edit?.takeIf { editRow == ROW_APPS }
     val channelsShown = channelEdit?.order?.mapNotNull { id -> pinned.firstOrNull { it.id == id } } ?: pinned
-    val appsShown = appEdit?.order?.mapNotNull { p -> ui.apps.firstOrNull { it.packageName == p } } ?: ui.apps
     // The "On now" layout: where each channel's card goes, and which rows of small cards show.
     val onNow = layout.onNow
     val firstRow = firstRowFor(firstRowWanted, channelsShown.size, onNow)
@@ -160,6 +183,10 @@ fun HomeScreen(
     val shownNow by rememberUpdatedState(channelsShown)
     val areaNow by rememberUpdatedState(area)
     val layoutNow by rememberUpdatedState(layout)
+    val rowsNow by rememberUpdatedState(ui.rows)
+    fun idsNow(): List<String> = rowsNow.map { it.spec.id }
+    fun kindOf(id: String): RowKind? = rowsNow.firstOrNull { it.spec.id == id }?.spec?.kind
+    fun appsOf(id: String): List<AppEntry> = rowsNow.firstOrNull { it.spec.id == id }?.apps.orEmpty()
     fun firstRowNow(): Int = firstRowFor(firstRowWanted, shownNow.size, layoutNow.onNow)
 
     /** The focus handle of the small card at [row] and [column], or of the last card when that slot is empty; null with no small card. */
@@ -168,20 +195,20 @@ fun HomeScreen(
         if (index < 0 || slotOf(index, layoutNow.onNow) !is Slot.Small) return null
         return channelFocus[shownNow[index].id]
     }
-    val appsEditShown = appEdit == null && ui.apps.size >= 2
     val channelsEditShown = channelEdit == null && pinned.size >= 2
     val saveChannels by rememberUpdatedState(actions.saveChannels)
     val saveApps by rememberUpdatedState(actions.saveApps)
 
-    fun appVisible(key: Any) = appList.layoutInfo.visibleItemsInfo.any { it.key == key }
+    fun appVisible(rowId: String, key: Any) = rowState(rowId).list.layoutInfo.visibleItemsInfo.any { it.key == key }
 
-    /** Where focus lands in the apps row from outside it: the tile last used, else the first one showing. */
-    fun appEntry(): FocusRequester {
-        focusedApp?.takeIf(::appVisible)?.let { appFocus[it] }?.let { return it }
-        return when (val first = appList.layoutInfo.visibleItemsInfo.firstOrNull()?.key) {
+    /** Where focus lands in an app row from outside it: the tile last used there, else the first one showing. */
+    fun appEntry(rowId: String): FocusRequester {
+        val st = rowState(rowId)
+        st.focused?.takeIf { appVisible(rowId, it) }?.let { st.tiles[it] }?.let { return it }
+        return when (val first = st.list.layoutInfo.visibleItemsInfo.firstOrNull()?.key) {
             null -> FocusRequester.Default
             ALL_APPS_KEY -> allAppsFocus
-            else -> appFocus[first] ?: FocusRequester.Default
+            else -> st.tiles[first] ?: FocusRequester.Default
         }
     }
 
@@ -194,6 +221,19 @@ fun HomeScreen(
         is OnNowArea.Message -> emptyFocus
         OnNowArea.Blank -> FocusRequester.Default
     }
+
+    /** Where focus lands in the drawn row [id] from another row. */
+    fun entryOf(id: String): FocusRequester = when (kindOf(id)) {
+        RowKind.OnNow -> onNowEntry()
+        RowKind.Apps -> appEntry(id)
+        else -> FocusRequester.Default
+    }
+
+    /** Where Up goes from row [id]: the drawn row above, or the top bar's marked item from the first row (null: leave it be). */
+    fun upFrom(id: String): FocusRequester? = rowAbove(id, idsNow())?.let(::entryOf) ?: topBar
+
+    /** Where Down goes from row [id]: the drawn row below; from the last row, nowhere. */
+    fun downFrom(id: String): FocusRequester = rowBelow(id, idsNow())?.let(::entryOf) ?: FocusRequester.Cancel
 
     /**
      * Brings the row of small cards holding channel [index] (of [channels]) into the two rows that show; see
@@ -213,23 +253,25 @@ fun HomeScreen(
         return runCatching { channelFocus[id]?.requestFocus() ?: error("not composed") }.isSuccess
     }
 
-    /** Scrolls the apps row to a tile and focuses it; false when it can't be. */
-    suspend fun focusApp(pkg: String, index: Int): Boolean {
-        if (!appVisible(pkg)) appList.scrollToItem(index)
+    /** Scrolls app row [rowId] to a tile and focuses it; false when it can't be. */
+    suspend fun focusApp(rowId: String, pkg: String, index: Int): Boolean {
+        val st = rowState(rowId)
+        if (!appVisible(rowId, pkg)) st.list.scrollToItem(index)
         withFrameNanos { }
-        return runCatching { appFocus[pkg]?.requestFocus() ?: error("not composed") }.isSuccess
+        return runCatching { st.tiles[pkg]?.requestFocus() ?: error("not composed") }.isSuccess
     }
 
     fun startEdit(row: String) {
         if (edit != null) return
-        val keys = if (row == ROW_ON_NOW) pinned.map { it.id } else ui.apps.map { it.packageName }
+        val onNowRow = row == ROW_ON_NOW
+        val keys = if (onNowRow) pinned.map { it.id } else appsOf(row).map { it.packageName }
         if (keys.size < 2) return
-        val key = (if (row == ROW_ON_NOW) focusedId else focusedApp)?.takeIf { it in keys } ?: keys.first()
+        val key = (if (onNowRow) focusedId else rowState(row).focused)?.takeIf { it in keys } ?: keys.first()
         scope.launch {
             // Focus goes to the item first, and only then does "Edit" give way to the status text: a focused control
             // that disappears hands focus to the first thing on the page. If focus could not be put in the row,
             // editing does not start: OK must act on the row and nothing else while it is on.
-            val inRow = if (row == ROW_ON_NOW) focusChannel(key, keys) else focusApp(key, keys.indexOf(key))
+            val inRow = if (onNowRow) focusChannel(key, keys) else focusApp(row, key, keys.indexOf(key))
             if (!inRow) return@launch
             edit = EditSession(keys)
             editRow = row
@@ -242,10 +284,11 @@ fun HomeScreen(
      */
     fun endEdit(save: Boolean = true) {
         val s = edit ?: return
-        if (save) {
-            if (editRow == ROW_ON_NOW && s.changed) saveChannels(s.order)
+        val row = editRow
+        if (save && row != null) {
+            if (row == ROW_ON_NOW && s.changed) saveChannels(s.order)
             // A tile still in the hand is put down where it is, as Back would have done.
-            if (editRow == ROW_APPS && s.held != null) saveApps(s.order)
+            if (row != ROW_ON_NOW && s.held != null) saveApps(row, s.order)
         }
         edit = null
         editRow = null
@@ -255,15 +298,15 @@ fun HomeScreen(
     // re-applied after every move. Otherwise the list keeps its first visible item in place, so the row jumps.
     val moveWindow = remember { IntArray(2) }
 
-    fun holdWindow() {
-        val info = appList.layoutInfo
+    fun holdWindow(list: LazyListState) {
+        val info = list.layoutInfo
         val end = info.viewportEndOffset - info.afterContentPadding
-        moveWindow[0] = appList.firstVisibleItemIndex + if (appList.firstVisibleItemScrollOffset > 0) 1 else 0
+        moveWindow[0] = list.firstVisibleItemIndex + if (list.firstVisibleItemScrollOffset > 0) 1 else 0
         moveWindow[1] = info.visibleItemsInfo.count { it.offset >= 0 && it.offset + it.size <= end }.coerceAtLeast(1)
     }
 
     /** Keeps the held tile on screen as it moves, scrolling only when it reaches the window's edge. */
-    fun keepInView(index: Int) {
+    fun keepInView(list: LazyListState, index: Int) {
         val count = moveWindow[1]
         moveWindow[0] = when {
             index < moveWindow[0] -> index
@@ -271,26 +314,27 @@ fun HomeScreen(
             else -> moveWindow[0]
         }
         // Applied in the same measure pass as the reorder, so the list never anchors to its old first item.
-        appList.requestScrollToItem(moveWindow[0])
+        list.requestScrollToItem(moveWindow[0])
     }
 
     /** One remote key while [row] is being edited; false lets an arrow go on to move focus. */
     fun onEditKey(row: String, key: EditKey): Boolean {
         val s = edit ?: return false
-        val focusedKey = if (row == ROW_ON_NOW) focusedId else focusedApp
-        if (row == ROW_APPS && key == EditKey.Ok && s.held == null) holdWindow()
+        val onNowRow = row == ROW_ON_NOW
+        val focusedKey = if (onNowRow) focusedId else rowState(row).focused
+        if (!onNowRow && key == EditKey.Ok && s.held == null) holdWindow(rowState(row).list)
         return when (s.onKey(key, focusedKey)) {
             EditOutcome.Ignored -> false
             EditOutcome.Handled -> {
                 val held = s.held
                 // The held item keeps focus as it moves; the row follows it.
                 val at = if (held == null) -1 else s.order.indexOf(held)
-                if (row == ROW_ON_NOW && at >= 0) showCard(at, s.order.size, page = false)
-                else if (row == ROW_APPS && at >= 0 && key != EditKey.Ok) keepInView(at)
+                if (onNowRow && at >= 0) showCard(at, s.order.size, page = false)
+                else if (!onNowRow && at >= 0 && key != EditKey.Ok) keepInView(rowState(row).list, at)
                 true
             }
             EditOutcome.Placed -> {
-                if (row == ROW_APPS) saveApps(s.order)
+                if (!onNowRow) saveApps(row, s.order)
                 true
             }
             EditOutcome.Finished -> {
@@ -302,12 +346,12 @@ fun HomeScreen(
 
     BackHandler(enabled = editing) { editRow?.let { onEditKey(it, EditKey.Back) } }
     // An edit stands only while its row still holds the items it began with. If a channel goes on or off Home
-    // elsewhere, an app is uninstalled, or the cards give way to a message (server unreachable), the edit is over and
-    // nothing of it is saved. This does not wait for focus to say so: the row may have gone, guard and all.
-    val editedIds = when (editRow) {
+    // elsewhere, an app is uninstalled, the row goes, or the cards give way to a message (server unreachable), the
+    // edit is over and nothing of it is saved. This does not wait for focus to say so: the row may have gone, guard and all.
+    val editedIds = when (val row = editRow) {
+        null -> null
         ROW_ON_NOW -> pinned.map { it.id }
-        ROW_APPS -> ui.apps.map { it.packageName }
-        else -> null
+        else -> ui.rows.firstOrNull { it.spec.id == row }?.apps.orEmpty().map { it.packageName }
     }
     LaunchedEffect(edit, editedIds) {
         val s = edit
@@ -316,23 +360,26 @@ fun HomeScreen(
     // Leaving Home mid-edit (another tab, the Home button) still saves what was arranged.
     DisposableEffect(Unit) { onDispose { endEdit() } }
 
-    // Restore focus on every tick, and again whenever either row's contents change: an item that disappears while
-    // Home is on screen (taken off Home on another device, app uninstalled) would otherwise take the focus with it.
+    // Restore focus on every tick, and again whenever a row's contents change: an item that disappears while Home is
+    // on screen (taken off Home on another device, app uninstalled) would otherwise take the focus with it.
     val restoredAt = remember { intArrayOf(Int.MIN_VALUE) }
-    LaunchedEffect(restoreTick, pinned.size, ui.apps.size, area::class) {
+    val rowSizes = ui.rows.map { it.spec.id to it.apps.size }
+    LaunchedEffect(restoreTick, pinned.size, rowSizes, area::class) {
         if (edit != null) return@LaunchedEffect
         // Coming to Home always restores. A list that only changed under it does not take focus from the top bar.
         if (!restoresFocus(byTick = restoredAt[0] != restoreTick, barHasFocus = bar?.hasFocus == true)) return@LaunchedEffect
-        val rows = linkedMapOf(ROW_ON_NOW to pinned.map { it.id }, ROW_APPS to ui.apps.map { it.packageName })
+        // In Home's order, so a remembered item that has gone falls back to the first item of the first drawn row.
+        val rows = LinkedHashMap<String, List<String>>()
+        ui.rows.forEach { r -> rows[r.spec.id] = if (r.spec.kind == RowKind.OnNow) pinned.map { it.id } else r.apps.map { it.packageName } }
         // With no cards the area holds a message, and its button is what to focus, on a first visit and again when
         // the last channel leaves Home, unless the user was last on an app tile.
-        val rememberedApp = memory.current()?.row == ROW_APPS
+        val rememberedApp = memory.current()?.row?.let { it != ROW_ON_NOW } == true
         val target = if (pinned.isEmpty() && !rememberedApp) null else memory.resolve(rows)
         withFrameNanos { }
-        val ok = when (target?.row) {
-            ROW_ON_NOW -> focusChannel(target.key, pinned.map { it.id })
-            ROW_APPS -> focusApp(target.key, target.index)
-            else -> false
+        val ok = when {
+            target == null -> false
+            target.row == ROW_ON_NOW -> focusChannel(target.key, pinned.map { it.id })
+            else -> focusApp(target.row, target.key, target.index)
         }
         // While the first load is still running there is nothing worth focusing: an early OK would open an app
         // instead of the channel the user left.
@@ -345,47 +392,63 @@ fun HomeScreen(
         runCatching { emptyFocus.requestFocus() }.recoverCatching { allAppsFocus.requestFocus() }
     }
 
-    // Up and Down between the rows follow the order chosen in Settings: where focus lands in a row from outside it.
-    fun entryOf(row: HomeRow): FocusRequester = if (row == HomeRow.Apps) appEntry() else onNowEntry()
-
-    /** Where Up goes from [row]: the row above, or the top bar's marked item from the first row (null: leave it be). */
-    fun upFrom(row: HomeRow): FocusRequester? = rowAbove(row, layoutNow.rowOrder)?.let(::entryOf) ?: topBar
-
-    /** Where Down goes from [row]: the row below; from the last row, nowhere. */
-    fun downFrom(row: HomeRow): FocusRequester = rowBelow(row, layoutNow.rowOrder)?.let(::entryOf) ?: FocusRequester.Cancel
-
     // Down from the top bar lands on the first row's remembered item, not on whichever item is nearest.
-    val barDown by rememberUpdatedState { entryOf(rowsInOrder(layoutNow.rowOrder).first()) }
+    val barDown by rememberUpdatedState { idsNow().firstOrNull()?.let(::entryOf) ?: FocusRequester.Default }
     DisposableEffect(bar) {
         bar?.down = { barDown() }
         onDispose { bar?.down = null }
     }
 
-    Box(Modifier.fillMaxSize()) {
-        val appsAction: (@Composable () -> Unit)? = when {
+    // Scrolling: the row that holds focus is brought whole into view, as one layer under the top bar.
+    val unit = with(LocalDensity.current) { px(1).toPx() }
+    val reduced = LocalEffects.current.reduced
+    val scroll = remember { Animatable(0f) }
+    var focusRow by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(focusRow, places) {
+        val i = places.indexOfFirst { it.id == focusRow }
+        if (i < 0) return@LaunchedEffect
+        val target = scrollFor(scroll.targetValue.roundToInt(), places, i).toFloat()
+        if (target == scroll.targetValue) return@LaunchedEffect
+        if (reduced) scroll.snapTo(target) else scroll.animateTo(target, tween(250, easing = FastOutSlowInEasing))
+    }
+
+    @Composable
+    fun AppRow(row: DrawnRow, place: RowPlace) {
+        val id = row.spec.id
+        val st = rowState(id)
+        val appEdit = edit?.takeIf { editRow == id }
+        val appsShown = appEdit?.order?.mapNotNull { p -> row.apps.firstOrNull { it.packageName == p } } ?: row.apps
+        val hasAllApps = id == firstAppRow
+        // With "A to Z" the order is automatic, so there is nothing to rearrange.
+        val editShown = appEdit == null && row.apps.size >= 2 && row.spec.sort == RowSort.YourOrder
+        val action: (@Composable () -> Unit)? = when {
             appEdit != null -> { -> EditStatus(appEdit) }
-            appsEditShown -> { ->
+            editShown -> { ->
                 TextAction(
-                    "Edit", LineIcon.Edit, { startEdit(ROW_APPS) },
-                    Modifier.focusRequester(appsEditFocus).focusProperties {
+                    "Edit", LineIcon.Edit, { startEdit(id) },
+                    Modifier.focusRequester(st.editFocus).focusProperties {
                         if (!editing) {
-                            if (appVisible(ALL_APPS_KEY)) down = allAppsFocus
+                            if (hasAllApps && appVisible(id, ALL_APPS_KEY)) down = allAppsFocus
                             // Under "On now", the nearest thing above is the lower small card; go to the cards' entry.
-                            if (rowAbove(HomeRow.Apps, layoutNow.rowOrder) != null) up = smallAt(firstRowNow() + 1, layoutNow.onNow.columns - 1) ?: onNowEntry()
+                            when (val above = rowAbove(id, idsNow())) {
+                                null -> Unit
+                                ROW_ON_NOW -> up = smallAt(firstRowNow() + 1, layoutNow.onNow.columns - 1) ?: onNowEntry()
+                                else -> up = entryOf(above)
+                            }
                         }
                     },
                 )
             }
             else -> null
         }
-        SectionHeading("Your apps", Modifier.padding(start = px(100), end = px(100), top = px(m.appsHeadingY)), appsAction)
+        SectionHeading(row.spec.name, Modifier.padding(start = px(100), end = px(100)), action)
         LazyRow(
-            Modifier.padding(top = px(m.appsY - GLOW_ROOM)).fillMaxWidth()
-                .onFocusChanged { if (!it.hasFocus && editRow == ROW_APPS) endEdit() }
-                .editKeys(appEdit != null) { onEditKey(ROW_APPS, it) }
+            Modifier.padding(top = px(place.y - place.headingY - GLOW_ROOM)).fillMaxWidth()
+                .onFocusChanged { if (!it.hasFocus && editRow == id) endEdit() }
+                .editKeys(appEdit != null) { onEditKey(id, it) }
                 .focusProperties { if (appEdit != null) exit = { FocusRequester.Cancel } }
                 .focusGroup(),
-            state = appList,
+            state = st.list,
             contentPadding = PaddingValues(horizontal = px(100), vertical = px(GLOW_ROOM)),
             horizontalArrangement = Arrangement.spacedBy(px(m.gap)),
         ) {
@@ -394,18 +457,18 @@ fun HomeScreen(
                     app, loader, m,
                     onClick = { actions.openApp(app) },
                     modifier = Modifier.width(px(m.tileW)).lifted(app.packageName == appEdit?.held)
-                        .focusRequester(appFocus.getOrPut(app.packageName) { FocusRequester() })
+                        .focusRequester(st.tiles.getOrPut(app.packageName) { FocusRequester() })
                         .focusProperties {
                             // While editing, the arrows belong to the row: a fixed target would step past its edge.
                             if (!editing) {
-                                upFrom(HomeRow.Apps)?.let { up = it }
-                                down = downFrom(HomeRow.Apps)
+                                upFrom(id)?.let { up = it }
+                                down = downFrom(id)
                             }
                         },
-                    onFocused = { focusedApp = app.packageName; memory.remember(FocusTarget(ROW_APPS, app.packageName, i)) },
+                    onFocused = { st.focused = app.packageName; memory.remember(FocusTarget(id, app.packageName, i)) },
                 )
             }
-            item(key = ALL_APPS_KEY) {
+            if (hasAllApps) item(key = ALL_APPS_KEY) {
                 HomeAllAppsTile(
                     m, actions.allApps,
                     Modifier.width(px(m.tileW)).focusRequester(allAppsFocus).focusProperties {
@@ -414,14 +477,17 @@ fun HomeScreen(
                         // The row ends here: Right must not wander up to "Edit".
                         right = FocusRequester.Cancel
                         if (!editing) {
-                            if (appsEditShown) up = appsEditFocus else upFrom(HomeRow.Apps)?.let { up = it }
-                            down = downFrom(HomeRow.Apps)
+                            if (editShown) up = st.editFocus else upFrom(id)?.let { up = it }
+                            down = downFrom(id)
                         }
                     },
                 )
             }
         }
+    }
 
+    @Composable
+    fun OnNowRow(place: RowPlace) {
         val channelsAction: (@Composable () -> Unit)? = when {
             channelEdit != null -> { -> EditStatus(channelEdit) }
             channelsEditShown -> { ->
@@ -429,8 +495,12 @@ fun HomeScreen(
                     "Edit", LineIcon.Edit, { startEdit(ROW_ON_NOW) },
                     Modifier.focusRequester(channelsEditFocus).focusProperties {
                         if (!editing) {
-                            // Under the apps row, Up is "All apps", the tile under this action; as the first row, the top bar.
-                            if (rowAbove(HomeRow.OnNow, layoutNow.rowOrder) != null && appVisible(ALL_APPS_KEY)) up = allAppsFocus
+                            // Under an app row, Up is its "All apps" (the tile under this action) or its entry; as the
+                            // first row, the top bar.
+                            rowAbove(ROW_ON_NOW, idsNow())?.let { above ->
+                                if (above == firstAppRow && appVisible(above, ALL_APPS_KEY)) up = allAppsFocus
+                                else if (kindOf(above) == RowKind.Apps) up = entryOf(above)
+                            }
                             // Down is the small card under this action: the last one of the first row that shows.
                             smallAt(firstRowNow(), layoutNow.onNow.columns - 1)?.let { down = it }
                         }
@@ -439,8 +509,8 @@ fun HomeScreen(
             }
             else -> null
         }
-        SectionHeading("On now", Modifier.padding(start = px(100), end = px(100), top = px(m.onNowHeadingY)), channelsAction)
-        Box(Modifier.padding(start = px(100), top = px(m.cardsY)).size(px(1720), px(m.cardsH))) {
+        SectionHeading("On now", Modifier.padding(start = px(100), end = px(100)), channelsAction)
+        Box(Modifier.padding(start = px(100), top = px(place.y - place.headingY)).size(px(1720), px(place.h))) {
             when (area) {
                 OnNowArea.Blank -> Unit
                 is OnNowArea.Message -> EmptyState(
@@ -478,13 +548,13 @@ fun HomeScreen(
                             val slot = slotOf(i, onNow)
                             val small = slot as? Slot.Small
                             if (isBuilt(slot, firstRow)) {
-                            val place = cardPlace(slot, firstRow, m)
+                            val cardAt = cardPlace(slot, firstRow, mOnNow)
                             val on = onAir(ch, ui.nowMs)
                             ChannelCard(
                                 ch, onAirLines(on, is24), url(on.programme?.image), loader,
                                 large = small == null,
-                                widthPx = place.w,
-                                heightPx = place.h,
+                                widthPx = cardAt.w,
+                                heightPx = cardAt.h,
                                 onClick = { actions.play(ch) },
                                 onFocused = {
                                     focusedId = ch.id
@@ -492,27 +562,27 @@ fun HomeScreen(
                                     memory.remember(FocusTarget(ROW_ON_NOW, ch.id, i))
                                 },
                                 modifier = Modifier
-                                    .offset(x = px(place.x), y = px(place.y))
-                                    .graphicsLayer { alpha = if (place.shown) 1f else 0f }
+                                    .offset(x = px(cardAt.x), y = px(cardAt.y))
+                                    .graphicsLayer { alpha = if (cardAt.shown) 1f else 0f }
                                     .lifted(ch.id == channelEdit?.held)
                                     .focusRequester(channelFocus.getOrPut(ch.id) { FocusRequester() })
                                     .focusProperties {
-                                        canFocus = place.shown || inCards
+                                        canFocus = cardAt.shown || inCards
                                         if (small == null) {
                                             // Under the large card is the row below, or nothing; never the unseen
                                             // small card off to its right.
-                                            down = if (editing) FocusRequester.Cancel else downFrom(HomeRow.OnNow)
-                                            if (!editing) upFrom(HomeRow.OnNow)?.let { up = it }
+                                            down = if (editing) FocusRequester.Cancel else downFrom(ROW_ON_NOW)
+                                            if (!editing) upFrom(ROW_ON_NOW)?.let { up = it }
                                         } else {
                                             if (small.row == 0 && !editing) {
-                                                if (channelsEditShown) up = channelsEditFocus else upFrom(HomeRow.OnNow)?.let { up = it }
+                                                if (channelsEditShown) up = channelsEditFocus else upFrom(ROW_ON_NOW)?.let { up = it }
                                             }
                                             // A key that arrives before the next unseen row has been built stops
                                             // here for a frame rather than finding something outside the cards.
                                             if (small.row > 0 && small.row == firstRow - 1) up = FocusRequester.Cancel
                                             if (small.row == firstRow + SMALL_ROWS && small.row < lastRow) down = FocusRequester.Cancel
                                             // From the last row Down goes on to the row of Home below, when there is one.
-                                            if (small.row == lastRow && !editing) down = downFrom(HomeRow.OnNow)
+                                            if (small.row == lastRow && !editing) down = downFrom(ROW_ON_NOW)
                                             // A row of cards ends at its last card; its first card is beside the large
                                             // card, when there is one.
                                             if (small.column == onNow.columns - 1 || i == channelsShown.lastIndex) right = FocusRequester.Cancel
@@ -530,14 +600,44 @@ fun HomeScreen(
         // A sign that channels sit beyond the last card showing: one line under the cards, level with the small
         // cards. Not while a row is being rearranged (the hint bar is there then), nor under a message.
         val more = if (area is OnNowArea.Cards && !editing) moreChannelsLine(channelsShown.size, lastShownIndex(firstRow, channelsShown.size, onNow)) else null
-        if (more != null) {
+        val moreY = place.moreY
+        if (more != null && moreY != null) {
             Row(
-                Modifier.padding(start = px(100 + m.smallX), top = px(m.moreY)).height(px(30)),
+                Modifier.padding(start = px(100 + mOnNow.smallX), top = px(moreY - place.headingY)).height(px(30)),
                 horizontalArrangement = Arrangement.spacedBy(px(12)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 BasicText(more, style = AtomixType.description(), maxLines = 1)
                 Icon(LineIcon.ChevronDown, AtomixColors.Label, 24)
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        // Rows pass under the top bar: once Home has scrolled they are cut off just below it.
+        Box(
+            Modifier.fillMaxSize().drawWithContent {
+                if (scroll.value > 0f) clipRect(top = VIEW_TOP * unit) { this@drawWithContent.drawContent() } else drawContent()
+            },
+        ) {
+            Box(Modifier.fillMaxSize().graphicsLayer { translationY = -scroll.value * unit }) {
+                // Composed in an order that never changes (by id), so moving a row only moves where it is put.
+                val placeOf = places.associateBy { it.id }
+                ui.rows.sortedBy { it.spec.id }.forEach { row ->
+                    val place = placeOf[row.spec.id] ?: return@forEach
+                    key(row.spec.id) {
+                        Box(
+                            Modifier.padding(top = px(place.headingY)).fillMaxWidth()
+                                .onFocusChanged { if (it.hasFocus) focusRow = row.spec.id },
+                        ) {
+                            when (row.spec.kind) {
+                                RowKind.Apps -> AppRow(row, place)
+                                RowKind.OnNow -> OnNowRow(place)
+                                RowKind.Inputs -> Unit
+                            }
+                        }
+                    }
+                }
             }
         }
         ScreenHints(hintsFor(edit?.let { HintSpot.HomeEdit(holding = it.held != null) } ?: HintSpot.HomeRest))

@@ -106,9 +106,17 @@ class LauncherPrefsTest {
 
     @Test fun homeLayout_roundTrips() {
         val sp = prefs()
-        val want = HomeLayout(TileSize.Large, TileShape.FullBanner, Spacing.Roomy, false, RowOrder.OnNowFirst, OnNowLayout.SixSmall)
+        val want = HomeLayout(TileSize.Large, TileShape.FullBanner, Spacing.Roomy, false, OnNowLayout.SixSmall)
         LauncherPrefs(sp, { null }).homeLayout = want
         assertEquals(want, LauncherPrefs(sp, { null }).homeLayout)
+    }
+
+    // Row order moved to the rows (phase 3): Home layout neither reads nor writes phase 2's key.
+    @Test fun homeLayout_leavesTheOldRowOrderAlone() {
+        val sp = prefs().also { it.edit().putString("home_row_order", "OnNowFirst").commit() }
+        LauncherPrefs(sp, { null }).homeLayout = HomeLayout(tileSize = TileSize.Large)
+        assertEquals("OnNowFirst", sp.getString("home_row_order", null))
+        assertEquals(HomeLayout(tileSize = TileSize.Large), LauncherPrefs(sp, { null }).homeLayout)
     }
 
     @Test fun homeLayout_nothingSaved_isTodaysHome() = assertEquals(HomeLayout(), LauncherPrefs(prefs(), { null }).homeLayout)

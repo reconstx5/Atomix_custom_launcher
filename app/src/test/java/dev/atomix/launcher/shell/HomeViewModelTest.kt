@@ -14,6 +14,9 @@ import dev.atomix.launcher.livetv.source.tv
 import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import dev.atomix.launcher.prefs.ROW_APPS
+import dev.atomix.launcher.prefs.ROW_ON_NOW
+import dev.atomix.launcher.prefs.withApp
+import dev.atomix.launcher.prefs.withRowAdded
 import dev.atomix.launcher.prefs.RowStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -80,10 +83,10 @@ class HomeViewModelTest {
 
     @Test fun appsRow_isVisibleFavourites_inOrder() {
         scope.runCurrent()
-        assertEquals(listOf("b", "a"), vm.ui.value.apps.map { it.packageName })
+        assertEquals(listOf("b", "a"), yourApps())
         rows.update { r -> r.map { if (it.id == ROW_APPS) it.copy(apps = listOf("c")) else it } }
         scope.runCurrent()
-        assertEquals(listOf("c"), vm.ui.value.apps.map { it.packageName })
+        assertEquals(listOf("c"), yourApps())
     }
 
     // Edit on Home only rearranges: the save writes the new order and takes nothing off Home.
@@ -117,9 +120,26 @@ class HomeViewModelTest {
 
     @Test fun saveAppOrder_appliesAtOnce_keepingHiddenFavourites() {
         scope.runCurrent()
-        vm.saveAppOrder(listOf("a"))
-        assertEquals(listOf("a"), vm.ui.value.apps.map { it.packageName })
+        vm.saveAppOrder(ROW_APPS, listOf("a"))
+        assertEquals(listOf("a"), yourApps())
         assertEquals(listOf("a", "gone"), rows.rows.value.first { it.id == ROW_APPS }.apps)
+    }
+
+    private fun yourApps() = vm.ui.value.rows.first { it.spec.id == ROW_APPS }.apps.map { it.packageName }
+
+    @Test fun rows_areTheDrawnRows_inOrder() {
+        scope.runCurrent()
+        assertEquals(listOf(ROW_APPS, ROW_ON_NOW), vm.ui.value.rows.map { it.spec.id })
+    }
+
+    @Test fun saveAppOrder_touchesOnlyThatRow() {
+        rows.update { it.withRowAdded("Tools").withApp("row-1", "a", true).withApp("row-1", "b", true) }
+        scope.runCurrent()
+        vm.saveAppOrder("row-1", listOf("b", "a"))
+        assertEquals(listOf("b", "a"), vm.ui.value.rows.first { it.spec.id == "row-1" }.apps.map { it.packageName })
+        assertEquals(listOf("b", "a"), yourApps())
+        vm.saveAppOrder(ROW_APPS, listOf("a", "b"))
+        assertEquals(listOf("b", "a"), vm.ui.value.rows.first { it.spec.id == "row-1" }.apps.map { it.packageName })
     }
 
     @Test fun clockTicks() {
