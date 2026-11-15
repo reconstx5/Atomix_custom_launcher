@@ -54,7 +54,7 @@ import dev.atomix.launcher.ui.apps.AppsTabState
 import dev.atomix.launcher.ui.apps.ManageAppsScreen
 import dev.atomix.launcher.ui.home.HomeActions
 import dev.atomix.launcher.ui.home.HomeScreen
-import dev.atomix.launcher.ui.home.ROW_ON_NOW
+import dev.atomix.launcher.prefs.ROW_ON_NOW
 import dev.atomix.launcher.ui.home.clockText
 import dev.atomix.launcher.ui.inputs.InputsScreen
 import dev.atomix.launcher.ui.kit.Effects
@@ -81,7 +81,7 @@ class SetupHolder(graph: AppGraph) : ViewModel() {
 }
 
 class HomeHolder(graph: AppGraph) : ViewModel() {
-    val vm = HomeViewModel(graph.live, graph.favouriteApps, graph.apps, viewModelScope)
+    val vm = HomeViewModel(graph.live, graph.rows, graph.hiddenApps, graph.apps, viewModelScope)
 }
 
 private const val TUNER_INPUT = "tv-tuner"
@@ -158,7 +158,7 @@ class HomeActivity : ComponentActivity() {
         LookState.look = graph.prefs.look
         homeLayout.value = graph.prefs.homeLayout
         splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
-        val appsState = AppsTabState(graph.favouriteApps, graph.hiddenApps, graph.apps)
+        val appsState = AppsTabState(graph.rows, graph.hiddenApps, graph.apps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }
         setContent {
             AtomixTheme {

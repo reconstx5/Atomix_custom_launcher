@@ -32,16 +32,30 @@ class LauncherPrefsTest {
         assertEquals(listOf("a", ATOMIX_APP_KEY), LauncherPrefs(prefs(), { listOf("a", ATOMIX_APP_KEY) }).favouriteApps)
     }
 
-    @Test fun migrationRunsOnce_laterEditsSurviveNewInstance() {
-        val sp = prefs()
-        LauncherPrefs(sp, { listOf("a") }).favouriteApps = listOf("z")
+    @Test fun savedFavourites_winOverTheDock() {
+        val sp = prefs().also { it.edit().putString("favourite_apps", "z").commit() }
         assertEquals(listOf("z"), LauncherPrefs(sp, { listOf("a") }).favouriteApps)
     }
 
-    @Test fun emptyFavourites_persistAsEmpty() {
-        val sp = prefs()
-        LauncherPrefs(sp, { listOf("a") }).favouriteApps = emptyList()
+    @Test fun emptySavedFavourites_readAsEmpty() {
+        val sp = prefs().also { it.edit().putString("favourite_apps", "").commit() }
         assertEquals(emptyList<String>(), LauncherPrefs(sp, { listOf("a") }).favouriteApps)
+    }
+
+    // Phase 3 reads the old keys and never writes them (spec §5.3).
+    @Test fun readingFavourites_writesNothing() {
+        val sp = prefs()
+        LauncherPrefs(sp, { listOf("a") }).favouriteApps
+        assertNull(sp.getString("favourite_apps", null))
+    }
+
+    @Test fun legacyRowOrder_readsTheOldKey_unknownIsAppsFirst() {
+        val sp = prefs()
+        assertEquals(RowOrder.AppsFirst, LauncherPrefs(sp, { null }).legacyRowOrder)
+        sp.edit().putString("home_row_order", "OnNowFirst").commit()
+        assertEquals(RowOrder.OnNowFirst, LauncherPrefs(sp, { null }).legacyRowOrder)
+        sp.edit().putString("home_row_order", "Sideways").commit()
+        assertEquals(RowOrder.AppsFirst, LauncherPrefs(sp, { null }).legacyRowOrder)
     }
 
     @Test fun reducedEffects_defaultsOff_andPersists() {

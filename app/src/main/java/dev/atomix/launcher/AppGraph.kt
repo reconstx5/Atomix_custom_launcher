@@ -20,9 +20,9 @@ import dev.atomix.launcher.data.OkHttpServerProbe
 import dev.atomix.launcher.data.ServerLocator
 import dev.atomix.launcher.data.SessionStore
 import dev.atomix.launcher.data.subnetHostsOf
-import dev.atomix.launcher.prefs.FavouriteApps
 import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
+import dev.atomix.launcher.prefs.RowStore
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +45,7 @@ class AppGraph private constructor(private val context: Context) {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val apps = AppCatalog(installedApps::list, scope)
     val hiddenApps = HiddenApps(prefs)
-    val favouriteApps = FavouriteApps(prefs, hiddenApps::isHidden) { apps.apps.value }
+    val rows = RowStore(prefs)
 
     init {
         val filter = IntentFilter().apply {

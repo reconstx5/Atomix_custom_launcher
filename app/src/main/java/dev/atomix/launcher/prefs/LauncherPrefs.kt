@@ -2,21 +2,38 @@ package dev.atomix.launcher.prefs
 
 import android.content.SharedPreferences
 
+/** The favourites key for Atomix's own app tile (same package as the launcher). */
+const val ATOMIX_APP_KEY = "dev.atomix.launcher"
+
+val DEFAULT_DOCK = listOf(
+    "org.smarttube.stable",
+    "tv.twitch.android.app",
+    "com.amazon.amazonvideo.livingroom",
+    "ar.tvplayer.tv",
+    "com.phlox.tvwebbrowser",
+)
+
 /**
- * Launcher-only settings (not secret, so plain prefs): favourite apps, reduced effects, remembered focus.
- * The first read of [favouriteApps] migrates the old dock order, with Atomix's own tile added first.
+ * Launcher-only settings (not secret, so plain prefs): Home's rows, hidden apps, reduced effects, remembered focus.
+ * Phase 2's "Your apps" ([favouriteApps]) and row order ([legacyRowOrder]) are only read, to build the rows once.
  */
 class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock: () -> List<String>?) {
-    var favouriteApps: List<String>
+    /** Phase 2's "Your apps"; before that was ever saved, the old dock with Atomix's own tile first. Never written. */
+    val favouriteApps: List<String>
         get() {
             val saved = prefs.getString(K_FAVOURITES, null)
             if (saved != null) return if (saved.isEmpty()) emptyList() else saved.split('\n')
             val legacy = legacyDock() ?: DEFAULT_DOCK
-            val migrated = if (ATOMIX_APP_KEY in legacy) legacy else listOf(ATOMIX_APP_KEY) + legacy
-            favouriteApps = migrated
-            return migrated
+            return if (ATOMIX_APP_KEY in legacy) legacy else listOf(ATOMIX_APP_KEY) + legacy
         }
-        set(v) { prefs.edit().putString(K_FAVOURITES, v.joinToString("\n")).apply() }
+
+    /** Phase 2's row order; never written. */
+    val legacyRowOrder: RowOrder get() = enumOr(prefs.getString(K_ROW_ORDER, null), RowOrder.AppsFirst)
+
+    /** Home's rows as saved by [RowStore]; null until the first start of phase 3. */
+    var homeRows: String?
+        get() = prefs.getString(K_ROWS, null)
+        set(v) { prefs.edit().putString(K_ROWS, v).apply() }
 
     /** Apps hidden from Atomix TV ([HiddenApps]). Until anything is saved, [DEFAULT_HIDDEN]; a saved "" is none. */
     var hiddenApps: List<String>
@@ -72,6 +89,7 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
 
     private companion object {
         const val K_FAVOURITES = "favourite_apps"
+        const val K_ROWS = "home_rows"
         const val K_REDUCED = "reduced_effects"
         const val K_HIDDEN = "hidden_apps"
         const val K_FOCUS = "focus_"

@@ -59,6 +59,8 @@ import dev.atomix.launcher.shell.restoresFocus
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.OnNowLayout
 import dev.atomix.launcher.prefs.SMALL_ROWS
+import dev.atomix.launcher.prefs.ROW_APPS
+import dev.atomix.launcher.prefs.ROW_ON_NOW
 import dev.atomix.launcher.prefs.RowOrder
 import dev.atomix.launcher.ui.kit.EmptyState
 import dev.atomix.launcher.ui.kit.FocusGlow
@@ -76,9 +78,6 @@ import dev.atomix.launcher.ui.theme.px
 import kotlin.math.max
 import kotlin.math.min
 import kotlinx.coroutines.launch
-
-const val ROW_ON_NOW = "onNow"
-const val ROW_APPS = "apps"
 
 private const val ALL_APPS_KEY = "all-apps"
 

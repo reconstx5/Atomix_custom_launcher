@@ -2,21 +2,23 @@ package dev.atomix.launcher.ui.apps
 
 import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.AppEntry
-import dev.atomix.launcher.prefs.FavouriteApps
 import dev.atomix.launcher.prefs.HiddenApps
+import dev.atomix.launcher.prefs.ROW_APPS
+import dev.atomix.launcher.prefs.RowStore
+import dev.atomix.launcher.prefs.withApp
 import kotlinx.coroutines.flow.StateFlow
 
 /** What the Apps tab and manage apps need: every installed app, and whether each is in Home's "Your apps" row. */
-class AppsTabState(private val favourites: FavouriteApps, private val hidden: HiddenApps, private val catalog: AppCatalog) {
+class AppsTabState(private val rows: RowStore, private val hidden: HiddenApps, private val catalog: AppCatalog) {
     val apps: StateFlow<List<AppEntry>> get() = catalog.apps
     fun list(): List<AppEntry> = catalog.apps.value
 
     /** What the Apps page lists: every installed app but those hidden from Atomix TV, in the list's own order. */
     fun visibleApps(): List<AppEntry> = list().filterNot { hidden.isHidden(it.packageName) }
-    fun isFavourite(pkg: String): Boolean = favourites.contains(pkg)
+    fun isFavourite(pkg: String): Boolean = rows.rows.value.firstOrNull { it.id == ROW_APPS }?.apps.orEmpty().contains(pkg)
 
-    /** Adds to the end of Home's apps row, or takes it off. */
-    fun toggle(pkg: String) = if (isFavourite(pkg)) favourites.remove(pkg) else favourites.add(pkg)
+    /** Adds to the end of Home's "Your apps" row, or takes it out of that row. */
+    fun toggle(pkg: String) { val add = !isFavourite(pkg); rows.update { it.withApp(ROW_APPS, pkg, add) } }
 
     fun isHidden(pkg: String): Boolean = hidden.isHidden(pkg)
 

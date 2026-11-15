@@ -11,8 +11,10 @@ import dev.atomix.launcher.livetv.source.FakeLiveClient
 import dev.atomix.launcher.livetv.source.LiveRepository
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.livetv.source.tv
-import dev.atomix.launcher.prefs.FavouriteApps
+import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
+import dev.atomix.launcher.prefs.ROW_APPS
+import dev.atomix.launcher.prefs.RowStore
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -33,7 +35,7 @@ class HomeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val scope = TestScope(dispatcher)
     private lateinit var fake: FakeLiveClient
-    private lateinit var prefs: LauncherPrefs
+    private lateinit var rows: RowStore
     private lateinit var vm: HomeViewModel
     private var clock = 1_000_000L
     private fun app(pkg: String) = AppEntry(pkg, pkg, null, ColorDrawable(), Intent())
@@ -42,12 +44,13 @@ class HomeViewModelTest {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         val store = SessionStore(ctx, encrypted = false).also { it.cachedChannelsJson = null; it.cachedFavouriteIds = null }
         val sp = ctx.getSharedPreferences("home_vm_test", Context.MODE_PRIVATE).also { it.edit().clear().commit() }
-        prefs = LauncherPrefs(sp) { null }
-        prefs.favouriteApps = listOf("b", "gone", "a")
+        sp.edit().putString("favourite_apps", listOf("b", "gone", "a").joinToString("\n")).commit()
+        val prefs = LauncherPrefs(sp) { null }
+        rows = RowStore(prefs)
         fake = FakeLiveClient(channels = listOf(tv("1", 1), tv("2", 2)), favourites = mutableListOf("2"))
         val repo = LiveRepository({ fake }, store, relocate = {})
         val catalog = AppCatalog({ listOf(app("a"), app("b"), app("c")) }, scope, dispatcher)
-        vm = HomeViewModel(repo, FavouriteApps(prefs) { catalog.apps.value }, catalog, scope, now = { clock })
+        vm = HomeViewModel(repo, rows, HiddenApps(prefs), catalog, scope, now = { clock })
         scope.runCurrent()
     }
 
@@ -78,8 +81,8 @@ class HomeViewModelTest {
     @Test fun appsRow_isVisibleFavourites_inOrder() {
         scope.runCurrent()
         assertEquals(listOf("b", "a"), vm.ui.value.apps.map { it.packageName })
-        prefs.favouriteApps = listOf("c")
-        vm.refreshApps()
+        rows.update { r -> r.map { if (it.id == ROW_APPS) it.copy(apps = listOf("c")) else it } }
+        scope.runCurrent()
         assertEquals(listOf("c"), vm.ui.value.apps.map { it.packageName })
     }
 
@@ -116,7 +119,7 @@ class HomeViewModelTest {
         scope.runCurrent()
         vm.saveAppOrder(listOf("a"))
         assertEquals(listOf("a"), vm.ui.value.apps.map { it.packageName })
-        assertEquals(listOf("a", "gone"), prefs.favouriteApps)
+        assertEquals(listOf("a", "gone"), rows.rows.value.first { it.id == ROW_APPS }.apps)
     }
 
     @Test fun clockTicks() {
