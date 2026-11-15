@@ -13,8 +13,10 @@ sealed interface HintSpot {
     data class LiveSwitch(val on: Boolean) : HintSpot
     data class AppTile(val app: String) : HintSpot
     data object AppsEdit : HintSpot
-    data object ManageTile : HintSpot
-    data class ManageMenu(val item: String) : HintSpot
+    /** A tile in manage apps; [back] is where Back goes ("Apps", or "Settings" when opened from there). */
+    data class ManageTile(val back: String = "Apps") : HintSpot
+    /** A line of an app's menu in manage apps; [back] is "Menu" in the "Add to a row…" list. */
+    data class ManageMenu(val item: String, val back: String = "Close menu") : HintSpot
     /** A segmented pill has focus. */
     data class Pill(val back: String) : HintSpot
     data class InputCard(val input: String) : HintSpot
@@ -51,8 +53,8 @@ fun hintsFor(spot: HintSpot): List<Hint> = when (spot) {
     is HintSpot.LiveSwitch -> listOf(Hint(OK, if (spot.on) "Turn off" else "Turn on"), Hint("◀", "Channels"), Hint(BACK, "Home"))
     is HintSpot.AppTile -> listOf(Hint(OK, "Open ${spot.app}"), Hint(BACK, "Home"))
     HintSpot.AppsEdit -> listOf(Hint(OK, "Choose apps"), Hint(BACK, "Home"))
-    HintSpot.ManageTile -> listOf(Hint(OK, "Options"), Hint(BACK, "Apps"))
-    is HintSpot.ManageMenu -> listOf(Hint(OK, spot.item), Hint(BACK, "Close menu"))
+    is HintSpot.ManageTile -> listOf(Hint(OK, "Options"), Hint(BACK, spot.back))
+    is HintSpot.ManageMenu -> listOf(Hint(OK, spot.item), Hint(BACK, spot.back))
     is HintSpot.Pill -> listOf(Hint(OK, "Select"), Hint(BACK, spot.back))
     is HintSpot.InputCard -> listOf(Hint(OK, "Switch to ${spot.input}"), Hint(BACK, "Home"))
     HintSpot.SettingsSections -> listOf(Hint(OK, "Open"), Hint(BACK, "Home"))

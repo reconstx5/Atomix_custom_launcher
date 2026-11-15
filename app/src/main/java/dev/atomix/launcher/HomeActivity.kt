@@ -65,6 +65,7 @@ import dev.atomix.launcher.ui.livetv.LiveTvTab
 import dev.atomix.launcher.ui.livetv.LiveTvTabState
 import dev.atomix.launcher.ui.livetv.ROW_CHANNELS
 import androidx.lifecycle.lifecycleScope
+import dev.atomix.launcher.ui.settings.ALL_APPS_ENTRY
 import dev.atomix.launcher.ui.settings.SettingsActions
 import dev.atomix.launcher.ui.settings.SettingsInfo
 import dev.atomix.launcher.ui.settings.SettingsScreen
@@ -107,6 +108,9 @@ class HomeActivity : ComponentActivity() {
     private val place = mutableStateOf(Place.Home)
     /** The Settings section to open on, when Settings was opened about one (a button under a message on Home). */
     private val settingsSection = mutableStateOf<SettingsSection?>(null)
+    // The Rows and apps entry Settings opens on (back from manage apps), and the one manage apps was opened from there.
+    private val settingsRowsFocus = mutableStateOf<String?>(null)
+    private val manageFrom = mutableStateOf<String?>(null)
     private val signedIn = mutableStateOf(false)
     /** Whether the Home-button service is switched on, re-read whenever the launcher comes back to the front. */
     private val homeOverrideOn = mutableStateOf(false)
@@ -226,7 +230,7 @@ class HomeActivity : ComponentActivity() {
                                     memory = appsTabMemory,
                                     restoreTick = restoreTick.intValue,
                                     onLaunch = { launch(it.launch) },
-                                    onEdit = { place.value = Place.ManageApps },
+                                    onEdit = { appsState.forRow = null; manageFrom.value = null; place.value = Place.ManageApps },
                                 )
                                 Place.ManageApps -> ManageAppsScreen(
                                     state = appsState,
@@ -240,6 +244,8 @@ class HomeActivity : ComponentActivity() {
                                         )
                                     },
                                     onChanged = { home.vm.refreshApps() },
+                                    onBack = manageFrom.value?.let { from -> { openSettings(SettingsSection.Rows, rowsFocus = from) } },
+                                    back = if (manageFrom.value != null) "Settings" else "Apps",
                                 )
                                 Place.Inputs -> InputsScreen(
                                     hdmi = hdmiInputs.value,
@@ -273,6 +279,7 @@ class HomeActivity : ComponentActivity() {
                                     nowMs = ui.nowMs,
                                     tv = tvFacts.value,
                                     start = settingsSection.value,
+                                    rowsFocus = settingsRowsFocus.value,
                                     actions = SettingsActions(
                                         testChannel = ::testChannel,
                                         manageSources = { launch(atomixIntent(this, ROUTE_LIVE_SETTINGS)) },
@@ -283,8 +290,12 @@ class HomeActivity : ComponentActivity() {
                                         setLook = { graph.prefs.look = it; LookState.look = it },
                                         setLayout = { graph.prefs.homeLayout = it; homeLayout.value = it },
                                         editRows = graph.rows::update,
-                                        // Manage apps for one row comes with Task 7; until then it is the whole list.
-                                        chooseApps = { place.value = Place.ManageApps },
+                                        // For a row ("Choose apps", the end of "New row") or for none ("All apps").
+                                        chooseApps = { id ->
+                                            appsState.forRow = id
+                                            manageFrom.value = id ?: ALL_APPS_ENTRY
+                                            place.value = Place.ManageApps
+                                        },
                                     ),
                                 )
                                 }
@@ -322,9 +333,10 @@ class HomeActivity : ComponentActivity() {
         return launch(tuner)
     }
 
-    /** Opens Settings, on [section] when it was opened about one. */
-    private fun openSettings(section: SettingsSection? = null) {
+    /** Opens Settings, on [section] when it was opened about one, and on Rows and apps' [rowsFocus] entry when given. */
+    private fun openSettings(section: SettingsSection? = null, rowsFocus: String? = null) {
         settingsSection.value = section
+        settingsRowsFocus.value = rowsFocus
         tvFacts.value = readTvFacts()
         place.value = Place.Settings
     }

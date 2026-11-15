@@ -10,7 +10,9 @@ import dev.atomix.launcher.prefs.DEFAULT_DOCK
 import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import dev.atomix.launcher.prefs.ROW_APPS
+import dev.atomix.launcher.prefs.ROW_ON_NOW
 import dev.atomix.launcher.prefs.RowStore
+import dev.atomix.launcher.prefs.withRowAdded
 import dev.atomix.launcher.shell.drawnApps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,17 +55,18 @@ class AppsTabStateTest {
 
     @Test fun toggle_addsAtTheEnd_thenRemoves() {
         val state = AppsTabState(favourites, hidden, catalog)
-        assertFalse(state.isFavourite("com.other"))
-        state.toggle("com.other")
-        assertTrue(state.isFavourite("com.other"))
+        assertFalse(state.isIn("com.other", ROW_APPS))
+        state.toggle("com.other", ROW_APPS)
+        assertTrue(state.isIn("com.other", ROW_APPS))
         assertEquals("com.other", onHome().last())
-        state.toggle("com.other")
-        assertFalse(state.isFavourite("com.other"))
+        state.toggle("com.other", ROW_APPS)
+        assertFalse(state.isIn("com.other", ROW_APPS))
         assertEquals(DEFAULT_DOCK, onHome())
     }
 
     @Test fun shown_filtersToTheRow_keepingListOrder() {
         val state = AppsTabState(favourites, hidden, catalog)
+        state.forRow = ROW_APPS
         assertEquals(apps.map { it.packageName }, state.shown(AppFilter.All).map { it.packageName })
         assertEquals(DEFAULT_DOCK, state.shown(AppFilter.InRow).map { it.packageName })
         assertEquals("All · 6", state.pillLabel(AppFilter.All))
@@ -72,8 +75,9 @@ class AppsTabStateTest {
 
     @Test fun menu_offersAddOrRemove_thenAppInfo() {
         val state = AppsTabState(favourites, hidden, catalog)
-        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor("com.other"))
-        assertEquals(listOf(AppMenuItem.Remove, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor(DEFAULT_DOCK[0]))
+        state.forRow = ROW_APPS
+        assertEquals(listOf("Add to Your apps", "Hide from Atomix TV", "App info"), state.menuFor("com.other").map { it.label })
+        assertEquals(listOf("Remove from Your apps", "Hide from Atomix TV", "App info"), state.menuFor(DEFAULT_DOCK[0]).map { it.label })
     }
 
     @Test fun menu_forAnAppThatHasGone_isEmpty() =
@@ -125,15 +129,80 @@ class AppsTabStateTest {
         assertEquals(listOf("mediatek.factorymenu.ui"), state.shown(AppFilter.Hidden).map { it.packageName })
     }
 
-    @Test fun pills_countHidden() =
-        assertEquals(listOf("All · 7", "In this row · 5", "Hidden · 1"), AppFilter.entries.map(withSystemEntry()::pillLabel))
+    @Test fun pills_countHidden() {
+        val state = withSystemEntry()
+        state.forRow = ROW_APPS
+        assertEquals(listOf("All · 7", "In this row · 5", "Hidden · 1"), state.filters().map(state::pillLabel))
+    }
 
     @Test fun menu_offersHideOrShow() {
         val state = AppsTabState(favourites, hidden, catalog)
-        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor("com.other"))
+        assertEquals(listOf(AppMenuItem.AddToARow, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor("com.other"))
         state.toggleHidden("com.other")
         assertTrue(state.isHidden("com.other"))
-        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Show, AppMenuItem.Info), state.menuFor("com.other"))
+        assertEquals(listOf(AppMenuItem.AddToARow, AppMenuItem.Show, AppMenuItem.Info), state.menuFor("com.other"))
+    }
+
+    // Spec §8: opened for a row ("Choose apps" on Tools) or for no row ("All apps", the Apps page's "Edit").
+    private val x = "com.other"
+    private fun withTools(): AppsTabState {
+        favourites.update { it.withRowAdded("Tools") }
+        return AppsTabState(favourites, hidden, catalog)
+    }
+
+    @Test fun forARow_titleFiltersAndMenu() {
+        val state = withTools()
+        state.forRow = "row-1"
+        assertEquals("Choose apps for “Tools”", state.title())
+        assertEquals(listOf(AppFilter.All, AppFilter.InRow, AppFilter.Hidden), state.filters())
+        assertEquals(listOf("Add to Tools", "Hide from Atomix TV", "App info"), state.menuFor(x).map { it.label })
+        state.toggle(x, "row-1")
+        assertEquals("Remove from Tools", state.menuFor(x).first().label)
+    }
+
+    @Test fun forNoRow_titleFiltersAndMenu() {
+        val state = withTools()
+        state.forRow = null
+        assertEquals("Manage apps", state.title())
+        assertEquals(listOf(AppFilter.All, AppFilter.Hidden), state.filters())
+        assertEquals("Add to a row…", state.menuFor(x).first().label)
+    }
+
+    @Test fun rowTicks_listAppRowsOnly() {
+        val state = withTools()
+        assertEquals(listOf(ROW_APPS to true, "row-1" to false), state.rowTicks(DEFAULT_DOCK[0]).map { it.first.id to it.second })
+        assertFalse(state.rowTicks(x).any { it.first.id == ROW_ON_NOW })
+    }
+
+    @Test fun marks_tickForTheRow_houseOtherwise_neverBoth() {
+        val state = withTools()
+        state.toggle(x, "row-1")
+        state.forRow = ROW_APPS
+        assertEquals(TileMark.None, state.markFor(x))
+        state.forRow = "row-1"
+        assertEquals(TileMark.Tick, state.markFor(x))
+        state.forRow = null
+        assertEquals(TileMark.House, state.markFor(x))
+        assertTrue(state.inAnyAppRow(x))
+        state.toggle(x, "row-1")
+        assertEquals(TileMark.None, state.markFor(x))
+    }
+
+    // Opened for a row that has since been deleted: it is manage apps for no row, marks included.
+    @Test fun forAGoneRow_isForNoRow() {
+        val state = withTools()
+        state.forRow = "row-1"
+        favourites.update { rows -> rows.filterNot { it.id == "row-1" } }
+        assertEquals("Manage apps", state.title())
+        assertEquals(TileMark.House, state.markFor(DEFAULT_DOCK[0]))
+    }
+
+    @Test fun inThisRow_isThatRow() {
+        val state = withTools()
+        state.toggle(x, "row-1")
+        state.forRow = "row-1"
+        assertEquals(listOf(x), state.shown(AppFilter.InRow).map { it.packageName })
+        assertEquals("In this row · 1", state.pillLabel(AppFilter.InRow))
     }
 
     @Test fun showing_bringsItBackToTheRow() {

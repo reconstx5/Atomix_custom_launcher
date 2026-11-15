@@ -22,6 +22,9 @@ enum class RowOption(val label: String) {
 /** Shown under the last shown app row when OK would hide it. */
 const val KEEP_ONE_NOTE = "One app row must stay on Home"
 
+/** Names the "All apps" entry where a row's id would go: what manage apps, opened from it, comes back to. */
+const val ALL_APPS_ENTRY = "+all"
+
 /** The options of row [id] of [rows] (spec §7.3). */
 fun optionsFor(rows: List<HomeRowSpec>, id: String): List<RowOption> {
     val i = rows.indexOfFirst { it.id == id }

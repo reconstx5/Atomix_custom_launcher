@@ -146,6 +146,8 @@ fun SettingsScreen(
     rowSummary: (HomeRowSpec) -> String = { "" },
     /** How many apps are hidden. */
     hiddenApps: Int = 0,
+    /** With [start] on Rows and apps: the entry focus goes to (back from manage apps). */
+    rowsFocus: String? = null,
 ) {
     val live by state.live.collectAsState()
     val sections = remember(tv.pages.isEmpty()) { listedSections(tv.pages.size) }
@@ -194,7 +196,8 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         withFrameNanos { }
-        runCatching { sectionFocus.getValue(section).requestFocus() }
+        // Back from manage apps, Rows and apps puts focus on its own entry instead.
+        if (rowsFocus == null || section != SettingsSection.Rows) runCatching { sectionFocus.getValue(section).requestFocus() }
         state.load()
     }
     // Back in the rows steps out to the section list; in the list it is the shell's, and goes Home.
@@ -375,6 +378,7 @@ fun SettingsScreen(
                         edit = actions.editRows,
                         chooseApps = actions.chooseApps,
                         onHint = { paneHint = it; focusedItem = item },
+                        startOn = rowsFocus,
                     )
                     SettingsItem.Version -> SettingRow(
                         "Atomix TV", null,

@@ -24,9 +24,12 @@ class HintsTest {
     @Test fun apps_tileEditAndManage() {
         assertEquals(h("OK" to "Open BrowseHere", "Back" to "Home"), hintsFor(HintSpot.AppTile("BrowseHere")))
         assertEquals(h("OK" to "Choose apps", "Back" to "Home"), hintsFor(HintSpot.AppsEdit))
-        assertEquals(h("OK" to "Options", "Back" to "Apps"), hintsFor(HintSpot.ManageTile))
+        assertEquals(h("OK" to "Options", "Back" to "Apps"), hintsFor(HintSpot.ManageTile()))
+        assertEquals(h("OK" to "Options", "Back" to "Settings"), hintsFor(HintSpot.ManageTile("Settings")))
         assertEquals(h("OK" to "Add to Your apps", "Back" to "Close menu"), hintsFor(HintSpot.ManageMenu("Add to Your apps")))
         assertEquals(h("OK" to "Select", "Back" to "Apps"), hintsFor(HintSpot.Pill("Apps")))
+        // The "Add to a row…" list on the menu: Back returns to the menu.
+        assertEquals(h("OK" to "Add to Tools", "Back" to "Menu"), hintsFor(HintSpot.ManageMenu("Add to Tools", back = "Menu")))
     }
 
     @Test fun inputs_switchTo() = assertEquals(h("OK" to "Switch to HDMI 1", "Back" to "Home"), hintsFor(HintSpot.InputCard("HDMI 1")))

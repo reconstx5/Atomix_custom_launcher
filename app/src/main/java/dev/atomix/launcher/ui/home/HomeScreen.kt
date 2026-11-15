@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyListState
@@ -620,7 +621,9 @@ fun HomeScreen(
                 if (scroll.value > 0f) clipRect(top = VIEW_TOP * unit) { this@drawWithContent.drawContent() } else drawContent()
             },
         ) {
-            Box(Modifier.fillMaxSize().graphicsLayer { translationY = -scroll.value * unit }) {
+            // As tall as its rows, not the screen: a row placed below the screen's foot must still be measured whole,
+            // or it is squeezed to what is left of 1080 before the scroll brings it up.
+            Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true).graphicsLayer { translationY = -scroll.value * unit }) {
                 // Composed in an order that never changes (by id), so moving a row only moves where it is put.
                 val placeOf = places.associateBy { it.id }
                 ui.rows.sortedBy { it.spec.id }.forEach { row ->

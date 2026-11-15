@@ -138,7 +138,7 @@ fun AppsTab(
                                     if (column == 0) left = FocusRequester.Cancel
                                     if (column == row.lastIndex) right = FocusRequester.Cancel
                                 },
-                            onHome = state.isFavourite(app.packageName),
+                            onHome = state.inAnyAppRow(app.packageName),
                             onFocused = {
                                 focusedPkg = app.packageName
                                 memory.remember(FocusTarget(ROW_ALL_APPS, app.packageName, rowIndex * APP_COLUMNS + column))

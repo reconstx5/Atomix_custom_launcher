@@ -100,6 +100,8 @@ fun RowsPane(
     edit: ((List<HomeRowSpec>) -> List<HomeRowSpec>) -> Unit,
     chooseApps: (String?) -> Unit,
     onHint: (HintSpot) -> Unit,
+    /** The entry to put focus on as the pane opens (a row's id, or [ALL_APPS_ENTRY]): back from manage apps. */
+    startOn: String? = null,
 ) {
     val scope = rememberCoroutineScope()
     val entryFocus = remember { HashMap<String, FocusRequester>() }
@@ -117,6 +119,12 @@ fun RowsPane(
     val newRowFocus = remember { FocusRequester() }
     // The row being named ([NEW_ROW] for "New row"), while the name list is open.
     var naming by remember { mutableStateOf<String?>(null) }
+    // Back from manage apps: focus returns to the entry it was opened from.
+    LaunchedEffect(Unit) {
+        val on = startOn ?: return@LaunchedEffect
+        withFrameNanos { }
+        runCatching { (if (on == ALL_APPS_ENTRY) allAppsFocus else entry(on)).requestFocus() }
+    }
 
     /** Where focus goes back to when the name list closes: the row's Rename, or "New row". */
     fun namingHome(id: String): FocusRequester = if (id == NEW_ROW) newRowFocus else option(id, RowOption.Rename.name)
@@ -138,10 +146,10 @@ fun RowsPane(
         runCatching { namingHome(id).requestFocus() }
         naming = null
         if (id == NEW_ROW) {
-            // The new row goes at the end; focus moves onto it. Choose apps opens for it with Task 7.
+            // The new row goes at the end, and manage apps opens for it; Back from there lands on its entry.
             val newId = rows.nextRowId()
             edit { it.withRowAdded(name) }
-            scope.launch { withFrameNanos { }; runCatching { entry(newId).requestFocus() } }
+            chooseApps(newId)
         } else edit { it.renamed(id, name) }
     }
 
