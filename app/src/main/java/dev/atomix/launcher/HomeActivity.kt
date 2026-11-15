@@ -70,6 +70,8 @@ import dev.atomix.launcher.ui.settings.SettingsInfo
 import dev.atomix.launcher.ui.settings.SettingsScreen
 import dev.atomix.launcher.ui.settings.SettingsSection
 import dev.atomix.launcher.ui.settings.SettingsState
+import dev.atomix.launcher.ui.settings.rowSummary
+import dev.atomix.launcher.shell.drawnApps
 import dev.atomix.launcher.ui.splash.SplashPolicy
 import dev.atomix.launcher.ui.splash.SplashScreen
 import dev.atomix.launcher.ui.setup.SetupFlow
@@ -244,7 +246,18 @@ class HomeActivity : ComponentActivity() {
                                     tuner = InputEntry(TUNER_INPUT, "TV tuner"),
                                     onPick = { place.value = placeAfterPick(openInput(it)) },
                                 )
-                                Place.Settings -> SettingsScreen(
+                                Place.Settings -> {
+                                val homeRows by graph.rows.rows.collectAsState()
+                                val installed by graph.apps.apps.collectAsState()
+                                // Read once as Settings opens: the TV's list of ports is slow to ask for on every draw.
+                                val inputCount = remember { runCatching { TvInputs(this).hdmi().size }.getOrDefault(0) }
+                                val channelCount = (ui.live as? LiveState.Ready)?.pinned?.size ?: 0
+                                SettingsScreen(
+                                    rows = homeRows,
+                                    rowSummary = { spec ->
+                                        rowSummary(spec, drawnApps(spec, installed, graph.hiddenApps::isHidden).size, channelCount, inputCount)
+                                    },
+                                    hiddenApps = graph.hiddenApps.all().size,
                                     state = settings,
                                     info = SettingsInfo(
                                         server = { graph.store.serverUrl?.toString()?.removeSuffix("/") },
@@ -269,8 +282,12 @@ class HomeActivity : ComponentActivity() {
                                         openTvPage = { if (!openTvPage(it)) toast("Couldn't open that") },
                                         setLook = { graph.prefs.look = it; LookState.look = it },
                                         setLayout = { graph.prefs.homeLayout = it; homeLayout.value = it },
+                                        editRows = graph.rows::update,
+                                        // Manage apps for one row comes with Task 7; until then it is the whole list.
+                                        chooseApps = { place.value = Place.ManageApps },
                                     ),
                                 )
+                                }
                             }
                         }
                     }

@@ -24,6 +24,8 @@ enum class SettingsItem {
     LiveSources, TestChannel, ManageSources, Server, FindServer, SwitchProfile,
     /** The TV's own settings pages, one row each (apps/TvPages.kt). */
     TvPages,
+    /** Home's rows and "All apps", drawn by the Rows pane (RowsPane.kt). */
+    HomeRows,
     Version,
 }
 
@@ -35,7 +37,8 @@ fun rowsIn(section: SettingsSection): List<SettingsItem> = when (section) {
     SettingsSection.Account -> listOf(SettingsItem.Server, SettingsItem.FindServer, SettingsItem.SwitchProfile)
     SettingsSection.TvSettings -> listOf(SettingsItem.TvPages)
     SettingsSection.About -> listOf(SettingsItem.Version)
-    SettingsSection.Rows, SettingsSection.Wallpaper, SettingsSection.Inputs -> emptyList()
+    SettingsSection.Rows -> listOf(SettingsItem.HomeRows)
+    SettingsSection.Wallpaper, SettingsSection.Inputs -> emptyList()
 }
 
 /**
@@ -86,5 +89,6 @@ fun okActionFor(item: SettingsItem?, reduced: Boolean, hasTestChannel: Boolean, 
     SettingsItem.AppNames -> if (appNames) "Turn off" else "Turn on"
     // Left and Right change these; OK has nothing to do.
     SettingsItem.Accent, SettingsItem.TextSize, SettingsItem.Clock, SettingsItem.TileSize, SettingsItem.Spacing -> null
-    SettingsItem.Server, SettingsItem.Version, null -> null
+    // The Rows pane gives its own hints.
+    SettingsItem.Server, SettingsItem.Version, SettingsItem.HomeRows, null -> null
 }

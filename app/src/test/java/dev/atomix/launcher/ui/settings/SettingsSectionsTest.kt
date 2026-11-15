@@ -9,8 +9,14 @@ import org.junit.Test
 
 class SettingsSectionsTest {
     @Test fun onlySectionsWithAWorkingRowAreListed() = assertEquals(
-        listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.HomeLayout, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings, SettingsSection.About),
+        listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.HomeLayout, SettingsSection.Rows, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings, SettingsSection.About),
         listedSections())
+
+    @Test fun rows_isListedAfterHomeLayout() {
+        val s = listedSections()
+        assertEquals(s.indexOf(SettingsSection.HomeLayout) + 1, s.indexOf(SettingsSection.Rows))
+        assertEquals("Rows and apps", SettingsSection.Rows.title)
+    }
 
     @Test fun tvSettings_isListedAfterAccount_beforeAbout() {
         val s = listedSections()
@@ -50,7 +56,7 @@ class SettingsSectionsTest {
     }
 
     @Test fun okOpensASection_onlyWhenARowInItCanTakeFocus() {
-        assertEquals(listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.HomeLayout, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings), listedSections().filter(::hasRowToOpen))
+        assertEquals(listOf(SettingsSection.Setup, SettingsSection.Appearance, SettingsSection.HomeLayout, SettingsSection.Rows, SettingsSection.LiveTv, SettingsSection.Account, SettingsSection.TvSettings), listedSections().filter(::hasRowToOpen))
     }
 
     @Test fun testAChannel_offersPlay_onlyWithAChannelToPlay() {

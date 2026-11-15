@@ -130,7 +130,7 @@ fun SettingRow(
 }
 
 @Composable
-private fun SwitchTrack(on: Boolean) {
+internal fun SwitchTrack(on: Boolean) {
     Box(
         Modifier.size(px(76), px(42)).background(if (on) AtomixColors.Ice else AtomixColors.SwitchOff, RoundedCornerShape(px(21))).padding(px(4)),
         contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,

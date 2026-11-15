@@ -38,7 +38,7 @@ fun kindOf(item: SettingsItem, reduced: Boolean = false): RowKind = when (item) 
     SettingsItem.Theme, SettingsItem.TileShape, SettingsItem.OnNowLayout -> RowKind.List
     SettingsItem.FocusHighlight -> if (reduced) RowKind.Statement else RowKind.List
     SettingsItem.HomeButton, SettingsItem.LiveSources, SettingsItem.TestChannel, SettingsItem.ManageSources,
-    SettingsItem.FindServer, SettingsItem.SwitchProfile, SettingsItem.TvPages -> RowKind.Action
+    SettingsItem.FindServer, SettingsItem.SwitchProfile, SettingsItem.TvPages, SettingsItem.HomeRows -> RowKind.Action
 }
 
 /** The words of an item's choices, in order; empty for an item that is not a choice between several things. */

@@ -21,6 +21,7 @@ import dev.atomix.launcher.ui.theme.px
 enum class LineIcon {
     Home, Apps, Library, Live, Inputs, Search, Atom, Settings, Edit, Star, StarFilled, Plus, Play, Pause, Back30, Forward30, List,
     House, ChevronRight, ChevronDown, Tick, Warn, Info, Grid, Bars, Arc, Plug, Tuner, Person, Drop, Screen, Minus,
+    ArrowUp, ArrowDown, Sort, Trash,
 }
 
 /** One stroked or filled SVG path on the 24-unit grid, as drawn on the design boards. */
@@ -53,6 +54,11 @@ private val GLYPHS: Map<LineIcon, List<Glyph>> = mapOf(
     LineIcon.Edit to listOf(Glyph("M4 20h4L19 9l-4-4L4 16v4z")),
     LineIcon.Pause to listOf(Glyph(rrect(6f, 5f, 4.2f, 14f, 1.2f) + rrect(13.8f, 5f, 4.2f, 14f, 1.2f), filled = true)),
     LineIcon.Back30 to listOf(Glyph("M4.5 12a7.5 7.5 0 1 0 2.4-5.5M4 4.5v4.2h4.2", 2f)),
+    // A row's options in Settings › Rows and apps, as on that board.
+    LineIcon.ArrowUp to listOf(Glyph("M12 19V5M6 11l6-6 6 6", 2f)),
+    LineIcon.ArrowDown to listOf(Glyph("M12 5v14M6 13l6 6 6-6", 2f)),
+    LineIcon.Sort to listOf(Glyph("M4 7h16M4 12h11M4 17h6")),
+    LineIcon.Trash to listOf(Glyph("M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12")),
 )
 
 private val parsed = HashMap<LineIcon, List<Pair<Glyph, Path>>>()

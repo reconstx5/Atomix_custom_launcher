@@ -52,6 +52,7 @@ import dev.atomix.launcher.apps.TvFacts
 import dev.atomix.launcher.apps.TvPage
 import dev.atomix.launcher.prefs.FocusStyle
 import dev.atomix.launcher.prefs.HomeLayout
+import dev.atomix.launcher.prefs.HomeRowSpec
 import dev.atomix.launcher.prefs.Look
 import dev.atomix.launcher.shell.LocalTopBarFocus
 import dev.atomix.launcher.ui.kit.ChoiceList
@@ -94,6 +95,10 @@ class SettingsActions(
     val setLook: (Look) -> Unit,
     /** Saves a change to how Home is laid out. */
     val setLayout: (HomeLayout) -> Unit,
+    /** Changes Home's rows: saved, and shown on Home at once. */
+    val editRows: ((List<HomeRowSpec>) -> List<HomeRowSpec>) -> Unit = {},
+    /** Opens manage apps; for one row's apps when [rowId] is given. */
+    val chooseApps: (rowId: String?) -> Unit = {},
 )
 
 private const val SERVER = "server"
@@ -135,6 +140,12 @@ fun SettingsScreen(
     start: SettingsSection? = null,
     /** Whether Home's first drawn row is "On now", so Home layout's preview shows the rows as Home has them. */
     onNowFirst: Boolean = false,
+    /** Home's rows in their order, shown or not. */
+    rows: List<HomeRowSpec> = emptyList(),
+    /** The line under a row's name in Rows and apps. */
+    rowSummary: (HomeRowSpec) -> String = { "" },
+    /** How many apps are hidden. */
+    hiddenApps: Int = 0,
 ) {
     val live by state.live.collectAsState()
     val sections = remember(tv.pages.isEmpty()) { listedSections(tv.pages.size) }
@@ -156,6 +167,8 @@ fun SettingsScreen(
     val listFocus = remember { FocusRequester() }
     // Which choice has focus in the open list: the preview shows it before OK.
     var focusedChoice by remember { mutableStateOf<Int?>(null) }
+    // What the Rows pane says its focused entry or option offers.
+    var paneHint by remember { mutableStateOf<HintSpot?>(null) }
 
     fun openList(item: SettingsItem) {
         if (choiceOptions(item).isEmpty()) return
@@ -200,6 +213,7 @@ fun SettingsScreen(
     val stepHint = focusedItem?.let(::stepHintFor)
     val hints = when {
         openList != null -> hintsFor(HintSpot.SettingsChoice)
+        inRows && section == SettingsSection.Rows && paneHint != null -> hintsFor(paneHint!!)
         inRows && stepHint != null -> hintsFor(HintSpot.SettingsStep(stepHint))
         inRows -> hintsFor(HintSpot.SettingsRow(okActionFor(focusedItem, reduced, hasTestChannel, layout.appNames)))
         // A section with nothing to move into offers no "OK Open".
@@ -356,6 +370,12 @@ fun SettingsScreen(
                         )
                     }
                     SettingsItem.TvPages -> TvSettingsPane(host, tv, tvWindow, actions.openTvPage)
+                    SettingsItem.HomeRows -> RowsPane(
+                        rows, rowSummary, hiddenApps, rowsFirst,
+                        edit = actions.editRows,
+                        chooseApps = actions.chooseApps,
+                        onHint = { paneHint = it; focusedItem = item },
+                    )
                     SettingsItem.Version -> SettingRow(
                         "Atomix TV", null,
                         description = "Live TV and your apps, from your Atomix server.",
