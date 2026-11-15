@@ -21,6 +21,7 @@ import dev.atomix.launcher.data.ServerLocator
 import dev.atomix.launcher.data.SessionStore
 import dev.atomix.launcher.data.subnetHostsOf
 import dev.atomix.launcher.prefs.FavouriteApps
+import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
@@ -43,7 +44,8 @@ class AppGraph private constructor(private val context: Context) {
     /** Lives as long as the process; for loads that outlast any one screen. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     val apps = AppCatalog(installedApps::list, scope)
-    val favouriteApps = FavouriteApps(prefs) { apps.apps.value }
+    val hiddenApps = HiddenApps(prefs)
+    val favouriteApps = FavouriteApps(prefs, hiddenApps::isHidden) { apps.apps.value }
 
     init {
         val filter = IntentFilter().apply {

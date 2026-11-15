@@ -8,6 +8,7 @@ import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.prefs.DEFAULT_DOCK
 import dev.atomix.launcher.prefs.FavouriteApps
+import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,23 +29,26 @@ import org.robolectric.annotation.Config
 class AppsTabStateTest {
     private lateinit var favourites: FavouriteApps
     private lateinit var catalog: AppCatalog
+    private lateinit var hidden: HiddenApps
     private fun app(pkg: String) = AppEntry(pkg, pkg, null, ColorDrawable(), Intent())
     private val apps = (DEFAULT_DOCK + "com.other").map(::app)
 
     @Before fun setUp() {
         val sp = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("apps_state_test", Context.MODE_PRIVATE)
         sp.edit().clear().commit()
-        favourites = FavouriteApps(LauncherPrefs(sp) { DEFAULT_DOCK }) { apps }
+        val prefs = LauncherPrefs(sp) { DEFAULT_DOCK }
+        hidden = HiddenApps(prefs)
+        favourites = FavouriteApps(prefs, hidden::isHidden) { apps }
         val now = UnconfinedTestDispatcher()
         catalog = AppCatalog({ apps }, CoroutineScope(now), now)
     }
 
     @Test fun list_isTheCatalog() {
-        assertEquals(apps.map { it.packageName }, AppsTabState(favourites, catalog).list().map { it.packageName })
+        assertEquals(apps.map { it.packageName }, AppsTabState(favourites, hidden, catalog).list().map { it.packageName })
     }
 
     @Test fun toggle_addsAtTheEnd_thenRemoves() {
-        val state = AppsTabState(favourites, catalog)
+        val state = AppsTabState(favourites, hidden, catalog)
         assertFalse(state.isFavourite("com.other"))
         state.toggle("com.other")
         assertTrue(state.isFavourite("com.other"))
@@ -55,7 +59,7 @@ class AppsTabStateTest {
     }
 
     @Test fun shown_filtersToTheRow_keepingListOrder() {
-        val state = AppsTabState(favourites, catalog)
+        val state = AppsTabState(favourites, hidden, catalog)
         assertEquals(apps.map { it.packageName }, state.shown(AppFilter.All).map { it.packageName })
         assertEquals(DEFAULT_DOCK, state.shown(AppFilter.InRow).map { it.packageName })
         assertEquals("All · 6", state.pillLabel(AppFilter.All))
@@ -63,13 +67,13 @@ class AppsTabStateTest {
     }
 
     @Test fun menu_offersAddOrRemove_thenAppInfo() {
-        val state = AppsTabState(favourites, catalog)
+        val state = AppsTabState(favourites, hidden, catalog)
         assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Info), state.menuFor("com.other"))
         assertEquals(listOf(AppMenuItem.Remove, AppMenuItem.Info), state.menuFor(DEFAULT_DOCK[0]))
     }
 
     @Test fun menu_forAnAppThatHasGone_isEmpty() =
-        assertEquals(emptyList<AppMenuItem>(), AppsTabState(favourites, catalog).menuFor("uninstalled.pkg"))
+        assertEquals(emptyList<AppMenuItem>(), AppsTabState(favourites, hidden, catalog).menuFor("uninstalled.pkg"))
 
     @Test fun focusAfterRemove_staysInTheSameRow_soTheTileItLandsOnIsNotRebuilt() {
         val eight = listOf("a", "b", "c", "d", "e", "f", "g", "h")
@@ -96,5 +100,12 @@ class AppsTabStateTest {
         assertNull(moreAppsLine(rows = 5, first = 1, visible = 4))
         assertNull(moreAppsLine(rows = 4, first = 0, visible = 4))
         assertNull(moreAppsLine(rows = 0, first = 0, visible = 4))
+    }
+
+    @Test fun appsPage_leavesHiddenOut() {
+        val now = UnconfinedTestDispatcher()
+        val withSystem = listOf("x", "mediatek.factorymenu.ui", "y").map(::app)
+        val state = AppsTabState(favourites, hidden, AppCatalog({ withSystem }, CoroutineScope(now), now))
+        assertEquals(listOf("x", "y"), state.visibleApps().map { it.packageName })
     }
 }

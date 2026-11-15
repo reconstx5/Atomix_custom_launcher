@@ -3,12 +3,16 @@ package dev.atomix.launcher.ui.apps
 import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.prefs.FavouriteApps
+import dev.atomix.launcher.prefs.HiddenApps
 import kotlinx.coroutines.flow.StateFlow
 
 /** What the Apps tab and manage apps need: every installed app, and whether each is in Home's "Your apps" row. */
-class AppsTabState(private val favourites: FavouriteApps, private val catalog: AppCatalog) {
+class AppsTabState(private val favourites: FavouriteApps, private val hidden: HiddenApps, private val catalog: AppCatalog) {
     val apps: StateFlow<List<AppEntry>> get() = catalog.apps
     fun list(): List<AppEntry> = catalog.apps.value
+
+    /** What the Apps page lists: every installed app but those hidden from Atomix TV, in the list's own order. */
+    fun visibleApps(): List<AppEntry> = list().filterNot { hidden.isHidden(it.packageName) }
     fun isFavourite(pkg: String): Boolean = favourites.contains(pkg)
 
     /** Adds to the end of Home's apps row, or takes it off. */

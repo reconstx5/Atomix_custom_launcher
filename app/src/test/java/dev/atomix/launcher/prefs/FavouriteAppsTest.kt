@@ -59,4 +59,14 @@ class FavouriteAppsTest {
         fav.setVisibleOrder(listOf("c", "a"))
         assertEquals(listOf("c", "gone", "a"), prefs.favouriteApps)
     }
+
+    @Test fun hiddenApp_isNotVisible_butKeepsItsPlace() {
+        val hidden = HiddenApps(prefs)
+        val withHidden = FavouriteApps(prefs, hidden::isHidden) { listOf("a", "b", "c").map(::app) }
+        prefs.favouriteApps = listOf("a", "b", "c")
+        hidden.hide("b")
+        assertEquals(listOf("a", "c"), withHidden.visible().map { it.packageName })
+        hidden.show("b")
+        assertEquals(listOf("a", "b", "c"), withHidden.visible().map { it.packageName })
+    }
 }

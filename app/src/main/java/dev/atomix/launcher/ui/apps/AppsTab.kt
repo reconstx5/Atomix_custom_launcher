@@ -60,7 +60,9 @@ fun AppsTab(
     onLaunch: (AppEntry) -> Unit,
     onEdit: () -> Unit,
 ) {
-    val apps by state.apps.collectAsState()
+    val installed by state.apps.collectAsState()
+    // Hidden apps are left out. Hiding happens in manage apps, so coming back here (a new restoreTick) re-reads it.
+    val apps = remember(installed, restoreTick) { state.visibleApps() }
     val rows = remember(apps) { apps.chunked(APP_COLUMNS) }
     val window = remember { WindowState() }
     val tileFocus = remember { HashMap<String, FocusRequester>() }

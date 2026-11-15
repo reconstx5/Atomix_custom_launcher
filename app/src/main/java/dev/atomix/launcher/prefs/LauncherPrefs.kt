@@ -18,6 +18,14 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
         }
         set(v) { prefs.edit().putString(K_FAVOURITES, v.joinToString("\n")).apply() }
 
+    /** Apps hidden from Atomix TV ([HiddenApps]). Until anything is saved, [DEFAULT_HIDDEN]; a saved "" is none. */
+    var hiddenApps: List<String>
+        get() {
+            val saved = prefs.getString(K_HIDDEN, null) ?: return DEFAULT_HIDDEN
+            return if (saved.isEmpty()) emptyList() else saved.split('\n')
+        }
+        set(v) { prefs.edit().putString(K_HIDDEN, v.joinToString("\n")).apply() }
+
     var reducedEffects: Boolean
         get() = prefs.getBoolean(K_REDUCED, false)
         set(v) { prefs.edit().putBoolean(K_REDUCED, v).apply() }
@@ -65,6 +73,7 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
     private companion object {
         const val K_FAVOURITES = "favourite_apps"
         const val K_REDUCED = "reduced_effects"
+        const val K_HIDDEN = "hidden_apps"
         const val K_FOCUS = "focus_"
         const val K_TILE_SIZE = "home_tile_size"
         const val K_TILE_SHAPE = "home_tile_shape"

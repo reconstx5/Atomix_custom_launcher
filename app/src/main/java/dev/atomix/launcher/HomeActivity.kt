@@ -158,7 +158,7 @@ class HomeActivity : ComponentActivity() {
         LookState.look = graph.prefs.look
         homeLayout.value = graph.prefs.homeLayout
         splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
-        val appsState = AppsTabState(graph.favouriteApps, graph.apps)
+        val appsState = AppsTabState(graph.favouriteApps, graph.hiddenApps, graph.apps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }
         setContent {
             AtomixTheme {

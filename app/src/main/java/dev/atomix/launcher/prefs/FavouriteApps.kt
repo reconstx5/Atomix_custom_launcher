@@ -13,11 +13,18 @@ val DEFAULT_DOCK = listOf(
     "com.phlox.tvwebbrowser",
 )
 
-/** Favourite apps on Home. Saved order is kept; apps no longer installed are hidden, not forgotten. */
-class FavouriteApps(private val prefs: LauncherPrefs, private val apps: () -> List<AppEntry>) {
+/**
+ * Favourite apps on Home. Saved order is kept; apps no longer installed, or hidden from Atomix TV ([hidden]), are not
+ * shown but not forgotten.
+ */
+class FavouriteApps(
+    private val prefs: LauncherPrefs,
+    private val hidden: (String) -> Boolean = { false },
+    private val apps: () -> List<AppEntry>,
+) {
     fun visible(): List<AppEntry> {
         val byPkg = apps().associateBy { it.packageName }
-        return prefs.favouriteApps.mapNotNull { byPkg[it] }
+        return prefs.favouriteApps.filterNot(hidden).mapNotNull { byPkg[it] }
     }
 
     fun contains(pkg: String): Boolean = pkg in prefs.favouriteApps
