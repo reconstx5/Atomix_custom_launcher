@@ -68,8 +68,8 @@ class AppsTabStateTest {
 
     @Test fun menu_offersAddOrRemove_thenAppInfo() {
         val state = AppsTabState(favourites, hidden, catalog)
-        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Info), state.menuFor("com.other"))
-        assertEquals(listOf(AppMenuItem.Remove, AppMenuItem.Info), state.menuFor(DEFAULT_DOCK[0]))
+        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor("com.other"))
+        assertEquals(listOf(AppMenuItem.Remove, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor(DEFAULT_DOCK[0]))
     }
 
     @Test fun menu_forAnAppThatHasGone_isEmpty() =
@@ -107,5 +107,37 @@ class AppsTabStateTest {
         val withSystem = listOf("x", "mediatek.factorymenu.ui", "y").map(::app)
         val state = AppsTabState(favourites, hidden, AppCatalog({ withSystem }, CoroutineScope(now), now))
         assertEquals(listOf("x", "y"), state.visibleApps().map { it.packageName })
+    }
+
+    private fun withSystemEntry(): AppsTabState {
+        val now = UnconfinedTestDispatcher()
+        val list = apps.take(2) + app("mediatek.factorymenu.ui") + apps.drop(2)
+        return AppsTabState(favourites, hidden, AppCatalog({ list }, CoroutineScope(now), now))
+    }
+
+    @Test fun all_listsHiddenAppsLast() {
+        val state = withSystemEntry()
+        assertEquals(apps.map { it.packageName } + "mediatek.factorymenu.ui", state.shown(AppFilter.All).map { it.packageName })
+        assertEquals(listOf("mediatek.factorymenu.ui"), state.shown(AppFilter.Hidden).map { it.packageName })
+    }
+
+    @Test fun pills_countHidden() =
+        assertEquals(listOf("All · 7", "In this row · 5", "Hidden · 1"), AppFilter.entries.map(withSystemEntry()::pillLabel))
+
+    @Test fun menu_offersHideOrShow() {
+        val state = AppsTabState(favourites, hidden, catalog)
+        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor("com.other"))
+        state.toggleHidden("com.other")
+        assertTrue(state.isHidden("com.other"))
+        assertEquals(listOf(AppMenuItem.Add, AppMenuItem.Show, AppMenuItem.Info), state.menuFor("com.other"))
+    }
+
+    @Test fun showing_bringsItBackToTheRow() {
+        val state = AppsTabState(favourites, hidden, catalog)
+        val second = DEFAULT_DOCK[1]
+        state.toggleHidden(second)
+        assertFalse(second in favourites.visible().map { it.packageName })
+        state.toggleHidden(second)
+        assertEquals(DEFAULT_DOCK, favourites.visible().map { it.packageName })
     }
 }

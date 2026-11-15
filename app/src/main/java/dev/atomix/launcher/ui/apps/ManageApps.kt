@@ -35,6 +35,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -96,6 +97,7 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
     var onPill by remember { mutableStateOf(false) }
     var menuPkg by remember { mutableStateOf<String?>(null) }
     var menuItem by remember { mutableStateOf<AppMenuItem?>(null) }
+    var refocus by remember { mutableStateOf<String?>(null) }
     val menuApp = shown.firstOrNull { it.packageName == menuPkg }
     val menuItems = remember(menuPkg, apps, version) { menuPkg?.let(state::menuFor).orEmpty() }
 
@@ -133,7 +135,28 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
                 version++
                 onChanged()
             }
+            AppMenuItem.Hide, AppMenuItem.Show -> {
+                // The tile leaves the list (under a filter) or moves within it (under "All": hidden apps go last), so
+                // focus goes first to a neighbour that stays put; under "All" it follows the app to its new place.
+                val pkgs = shown.map { it.packageName }
+                closeMenu(focusAfterRemove(pkgs, pkgs.indexOf(app.packageName), APP_COLUMNS) ?: app.packageName)
+                state.toggleHidden(app.packageName)
+                version++
+                if (filter == AppFilter.All) refocus = app.packageName
+                onChanged()
+            }
         }
+    }
+
+    // After hiding or showing under "All", focus the app where it now is, once its tile has been drawn there.
+    LaunchedEffect(refocus) {
+        val pkg = refocus ?: return@LaunchedEffect
+        val at = shown.indexOfFirst { it.packageName == pkg }
+        if (at >= 0) {
+            withFrameNanos { }
+            runCatching { tileFocus[pkg]?.requestFocus() }
+        }
+        refocus = null
     }
 
     // An app that is uninstalled while its menu is open takes the menu with it.
@@ -164,6 +187,7 @@ fun ManageAppsScreen(state: AppsTabState, loader: ImageLoader, onInfo: (AppEntry
                         ManageTile(
                             app, loader,
                             inRow = state.isFavourite(app.packageName),
+                            hidden = state.isHidden(app.packageName),
                             menuOpen = app.packageName == menuPkg,
                             onClick = { openMenu(app) },
                             onFocused = { onPill = false },
@@ -205,6 +229,7 @@ private fun ManageTile(
     app: AppEntry,
     loader: ImageLoader,
     inRow: Boolean,
+    hidden: Boolean,
     menuOpen: Boolean,
     onClick: () -> Unit,
     onFocused: () -> Unit,
@@ -225,14 +250,18 @@ private fun ManageTile(
             .padding(start = px(18), top = px(16), end = px(18), bottom = px(14)),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        // A hidden app is dimmed and says so; it still takes focus, so it can be shown again.
+        Row(Modifier.fillMaxWidth().alpha(if (hidden) 0.45f else 1f), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             AppArt(app, loader, 86, 48, 8)
             if (inRow) Box(Modifier.size(px(34)).background(AtomixColors.Ice, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(LineIcon.Tick, AtomixColors.Ink, 20)
             }
         }
         // A long name takes two lines, as on the board.
-        BasicText(app.label, style = AtomixType.hint().copy(lineHeight = pxSp(30)), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (hidden) Column {
+            BasicText(app.label, Modifier.alpha(0.45f), style = AtomixType.hint().copy(lineHeight = pxSp(30)), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            BasicText("Hidden", style = AtomixType.description().copy(color = AtomixColors.TextSecondary), maxLines = 1)
+        } else BasicText(app.label, style = AtomixType.hint().copy(lineHeight = pxSp(30)), maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -273,9 +302,16 @@ private fun AppMenu(
                 horizontalArrangement = Arrangement.spacedBy(px(16)),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(if (item == AppMenuItem.Info) LineIcon.Info else LineIcon.Plus, AtomixColors.Text, 26)
+                Icon(menuIcon(item), AtomixColors.Text, 26)
                 BasicText(item.label, style = AtomixType.button().copy(fontWeight = if (focused) FontWeight.Bold else FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
+}
+
+/** The icon beside a menu line. */
+private fun menuIcon(item: AppMenuItem): LineIcon = when (item) {
+    AppMenuItem.Info -> LineIcon.Info
+    AppMenuItem.Add, AppMenuItem.Show -> LineIcon.Plus
+    AppMenuItem.Remove, AppMenuItem.Hide -> LineIcon.Minus
 }

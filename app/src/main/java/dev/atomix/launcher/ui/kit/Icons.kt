@@ -20,7 +20,7 @@ import dev.atomix.launcher.ui.theme.px
 
 enum class LineIcon {
     Home, Apps, Library, Live, Inputs, Search, Atom, Settings, Edit, Star, StarFilled, Plus, Play, Pause, Back30, Forward30, List,
-    House, ChevronRight, ChevronDown, Tick, Warn, Info, Grid, Bars, Arc, Plug, Tuner, Person, Drop, Screen,
+    House, ChevronRight, ChevronDown, Tick, Warn, Info, Grid, Bars, Arc, Plug, Tuner, Person, Drop, Screen, Minus,
 }
 
 /** One stroked or filled SVG path on the 24-unit grid, as drawn on the design boards. */
@@ -117,6 +117,7 @@ fun Icon(kind: LineIcon, color: Color, sizePx: Int, modifier: Modifier = Modifie
                 drawLine(color, p(12f, 5f), p(12f, 19f), stroke.width, StrokeCap.Round)
                 drawLine(color, p(5f, 12f), p(19f, 12f), stroke.width, StrokeCap.Round)
             }
+            LineIcon.Minus -> drawLine(color, p(5f, 12f), p(19f, 12f), stroke.width, StrokeCap.Round)
             LineIcon.Play -> drawPath(Path().apply { moveTo(7 * u, 4.5f * u); lineTo(19.5f * u, 12 * u); lineTo(7 * u, 19.5f * u); close() }, color)
             LineIcon.Forward30 -> {
                 drawArc(color, -40f, 260f, false, p(4f, 4f), Size(16f * u, 16f * u), style = stroke)
