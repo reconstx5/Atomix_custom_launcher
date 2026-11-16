@@ -17,15 +17,19 @@ The top bar has three tabs (**Home**, **Live TV**, **Apps**), the clock, and two
 **Settings**. Every screen except Home at rest ends in a bar of hints at the bottom right that says what OK, Back and
 the arrows do right now. One thing on screen has the focus ring; nothing is reached by a long press.
 
-**Home** is one fixed page. **Your apps** comes first: a row of tiles (banner and name) that ends with "All apps".
-Under it, **On now**: the first channel you have on Home as a large card over its programme's artwork, and the rest
-as small cards beside it, two at a time (Down past the second turns the page). OK on a card plays the channel. A line
-under the cards says how many channels are past the last one showing. Settings › Home layout changes all of this:
-tile size and shape, which row comes first, and four small cards or six small ones instead.
+**Home** is a list of rows, top to bottom, in the order set in Settings › Rows and apps. Out of the box it has
+**Your apps**, a row of tiles (banner and name) that ends with "All apps", and under it **On now**: the first channel
+you have on Home as a large card over its programme's artwork, and the rest as small cards beside it, two at a time
+(Down past the second turns the page). OK on a card plays the channel. A line under the cards says how many channels
+are past the last one showing. You can add up to eight app rows of your own ("Streaming", "Tools"…), and the same app
+can be in more than one. An **Inputs** row (the TV's HDMI ports and the tuner, OK switches to one) can be shown too;
+it is hidden at first. Up and Down move between the rows and Home scrolls so the focused row shows whole; each row
+remembers its last tile. Settings › Home layout changes the look: tile size and shape, and four small cards or six
+small ones instead.
 
-**Edit** at the right of either row rearranges it, and only that: OK picks an item up, the arrows move it, OK or Back
-puts it down, Back again is done. An app leaves "Your apps" in manage apps; a channel leaves Home with "Show on Home"
-on the Live TV page.
+**Edit** at the right of an app row or On now rearranges it, and only that: OK picks an item up, the arrows move it,
+OK or Back puts it down, Back again is done. A row sorted A to Z has no Edit. An app joins or leaves a row in manage
+apps; a channel leaves Home with "Show on Home" on the Live TV page.
 
 **Live TV** lists every channel on the left, with a preview of the focused one on the right and one switch under it,
 **Show on Home**. Right from a channel reaches the switch; Left goes back to the same channel. A small house marks the
@@ -36,14 +40,18 @@ Up and Down change channel, digits tune by number and show the channel they matc
 seconds and jump to live appear only when the channel has a rewind buffer. Back closes one layer at a time, and from
 a clean picture leaves playback with focus on the channel you were watching.
 
-**Apps** shows everything installed, seven across, with a house on the ones in "Your apps". OK opens an app. **Edit**
-opens manage apps, where OK on an app offers "Add to Your apps" or "Remove from Your apps", and "App info" (the TV's
-own page for that app).
+**Apps** shows everything installed except hidden apps, seven across, with a house on the ones in any Home row. OK
+opens an app. **Edit** opens manage apps (filters All and Hidden), where OK on an app offers "Add to a row…" (a list of
+the app rows, each ticked or not; OK adds or removes), "Hide from Atomix TV" or "Show in Atomix TV", and "App info"
+(the TV's own page for that app). A hidden app leaves every row and the Apps page but stays installed; the Hidden
+filter is where it is shown again. Manage apps opened from a row in Settings is for that row: its heading says
+"Choose apps for" the row, there is an "In this row" filter, a tick marks the row's apps, and OK offers "Add to" or
+"Remove from" the row. Back returns to Settings on that row.
 
 **Inputs** is a page of the TV's HDMI ports and the TV tuner. OK switches to one; the Home button comes back.
 
 **Settings** has a list of sections on the left and their rows on the right; OK or Right moves into the rows, Back
-steps out one level. There are seven sections; a section appears once it has something that works.
+steps out one level. There are eight sections; a section appears once it has something that works.
 
 - **Set-up and launcher**: whether the Home button opens Atomix TV, and the way to the TV's own settings where that is
   switched.
@@ -51,8 +59,13 @@ steps out one level. There are seven sections; a section appears once it has som
   (Standard, Large), Clock (24-hour, 12-hour, Hidden; until one is chosen it follows the TV), Focus highlight (Ring and
   glow, Ring only) and Reduced effects.
 - **Home layout**: Tile size (Small 9 across, Medium 7, Large 5), Tile shape (Wide tile, Full banner), Spacing
-  (Compact, Comfortable, Roomy), App names, Row order (which of "Your apps" and "On now" comes first) and the On now
-  layout (One large and two small, One large and four small, Six small).
+  (Compact, Comfortable, Roomy), App names and the On now layout (One large and two small, One large and four small,
+  Six small).
+- **Rows and apps**: "Rows on Home", one entry per row in Home's order with what it holds ("6 apps", "3 channels",
+  "5 inputs"); OK shows or hides a row (one app row must stay shown). Under the focused entry are its options: for an
+  app row Choose apps, Rename, Move up, Move down, Sort (your order or A to Z) and Delete (it asks first; the apps
+  stay installed); On now and Inputs can only be moved. "New row" asks for a name and goes straight on to choosing
+  its apps. Under "Apps", **All apps** opens manage apps for hiding and says how many are hidden.
 - **Live TV**: sources, their last refresh and any errors, Refresh and "Manage sources in Atomix" for admins, "Test a
   channel".
 - **Account and server**: the server's address, "Find the server again", "Switch profile".
@@ -65,8 +78,10 @@ Rows with a list of choices open the list beside the row: Up and Down move throu
 unchanged. In Appearance and Home layout a small picture of Home on the right shows the focused choice before it is
 chosen. Rows with a few short choices change with Left and Right. Every choice takes effect at once and is kept in
 the launcher's own preferences (`look_theme`, `look_accent`, `look_text`, `look_clock`, `look_focus`,
-`home_tile_size`, `home_tile_shape`, `home_spacing`, `home_app_names`, `home_row_order`, `home_on_now`); a value the
-launcher no longer knows falls back to the default.
+`home_tile_size`, `home_tile_shape`, `home_spacing`, `home_app_names`, `home_on_now`); a value the
+launcher no longer knows falls back to the default. Home's rows (their order, names, apps, sort and whether shown) are
+kept in `home_rows` and hidden apps in `hidden_apps`. The older `favourite_apps` and `home_row_order` are only read,
+once, to build the first `home_rows` from what an earlier version had, and are never written again.
 
 The TV settings pages were each opened from the launcher on this VEON TV and seen to show their page, with Back
 coming straight back to Settings; they open in a fresh task (`FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK`).
