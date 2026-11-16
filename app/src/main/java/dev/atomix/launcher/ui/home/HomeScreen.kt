@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
@@ -91,6 +92,7 @@ import dev.atomix.launcher.ui.theme.px
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private const val ALL_APPS_KEY = "all-apps"
@@ -416,14 +418,27 @@ fun HomeScreen(
     val unit = with(LocalDensity.current) { px(1).toPx() }
     val reduced = LocalEffects.current.reduced
     val scroll = remember { Animatable(0f) }
-    var focusRow by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(focusRow, places) {
-        val i = places.indexOfFirst { it.id == focusRow }
-        if (i < 0) return@LaunchedEffect
-        val target = scrollFor(scroll.targetValue.roundToInt(), places, i).toFloat()
-        if (target == scroll.targetValue) return@LaunchedEffect
-        if (reduced) scroll.snapTo(target) else scroll.animateTo(target, tween(250, easing = FastOutSlowInEasing))
+    // Only whether Home has scrolled at all is drawn from (the cut under the top bar), not every frame of a scroll.
+    val scrolled by remember { derivedStateOf { scroll.value > 0f } }
+    // The row that holds focus is kept out of composition: a move between rows starts the scroll and recomposes
+    // nothing (as state read here, every Up or Down re-ran all of Home; seen as slow frames on the TV).
+    val focusRow = remember { arrayOfNulls<String>(1) }
+    val scrollJob = remember { arrayOfNulls<Job>(1) }
+    val placesNow by rememberUpdatedState(places)
+    val reducedNow by rememberUpdatedState(reduced)
+    fun bringFocusRowIntoView() {
+        val all = placesNow
+        val i = all.indexOfFirst { it.id == focusRow[0] }
+        if (i < 0) return
+        val target = scrollFor(scroll.targetValue.roundToInt(), all, i).toFloat()
+        if (target == scroll.targetValue) return
+        scrollJob[0]?.cancel()
+        scrollJob[0] = scope.launch {
+            if (reducedNow) scroll.snapTo(target) else scroll.animateTo(target, tween(250, easing = FastOutSlowInEasing))
+        }
     }
+    // The rows or the layout changed under the focused row: bring it whole into view again.
+    LaunchedEffect(places) { bringFocusRowIntoView() }
 
     @Composable
     fun AppRow(row: DrawnRow, place: RowPlace) {
@@ -665,7 +680,7 @@ fun HomeScreen(
         // Rows pass under the top bar: once Home has scrolled they are cut off just below it.
         Box(
             Modifier.fillMaxSize().drawWithContent {
-                if (scroll.value > 0f) clipRect(top = VIEW_TOP * unit) { this@drawWithContent.drawContent() } else drawContent()
+                if (scrolled) clipRect(top = VIEW_TOP * unit) { this@drawWithContent.drawContent() } else drawContent()
             },
         ) {
             // As tall as its rows, not the screen: a row placed below the screen's foot must still be measured whole,
@@ -678,7 +693,12 @@ fun HomeScreen(
                     key(row.spec.id) {
                         Box(
                             Modifier.padding(top = px(place.headingY)).fillMaxWidth()
-                                .onFocusChanged { if (it.hasFocus) focusRow = row.spec.id },
+                                .onFocusChanged {
+                                    if (it.hasFocus && focusRow[0] != row.spec.id) {
+                                        focusRow[0] = row.spec.id
+                                        bringFocusRowIntoView()
+                                    }
+                                },
                         ) {
                             when (row.spec.kind) {
                                 RowKind.Apps -> AppRow(row, place)
