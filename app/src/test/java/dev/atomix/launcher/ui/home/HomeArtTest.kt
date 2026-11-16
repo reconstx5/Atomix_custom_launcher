@@ -1,5 +1,6 @@
 package dev.atomix.launcher.ui.home
 
+import dev.atomix.launcher.apps.IconContent
 import dev.atomix.launcher.apps.IconQuality
 import dev.atomix.launcher.prefs.HomeLayout
 import dev.atomix.launcher.prefs.Spacing
@@ -37,5 +38,24 @@ class HomeArtTest {
         assertEquals("9", artLetter("9Now"))
         assertEquals("?", artLetter(""))
         assertEquals("?", artLetter("   "))
+    }
+
+    @Test fun iconFit_fullOrUnknown_fillsTheSlot() {
+        assertEquals(IconFit(77, 0, 0), iconFit(null, 77))
+        assertEquals(IconFit(77, 0, 0), iconFit(IconContent(0f, 0f, 1f, 1f), 77))
+        assertEquals(IconFit(77, 0, 0), iconFit(IconContent(0.04f, 0.05f, 0.96f, 0.95f), 77)) // 90 % or more: as drawn
+    }
+
+    @Test fun iconFit_builtInMargin_scalesTheMarkToFill() {
+        // SmartTube-like: a wide mark with empty space round it grows until its wider side spans the slot.
+        assertEquals(IconFit(96, 0, 0), iconFit(IconContent(0.1f, 0.2f, 0.9f, 0.8f), 77))
+    }
+
+    @Test fun iconFit_neverMoreThanHalfAgainLarger() {
+        assertEquals(IconFit(116, 0, 0), iconFit(IconContent(0.2f, 0.3f, 0.8f, 0.7f), 77))
+    }
+
+    @Test fun iconFit_offCentreMark_isCentred() {
+        assertEquals(IconFit(116, 23, 23), iconFit(IconContent(0f, 0f, 0.6f, 0.6f), 77))
     }
 }

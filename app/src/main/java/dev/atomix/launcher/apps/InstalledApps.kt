@@ -14,6 +14,7 @@ data class AppEntry(
     val icon: Drawable,
     val launch: Intent,
     val iconQuality: IconQuality = IconQuality.Sharp,
+    val iconContent: IconContent? = null,
 )
 
 /** Whether an app's own icon is sharp enough to draw large on Home, too small to, or missing (Android's default). */
@@ -71,6 +72,7 @@ class InstalledApps(private val pm: PackageManager) {
                     icon = icon,
                     launch = launch,
                     iconQuality = quality,
+                    iconContent = measureIconContent(icon),
                 )
             }
         }

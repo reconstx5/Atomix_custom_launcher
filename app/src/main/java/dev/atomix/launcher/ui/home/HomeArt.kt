@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
@@ -16,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import dev.atomix.launcher.apps.AppEntry
+import dev.atomix.launcher.apps.IconContent
 import dev.atomix.launcher.apps.IconQuality
 import dev.atomix.launcher.ui.theme.AtomixColors
 import dev.atomix.launcher.ui.theme.AtomixType
@@ -51,6 +54,23 @@ fun homeArtBox(art: HomeArt, slot: Int): ArtBox = when (art) {
     }
 }
 
+/** How big an icon is drawn ([size] square) and how far it is moved ([dx], [dy]) so its mark fills and centres in the slot. */
+data class IconFit(val size: Int, val dx: Int, val dy: Int)
+
+/**
+ * An icon whose mark ([content]) covers less than 90 % of it on both sides (empty space built in, like SmartTube's) is
+ * drawn larger, until the mark's wider side spans the [slot], and moved so the mark is centred. Never more than half
+ * again larger, so a tiny mark is not blown up soft. Its empty edges spill out of the slot; they draw nothing.
+ */
+fun iconFit(content: IconContent?, slot: Int): IconFit {
+    val span = content?.let { maxOf(it.right - it.left, it.bottom - it.top) } ?: 1f
+    if (content == null || span >= 0.9f) return IconFit(slot, 0, 0)
+    val size = (slot * minOf(1f / span, 1.5f)).roundToInt()
+    val dx = ((0.5f - (content.left + content.right) / 2) * size).roundToInt()
+    val dy = ((0.5f - (content.top + content.bottom) / 2) * size).roundToInt()
+    return IconFit(size, dx, dy)
+}
+
 /** The letter fallback: the name's first visible character, upper case; "?" for a blank name. */
 fun artLetter(label: String): String {
     val i = label.indexOfFirst { !it.isWhitespace() }
@@ -68,7 +88,13 @@ fun HomeAppArt(app: AppEntry, loader: ImageLoader, slot: Int, modifier: Modifier
     val box = homeArtBox(art, slot)
     Box(modifier.fillMaxWidth().height(px(slot)), contentAlignment = Alignment.Center) {
         when (art) {
-            HomeArt.Icon -> AsyncImage(model = app.icon, imageLoader = loader, contentDescription = null, contentScale = ContentScale.Fit, modifier = Modifier.size(px(box.w), px(box.h)))
+            HomeArt.Icon -> {
+                val fit = iconFit(app.iconContent, box.w)
+                AsyncImage(
+                    model = app.icon, imageLoader = loader, contentDescription = null, contentScale = ContentScale.Fit,
+                    modifier = Modifier.offset(px(fit.dx), px(fit.dy)).requiredSize(px(fit.size)),
+                )
+            }
             HomeArt.Banner -> AsyncImage(
                 model = app.banner, imageLoader = loader, contentDescription = null, contentScale = ContentScale.Fit,
                 modifier = Modifier.size(px(box.w), px(box.h)).clip(RoundedCornerShape(px(10))),
