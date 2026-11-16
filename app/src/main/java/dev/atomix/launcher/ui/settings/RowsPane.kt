@@ -19,6 +19,8 @@ import dev.atomix.launcher.ui.kit.menuHeight
 import dev.atomix.launcher.ui.kit.menuTop
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +86,10 @@ private const val ASK_DELETE = "Delete"
 
 /** What [RowsPane]'s name list is naming when it is "New row" rather than a row. */
 private const val NEW_ROW = "+new"
+
+/** An option button's side padding and the gap between buttons: tighter than the board's 22 and 12, so six fit. */
+private const val OPTION_PAD = 16
+private const val OPTION_GAP = 8
 
 /**
  * Settings › Rows and apps, as on its board: "ROWS ON HOME", one entry per row in Home's order (its place, name, what
@@ -249,9 +255,11 @@ fun RowsPane(
                             if (note == spec.id) Note(KEEP_ONE_NOTE, AtomixColors.Amber)
                             if (isOpen) {
                                 val next = rows.getOrNull(i + 1)?.let { entry(it.id) } ?: if (newRow) newRowFocus else allAppsFocus
+                                // Six options (a middle app row) only just fit at Standard text; with Large text
+                                // they do not. The row scrolls so the focused one is always in view.
                                 Row(
-                                    Modifier.height(px(56)),
-                                    horizontalArrangement = Arrangement.spacedBy(px(12)),
+                                    Modifier.height(px(56)).fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(px(OPTION_GAP)),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     if (asking == spec.id) {
@@ -401,7 +409,7 @@ private fun OptionButton(label: String, icon: dev.atomix.launcher.ui.kit.LineIco
             .height(px(56))
             .background(if (focused) AtomixColors.Ice else AtomixColors.Inset, RoundedCornerShape(px(14)))
             .clickable(interaction, indication = null, onClick = onClick)
-            .padding(horizontal = px(22)),
+            .padding(horizontal = px(OPTION_PAD)),
         horizontalArrangement = Arrangement.spacedBy(px(10)),
         verticalAlignment = Alignment.CenterVertically,
     ) {

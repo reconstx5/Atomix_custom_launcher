@@ -30,6 +30,17 @@ class HomeRowsTest {
     @Test fun brokenSavedRows_readAsAbsent() =
         listOf(null, "", "{", "[]", noAppRow, twoOnNow, repeatedId, unknownKind).forEach { assertNull(it, decodeRows(it)) }
 
+    // Home keys a row's tiles by package: a package twice in one row would stop Home on every start.
+    @Test fun samePackageTwiceInARow_isKeptOnce() {
+        val saved = savedRows(
+            """{"id":"apps","kind":"Apps","name":"Your apps","apps":["a","b","a"],"sort":"YourOrder","shown":true}""",
+            """{"id":"onNow","kind":"OnNow","name":"","apps":[],"sort":"YourOrder","shown":true}""",
+            """{"id":"inputs","kind":"Inputs","name":"","apps":[],"sort":"YourOrder","shown":false}""",
+        )
+        assertEquals(listOf("a", "b"), decodeRows(saved)!!.first().apps)
+        assertEquals(listOf("a", "b"), firstRows(listOf("a", "b", "a"), RowOrder.AppsFirst).first().apps)
+    }
+
     @Test fun longName_isCut() = assertEquals(24, decodeRows(withName("x".repeat(30)))!!.first().name.length)
 
     @Test fun move_staysInside() {

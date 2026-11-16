@@ -35,7 +35,7 @@ private const val NEW_ID = "row-"
 
 /** Phase 2's Home as rows: "Your apps" holding [favourites], and "On now", in [order]; then Inputs, hidden. */
 fun firstRows(favourites: List<String>, order: RowOrder): List<HomeRowSpec> {
-    val apps = HomeRowSpec(ROW_APPS, RowKind.Apps, YOUR_APPS, favourites)
+    val apps = HomeRowSpec(ROW_APPS, RowKind.Apps, YOUR_APPS, favourites.distinct())
     val onNow = HomeRowSpec(ROW_ON_NOW, RowKind.OnNow)
     val twoRows = if (order == RowOrder.AppsFirst) listOf(apps, onNow) else listOf(onNow, apps)
     return twoRows + HomeRowSpec(ROW_INPUTS, RowKind.Inputs, shown = false)
@@ -52,7 +52,8 @@ fun encodeRows(rows: List<HomeRowSpec>): String = JSONArray().apply {
 
 /**
  * The saved rows, or null when there are none, they cannot be read, or they break a rule Home relies on (exactly one
- * "On now" and one Inputs row, 1 to 8 app rows, no id twice). Names longer than [MAX_NAME] are cut.
+ * "On now" and one Inputs row, 1 to 8 app rows, no id twice). Names longer than [MAX_NAME] are cut; an app listed
+ * twice in a row is kept once, in its first place.
  */
 fun decodeRows(s: String?): List<HomeRowSpec>? {
     if (s.isNullOrEmpty()) return null
@@ -65,7 +66,8 @@ fun decodeRows(s: String?): List<HomeRowSpec>? {
                 id = o.getString("id"),
                 kind = RowKind.valueOf(o.getString("kind")),
                 name = o.optString("name").take(MAX_NAME),
-                apps = List(apps.length()) { apps.getString(it) },
+                // Once each: Home keys a row's tiles by package, so a repeat would stop it drawing.
+                apps = List(apps.length()) { apps.getString(it) }.distinct(),
                 sort = RowSort.entries.firstOrNull { it.name == o.optString("sort") } ?: RowSort.YourOrder,
                 shown = o.optBoolean("shown", true),
             )
