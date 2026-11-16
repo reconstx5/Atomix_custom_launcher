@@ -11,9 +11,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
-import dev.atomix.launcher.prefs.nextRowId
 import dev.atomix.launcher.prefs.renamed
-import dev.atomix.launcher.prefs.withRowAdded
 import dev.atomix.launcher.ui.kit.LineIcon
 import dev.atomix.launcher.ui.kit.menuHeight
 import dev.atomix.launcher.ui.kit.menuTop
@@ -104,6 +102,8 @@ fun RowsPane(
     hiddenApps: Int,
     first: FocusRequester,
     edit: ((List<HomeRowSpec>) -> List<HomeRowSpec>) -> Unit,
+    /** Adds a row and hands back its id (null when there is no room), so manage apps opens for the row really made. */
+    addRow: (String) -> String?,
     chooseApps: (String?) -> Unit,
     onHint: (HintSpot) -> Unit,
     /** The entry to put focus on as the pane opens (a row's id, or [ALL_APPS_ENTRY]): back from manage apps. */
@@ -153,9 +153,7 @@ fun RowsPane(
         naming = null
         if (id == NEW_ROW) {
             // The new row goes at the end, and manage apps opens for it; Back from there lands on its entry.
-            val newId = rows.nextRowId()
-            edit { it.withRowAdded(name) }
-            chooseApps(newId)
+            addRow(name)?.let(chooseApps)
         } else edit { it.renamed(id, name) }
     }
 

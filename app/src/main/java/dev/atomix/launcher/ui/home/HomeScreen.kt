@@ -72,7 +72,7 @@ import dev.atomix.launcher.prefs.ROW_APPS
 import dev.atomix.launcher.prefs.ROW_ON_NOW
 import dev.atomix.launcher.prefs.RowKind
 import dev.atomix.launcher.prefs.RowSort
-import dev.atomix.launcher.shell.DrawnRow
+import dev.atomix.launcher.rows.DrawnRow
 import dev.atomix.launcher.shell.rowAbove
 import dev.atomix.launcher.shell.rowBelow
 import dev.atomix.launcher.ui.kit.LocalEffects

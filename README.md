@@ -65,7 +65,7 @@ steps out one level. There are eight sections; a section appears once it has som
   "5 inputs"); OK shows or hides a row (one app row must stay shown). Under the focused entry are its options: for an
   app row Choose apps, Rename, Move up, Move down, Sort (your order or A to Z) and Delete (it asks first; the apps
   stay installed); On now and Inputs can only be moved. "New row" asks for a name and goes straight on to choosing
-  its apps. Under "Apps", **All apps** opens manage apps for hiding and says how many are hidden.
+  its apps. Under "Apps", **All apps** opens manage apps for hiding and says how many installed apps are hidden.
 - **Live TV**: sources, their last refresh and any errors, Refresh and "Manage sources in Atomix" for admins, "Test a
   channel".
 - **Account and server**: the server's address, "Find the server again", "Switch profile".

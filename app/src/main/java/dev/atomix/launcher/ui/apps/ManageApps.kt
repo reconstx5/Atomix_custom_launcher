@@ -27,7 +27,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import coil.ImageLoader
 import dev.atomix.launcher.apps.AppEntry
+import dev.atomix.launcher.rows.RowsAndApps
 import dev.atomix.launcher.prefs.HomeRowSpec
 import dev.atomix.launcher.ui.kit.AppArt
 import dev.atomix.launcher.ui.kit.FocusGlow
@@ -81,26 +81,25 @@ private const val MENU_ITEM_H = 72
  * Manage apps (spec §8): for one app row ([AppsTabState.forRow], "Choose apps for “Tools”") or for none ("Manage
  * apps"). OK on an app opens its menu: add to or remove from the row (or "Add to a row…", a short list of the app rows
  * with ticks, when it is for none), hide or show, and the TV's own App info page; Back closes the list, then the menu.
- * [onChanged] is told when a row or the hidden apps change. [onBack], when given, is where Back goes with no menu open
+ * Every change goes through [rowsAndApps], whose view this screen follows. [onBack], when given, is where Back goes with no menu open
  * (Settings › Rows and apps, when opened from there), named by [back] in the hints.
  */
 @Composable
 fun ManageAppsScreen(
     state: AppsTabState,
+    rowsAndApps: RowsAndApps,
     loader: ImageLoader,
     onInfo: (AppEntry) -> Unit,
-    onChanged: () -> Unit,
     onBack: (() -> Unit)? = null,
     back: String = "Apps",
 ) {
-    val apps by state.apps.collectAsState()
-    // Bumped when the row changes: what is in the row is not observable, so the ticks and counts are re-read on it.
-    var version by remember { mutableIntStateOf(0) }
+    // Rows and apps' view: a change to a row, a hide or an install is in it at once, so everything below is re-read on it.
+    val view by rowsAndApps.view.collectAsState()
     var filter by remember { mutableStateOf(AppFilter.All) }
-    val shown = remember(apps, filter, version) { state.shown(filter) }
+    val shown = remember(view, filter) { state.shown(filter) }
     val rows = remember(shown) { shown.chunked(APP_COLUMNS) }
-    val filters = remember(apps, version, state.forRow) { state.filters() }
-    val pills = remember(filters, apps, version) { filters.map(state::pillLabel) }
+    val filters = remember(view, state.forRow) { state.filters() }
+    val pills = remember(filters, view) { filters.map(state::pillLabel) }
     val window = remember(filter) { WindowState() }
     val tileFocus = remember { HashMap<String, FocusRequester>() }
     val pillFocus = remember { FocusRequester() }
@@ -114,8 +113,11 @@ fun ManageAppsScreen(
     var rowList by remember { mutableStateOf(false) }
     var rowLine by remember { mutableStateOf<String?>(null) }
     val menuApp = shown.firstOrNull { it.packageName == menuPkg }
-    val menuItems = remember(menuPkg, apps, version) { menuPkg?.let(state::menuFor).orEmpty() }
-    val ticks = remember(menuPkg, apps, version, rowList) { if (rowList) menuPkg?.let(state::rowTicks).orEmpty() else emptyList() }
+    val menuItems = remember(menuPkg, view) { menuPkg?.let(state::menuFor).orEmpty() }
+    // The "Add to a row…" list: Home's app rows in order, each ticked when the app is in it.
+    val ticks = remember(menuPkg, view, rowList) {
+        if (rowList) menuPkg?.let { pkg -> view.appRows.map { it to (pkg in it.apps) } }.orEmpty() else emptyList()
+    }
 
     // The screen opens on its first app.
     LaunchedEffect(Unit) {
@@ -163,19 +165,15 @@ fun ManageAppsScreen(
                 val leaving = item is AppMenuItem.RemoveFrom && filter == AppFilter.InRow
                 val row = if (item is AppMenuItem.AddTo) item.row else (item as AppMenuItem.RemoveFrom).row
                 closeMenu(if (leaving) focusAfterRemove(shown.map { it.packageName }, shown.indexOf(app), APP_COLUMNS) else app.packageName)
-                state.toggle(app.packageName, row)
-                version++
-                onChanged()
+                rowsAndApps.setInRow(app.packageName, row, inRow = item is AppMenuItem.AddTo)
             }
             AppMenuItem.Hide, AppMenuItem.Show -> {
                 // The tile leaves the list (under a filter) or moves within it (under "All": hidden apps go last), so
                 // focus goes first to a neighbour that stays put; under "All" it follows the app to its new place.
                 val pkgs = shown.map { it.packageName }
                 closeMenu(focusAfterRemove(pkgs, pkgs.indexOf(app.packageName), APP_COLUMNS) ?: app.packageName)
-                state.toggleHidden(app.packageName)
-                version++
+                rowsAndApps.setHidden(app.packageName, hidden = item == AppMenuItem.Hide)
                 if (filter == AppFilter.All) refocus = app.packageName
-                onChanged()
             }
         }
     }
@@ -221,12 +219,11 @@ fun ManageAppsScreen(
             Row(slot, horizontalArrangement = Arrangement.spacedBy(px(GAP))) {
                 row.forEachIndexed { column, app ->
                     key(app.packageName) {
-                        // Read with [version], which is bumped when a row changes: rows are not observed here.
-                        val mark = remember(app.packageName, version, state.forRow) { state.markFor(app.packageName) }
+                        val mark = remember(app.packageName, view, state.forRow) { state.markFor(app.packageName) }
                         ManageTile(
                             app, loader,
                             mark = mark,
-                            hidden = state.isHidden(app.packageName),
+                            hidden = view.isHidden(app.packageName),
                             menuOpen = app.packageName == menuPkg,
                             onClick = { openMenu(app) },
                             onFocused = { onPill = false },
@@ -255,7 +252,7 @@ fun ManageAppsScreen(
             if (rowList) MenuPanel(
                 // OK adds or takes out and leaves the list open; Back goes back to the menu.
                 "Add to a row", ticks, { it.first.id }, menuFirst,
-                onItem = { (row, _) -> state.toggle(menuApp.packageName, row.id); version++; onChanged() },
+                onItem = { (row, ticked) -> rowsAndApps.setInRow(menuApp.packageName, row.id, inRow = !ticked) },
                 onFocused = { rowLine = it.first.id },
                 modifier = Modifier.offset(px(x), px(y)),
             ) { (row, ticked), focused -> RowTickLine(row, ticked, focused) }

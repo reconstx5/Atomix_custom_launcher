@@ -3,9 +3,7 @@ package dev.atomix.launcher.rows
 import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.prefs.HomeRowSpec
 import dev.atomix.launcher.prefs.RowKind
-import dev.atomix.launcher.shell.DrawnRow
-import dev.atomix.launcher.shell.drawnApps
-import dev.atomix.launcher.shell.drawnRows
+import dev.atomix.launcher.prefs.RowSort
 
 /**
  * Rows and apps at one moment: every row of Home, every installed app (in the list's own order) and the saved hidden
@@ -39,4 +37,32 @@ data class RowsView(val rows: List<HomeRowSpec>, val installed: List<AppEntry>, 
 
     /** The rows Home draws, given how many entries the Inputs row holds. */
     fun drawnRows(inputs: Int): List<DrawnRow> = drawnRows(rows, byPkg::get, ::isHidden, inputs)
+}
+
+/** A row Home draws, with the apps it draws (empty for "On now" and Inputs). */
+data class DrawnRow(val spec: HomeRowSpec, val apps: List<AppEntry>)
+
+/**
+ * What an app row draws: its apps that are installed ([byPkg]) and not hidden from Atomix TV, in the row's order, or by
+ * name (ignoring case) when the row is sorted "A to Z".
+ */
+private fun drawnApps(row: HomeRowSpec, byPkg: (String) -> AppEntry?, isHidden: (String) -> Boolean): List<AppEntry> {
+    val apps = row.apps.filterNot(isHidden).mapNotNull(byPkg)
+    return if (row.sort == RowSort.AtoZ) apps.sortedBy { it.label.lowercase() } else apps
+}
+
+/**
+ * The rows Home draws: the shown ones, in order. An app row with no apps to draw is left out, except the first shown
+ * app row, so Home always has its heading and "All apps". An Inputs row with no [inputs] is left out. "On now" stays:
+ * its own area says when there is nothing to show.
+ */
+private fun drawnRows(rows: List<HomeRowSpec>, byPkg: (String) -> AppEntry?, isHidden: (String) -> Boolean, inputs: Int): List<DrawnRow> {
+    val firstAppRow = rows.firstOrNull { it.shown && it.kind == RowKind.Apps }?.id
+    return rows.filter { it.shown }.mapNotNull { r ->
+        when (r.kind) {
+            RowKind.Apps -> drawnApps(r, byPkg, isHidden).let { apps -> DrawnRow(r, apps).takeIf { apps.isNotEmpty() || r.id == firstAppRow } }
+            RowKind.OnNow -> DrawnRow(r, emptyList())
+            RowKind.Inputs -> DrawnRow(r, emptyList()).takeIf { inputs > 0 }
+        }
+    }
 }

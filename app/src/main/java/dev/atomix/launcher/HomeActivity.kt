@@ -74,7 +74,6 @@ import dev.atomix.launcher.ui.settings.SettingsScreen
 import dev.atomix.launcher.ui.settings.SettingsSection
 import dev.atomix.launcher.ui.settings.SettingsState
 import dev.atomix.launcher.ui.settings.rowSummary
-import dev.atomix.launcher.shell.drawnApps
 import dev.atomix.launcher.ui.splash.SplashPolicy
 import dev.atomix.launcher.ui.splash.SplashScreen
 import dev.atomix.launcher.ui.setup.SetupFlow
@@ -87,7 +86,7 @@ class SetupHolder(graph: AppGraph) : ViewModel() {
 }
 
 class HomeHolder(graph: AppGraph) : ViewModel() {
-    val vm = HomeViewModel(graph.live, graph.rows, graph.hiddenApps, graph.apps, viewModelScope, hdmi = graph.tvInputs::hdmi)
+    val vm = HomeViewModel(graph.live, graph.rowsAndApps, viewModelScope, hdmi = graph.tvInputs::hdmi)
 }
 
 class HomeActivity : ComponentActivity() {
@@ -165,7 +164,7 @@ class HomeActivity : ComponentActivity() {
         LookState.look = graph.prefs.look
         homeLayout.value = graph.prefs.homeLayout
         splashing.value = splashPolicy.claim(recreated = savedInstanceState != null)
-        val appsState = AppsTabState(graph.rows, graph.hiddenApps, graph.apps)
+        val appsState = AppsTabState(graph.rowsAndApps)
         val liveState = LiveTvTabState(graph.live, lifecycleScope) { toast("Couldn't change Show on Home. Try again.") }
         setContent {
             AtomixTheme {
@@ -211,7 +210,7 @@ class HomeActivity : ComponentActivity() {
                                         openSettings = { openSettings(it) },
                                         retry = home.vm::refreshNow,
                                         saveChannels = { order -> home.vm.saveChannelOrder(order) { toast("Couldn't save the channel order. Try again.") } },
-                                        saveApps = home.vm::saveAppOrder,
+                                        saveApps = graph.rowsAndApps::saveAppOrder,
                                         openInput = { openInput(it) },
                                     ),
                                 )
@@ -226,7 +225,7 @@ class HomeActivity : ComponentActivity() {
                                     onPlay = { playChannel(it, Tab.LiveTv) },
                                 )
                                 Place.Apps -> AppsTab(
-                                    state = appsState,
+                                    rowsAndApps = graph.rowsAndApps,
                                     loader = graph.imageLoader,
                                     memory = appsTabMemory,
                                     restoreTick = restoreTick.intValue,
@@ -235,6 +234,7 @@ class HomeActivity : ComponentActivity() {
                                 )
                                 Place.ManageApps -> ManageAppsScreen(
                                     state = appsState,
+                                    rowsAndApps = graph.rowsAndApps,
                                     loader = graph.imageLoader,
                                     onInfo = { app ->
                                         // A fresh task, so Back from the TV's page comes straight back here and not to
@@ -244,7 +244,6 @@ class HomeActivity : ComponentActivity() {
                                                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
                                         )
                                     },
-                                    onChanged = { home.vm.refreshApps() },
                                     onBack = manageFrom.value?.let { from -> { openSettings(SettingsSection.Rows, rowsFocus = from) } },
                                     back = if (manageFrom.value != null) "Settings" else "Apps",
                                 )
@@ -254,17 +253,15 @@ class HomeActivity : ComponentActivity() {
                                     onPick = { place.value = placeAfterPick(openInput(it)) },
                                 )
                                 Place.Settings -> {
-                                val homeRows by graph.rows.rows.collectAsState()
-                                val installed by graph.apps.apps.collectAsState()
+                                val rowsView by graph.rowsAndApps.view.collectAsState()
                                 // What Home's Inputs row holds (the ports and the tuner), as read when the launcher last showed.
                                 val inputCount = ui.inputs.size
                                 val channelCount = (ui.live as? LiveState.Ready)?.pinned?.size ?: 0
                                 SettingsScreen(
-                                    rows = homeRows,
-                                    rowSummary = { spec ->
-                                        rowSummary(spec, drawnApps(spec, installed, graph.hiddenApps::isHidden).size, channelCount, inputCount)
-                                    },
-                                    hiddenApps = graph.hiddenApps.all().size,
+                                    rows = rowsView.rows,
+                                    rowSummary = { spec -> rowSummary(spec, rowsView.drawnApps(spec.id).size, channelCount, inputCount) },
+                                    // The hidden apps that are installed: the same number as manage apps' "Hidden" pill.
+                                    hiddenApps = rowsView.hiddenApps.size,
                                     state = settings,
                                     info = SettingsInfo(
                                         server = { graph.store.serverUrl?.toString()?.removeSuffix("/") },
@@ -290,7 +287,8 @@ class HomeActivity : ComponentActivity() {
                                         openTvPage = { if (!openTvPage(it)) toast("Couldn't open that") },
                                         setLook = { graph.prefs.look = it; LookState.look = it },
                                         setLayout = { graph.prefs.homeLayout = it; homeLayout.value = it },
-                                        editRows = graph.rows::update,
+                                        editRows = graph.rowsAndApps::editRows,
+                                        addRow = graph.rowsAndApps::addRow,
                                         // For a row ("Choose apps", the end of "New row") or for none ("All apps").
                                         chooseApps = { id ->
                                             appsState.forRow = id

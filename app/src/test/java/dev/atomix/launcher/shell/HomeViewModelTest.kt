@@ -12,15 +12,12 @@ import dev.atomix.launcher.livetv.source.FakeLiveClient
 import dev.atomix.launcher.livetv.source.LiveRepository
 import dev.atomix.launcher.livetv.source.LiveState
 import dev.atomix.launcher.livetv.source.tv
-import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import dev.atomix.launcher.prefs.ROW_APPS
 import dev.atomix.launcher.prefs.ROW_INPUTS
 import dev.atomix.launcher.prefs.withShown
 import dev.atomix.launcher.prefs.ROW_ON_NOW
-import dev.atomix.launcher.prefs.withApp
-import dev.atomix.launcher.prefs.withRowAdded
-import dev.atomix.launcher.prefs.RowStore
+import dev.atomix.launcher.rows.RowsAndApps
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -41,7 +38,7 @@ class HomeViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val scope = TestScope(dispatcher)
     private lateinit var fake: FakeLiveClient
-    private lateinit var rows: RowStore
+    private lateinit var rows: RowsAndApps
     private lateinit var vm: HomeViewModel
     private var clock = 1_000_000L
     // The TV's HDMI ports, as TvInputs.hdmi() would list them.
@@ -54,11 +51,11 @@ class HomeViewModelTest {
         val sp = ctx.getSharedPreferences("home_vm_test", Context.MODE_PRIVATE).also { it.edit().clear().commit() }
         sp.edit().putString("favourite_apps", listOf("b", "gone", "a").joinToString("\n")).commit()
         val prefs = LauncherPrefs(sp) { null }
-        rows = RowStore(prefs)
         fake = FakeLiveClient(channels = listOf(tv("1", 1), tv("2", 2)), favourites = mutableListOf("2"))
         val repo = LiveRepository({ fake }, store, relocate = {})
         val catalog = AppCatalog({ listOf(app("a"), app("b"), app("c")) }, scope, dispatcher)
-        vm = HomeViewModel(repo, rows, HiddenApps(prefs), catalog, scope, now = { clock }, hdmi = { hdmi })
+        rows = RowsAndApps(prefs, catalog, scope)
+        vm = HomeViewModel(repo, rows, scope, now = { clock }, hdmi = { hdmi })
         scope.runCurrent()
     }
 
@@ -71,7 +68,7 @@ class HomeViewModelTest {
     }
 
     @Test fun shownInputsRow_isDrawn_onceInputsAreRead() {
-        rows.update { it.withShown(ROW_INPUTS, true) }
+        rows.editRows { it.withShown(ROW_INPUTS, true) }
         scope.runCurrent()
         assertEquals(false, vm.ui.value.rows.any { it.spec.id == ROW_INPUTS })
         vm.onVisible(); scope.runCurrent()
@@ -106,7 +103,7 @@ class HomeViewModelTest {
     @Test fun appsRow_isVisibleFavourites_inOrder() {
         scope.runCurrent()
         assertEquals(listOf("b", "a"), yourApps())
-        rows.update { r -> r.map { if (it.id == ROW_APPS) it.copy(apps = listOf("c")) else it } }
+        rows.editRows { r -> r.map { if (it.id == ROW_APPS) it.copy(apps = listOf("c")) else it } }
         scope.runCurrent()
         assertEquals(listOf("c"), yourApps())
     }
@@ -140,11 +137,11 @@ class HomeViewModelTest {
         assertEquals(listOf("1", "2"), (vm.ui.value.live as LiveState.Ready).pinned.map { it.id })
     }
 
-    @Test fun saveAppOrder_appliesAtOnce_keepingHiddenFavourites() {
+    // A hide made anywhere (manage apps) reaches Home with nobody telling Home to redraw.
+    @Test fun hidingAnApp_redrawsHome_withoutBeingTold() {
         scope.runCurrent()
-        vm.saveAppOrder(ROW_APPS, listOf("a"))
+        rows.setHidden("b", true); scope.runCurrent()
         assertEquals(listOf("a"), yourApps())
-        assertEquals(listOf("a", "gone"), rows.rows.value.first { it.id == ROW_APPS }.apps)
     }
 
     private fun yourApps() = vm.ui.value.rows.first { it.spec.id == ROW_APPS }.apps.map { it.packageName }
@@ -152,16 +149,6 @@ class HomeViewModelTest {
     @Test fun rows_areTheDrawnRows_inOrder() {
         scope.runCurrent()
         assertEquals(listOf(ROW_APPS, ROW_ON_NOW), vm.ui.value.rows.map { it.spec.id })
-    }
-
-    @Test fun saveAppOrder_touchesOnlyThatRow() {
-        rows.update { it.withRowAdded("Tools").withApp("row-1", "a", true).withApp("row-1", "b", true) }
-        scope.runCurrent()
-        vm.saveAppOrder("row-1", listOf("b", "a"))
-        assertEquals(listOf("b", "a"), vm.ui.value.rows.first { it.spec.id == "row-1" }.apps.map { it.packageName })
-        assertEquals(listOf("b", "a"), yourApps())
-        vm.saveAppOrder(ROW_APPS, listOf("a", "b"))
-        assertEquals(listOf("b", "a"), vm.ui.value.rows.first { it.spec.id == "row-1" }.apps.map { it.packageName })
     }
 
     @Test fun clockTicks() {

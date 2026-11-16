@@ -7,13 +7,9 @@ import androidx.test.core.app.ApplicationProvider
 import dev.atomix.launcher.apps.AppCatalog
 import dev.atomix.launcher.apps.AppEntry
 import dev.atomix.launcher.prefs.DEFAULT_DOCK
-import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
 import dev.atomix.launcher.prefs.ROW_APPS
-import dev.atomix.launcher.prefs.ROW_ON_NOW
-import dev.atomix.launcher.prefs.RowStore
-import dev.atomix.launcher.prefs.withRowAdded
-import dev.atomix.launcher.shell.drawnApps
+import dev.atomix.launcher.rows.RowsAndApps
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -31,41 +27,30 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [30])
 class AppsTabStateTest {
-    private lateinit var favourites: RowStore
+    private lateinit var prefs: LauncherPrefs
+    private lateinit var rows: RowsAndApps
     private lateinit var catalog: AppCatalog
-    private lateinit var hidden: HiddenApps
+    private val now = UnconfinedTestDispatcher()
     private fun app(pkg: String) = AppEntry(pkg, pkg, null, ColorDrawable(), Intent())
     private val apps = (DEFAULT_DOCK + "com.other").map(::app)
-    /** What Home's "Your apps" draws. */
-    private fun onHome() = drawnApps(favourites.rows.value.first { it.id == ROW_APPS }, apps, hidden::isHidden).map { it.packageName }
+    private var installed = apps
+
+    /** Rows and apps over [list] as the installed apps, and manage apps' state over it. */
+    private fun over(list: List<AppEntry>): AppsTabState {
+        installed = list
+        catalog = AppCatalog({ installed }, CoroutineScope(now), now)
+        rows = RowsAndApps(prefs, catalog, CoroutineScope(now))
+        return AppsTabState(rows)
+    }
 
     @Before fun setUp() {
         val sp = ApplicationProvider.getApplicationContext<Context>().getSharedPreferences("apps_state_test", Context.MODE_PRIVATE)
         sp.edit().clear().commit()
-        val prefs = LauncherPrefs(sp) { DEFAULT_DOCK }
-        hidden = HiddenApps(prefs)
-        favourites = RowStore(prefs)
-        val now = UnconfinedTestDispatcher()
-        catalog = AppCatalog({ apps }, CoroutineScope(now), now)
-    }
-
-    @Test fun list_isTheCatalog() {
-        assertEquals(apps.map { it.packageName }, AppsTabState(favourites, hidden, catalog).list().map { it.packageName })
-    }
-
-    @Test fun toggle_addsAtTheEnd_thenRemoves() {
-        val state = AppsTabState(favourites, hidden, catalog)
-        assertFalse(state.isIn("com.other", ROW_APPS))
-        state.toggle("com.other", ROW_APPS)
-        assertTrue(state.isIn("com.other", ROW_APPS))
-        assertEquals("com.other", onHome().last())
-        state.toggle("com.other", ROW_APPS)
-        assertFalse(state.isIn("com.other", ROW_APPS))
-        assertEquals(DEFAULT_DOCK, onHome())
+        prefs = LauncherPrefs(sp) { DEFAULT_DOCK }
     }
 
     @Test fun shown_filtersToTheRow_keepingListOrder() {
-        val state = AppsTabState(favourites, hidden, catalog)
+        val state = over(apps)
         state.forRow = ROW_APPS
         assertEquals(apps.map { it.packageName }, state.shown(AppFilter.All).map { it.packageName })
         assertEquals(DEFAULT_DOCK, state.shown(AppFilter.InRow).map { it.packageName })
@@ -74,14 +59,22 @@ class AppsTabStateTest {
     }
 
     @Test fun menu_offersAddOrRemove_thenAppInfo() {
-        val state = AppsTabState(favourites, hidden, catalog)
+        val state = over(apps)
         state.forRow = ROW_APPS
         assertEquals(listOf("Add to Your apps", "Hide from Atomix TV", "App info"), state.menuFor("com.other").map { it.label })
         assertEquals(listOf("Remove from Your apps", "Hide from Atomix TV", "App info"), state.menuFor(DEFAULT_DOCK[0]).map { it.label })
     }
 
     @Test fun menu_forAnAppThatHasGone_isEmpty() =
-        assertEquals(emptyList<AppMenuItem>(), AppsTabState(favourites, hidden, catalog).menuFor("uninstalled.pkg"))
+        assertEquals(emptyList<AppMenuItem>(), over(apps).menuFor("uninstalled.pkg"))
+
+    // An app uninstalled while its menu is open: the menu has nothing left to offer, so it closes.
+    @Test fun menuFor_afterTheCatalogLosesTheApp_isEmpty() {
+        val state = over(apps)
+        assertTrue(state.menuFor("com.other").isNotEmpty())
+        installed = apps.filterNot { it.packageName == "com.other" }; catalog.invalidate()
+        assertEquals(emptyList<AppMenuItem>(), state.menuFor("com.other"))
+    }
 
     @Test fun focusAfterRemove_staysInTheSameRow_soTheTileItLandsOnIsNotRebuilt() {
         val eight = listOf("a", "b", "c", "d", "e", "f", "g", "h")
@@ -110,18 +103,7 @@ class AppsTabStateTest {
         assertNull(moreAppsLine(rows = 0, first = 0, visible = 4))
     }
 
-    @Test fun appsPage_leavesHiddenOut() {
-        val now = UnconfinedTestDispatcher()
-        val withSystem = listOf("x", "mediatek.factorymenu.ui", "y").map(::app)
-        val state = AppsTabState(favourites, hidden, AppCatalog({ withSystem }, CoroutineScope(now), now))
-        assertEquals(listOf("x", "y"), state.visibleApps().map { it.packageName })
-    }
-
-    private fun withSystemEntry(): AppsTabState {
-        val now = UnconfinedTestDispatcher()
-        val list = apps.take(2) + app("mediatek.factorymenu.ui") + apps.drop(2)
-        return AppsTabState(favourites, hidden, AppCatalog({ list }, CoroutineScope(now), now))
-    }
+    private fun withSystemEntry(): AppsTabState = over(apps.take(2) + app("mediatek.factorymenu.ui") + apps.drop(2))
 
     @Test fun all_listsHiddenAppsLast() {
         val state = withSystemEntry()
@@ -135,20 +117,24 @@ class AppsTabStateTest {
         assertEquals(listOf("All · 7", "In this row · 5", "Hidden · 1"), state.filters().map(state::pillLabel))
     }
 
+    // The "Hidden" pill and Settings' count are the same number: installed hidden apps only.
+    @Test fun hiddenPill_countsWhatTheViewCounts() {
+        val state = over(apps)   // installed: DEFAULT_DOCK + com.other, none of DEFAULT_HIDDEN
+        rows.setHidden("com.other", true); rows.setHidden("gone.pkg", true)
+        assertEquals("Hidden · ${rows.view.value.hiddenApps.size}", state.pillLabel(AppFilter.Hidden))
+        assertEquals("Hidden · 1", state.pillLabel(AppFilter.Hidden))
+    }
+
     @Test fun menu_offersHideOrShow() {
-        val state = AppsTabState(favourites, hidden, catalog)
+        val state = over(apps)
         assertEquals(listOf(AppMenuItem.AddToARow, AppMenuItem.Hide, AppMenuItem.Info), state.menuFor("com.other"))
-        state.toggleHidden("com.other")
-        assertTrue(state.isHidden("com.other"))
+        rows.setHidden("com.other", true)
         assertEquals(listOf(AppMenuItem.AddToARow, AppMenuItem.Show, AppMenuItem.Info), state.menuFor("com.other"))
     }
 
     // Spec §8: opened for a row ("Choose apps" on Tools) or for no row ("All apps", the Apps page's "Edit").
     private val x = "com.other"
-    private fun withTools(): AppsTabState {
-        favourites.update { it.withRowAdded("Tools") }
-        return AppsTabState(favourites, hidden, catalog)
-    }
+    private fun withTools(): AppsTabState = over(apps).also { rows.addRow("Tools") }
 
     @Test fun forARow_titleFiltersAndMenu() {
         val state = withTools()
@@ -156,7 +142,7 @@ class AppsTabStateTest {
         assertEquals("Choose apps for “Tools”", state.title())
         assertEquals(listOf(AppFilter.All, AppFilter.InRow, AppFilter.Hidden), state.filters())
         assertEquals(listOf("Add to Tools", "Hide from Atomix TV", "App info"), state.menuFor(x).map { it.label })
-        state.toggle(x, "row-1")
+        rows.setInRow(x, "row-1", true)
         assertEquals("Remove from Tools", state.menuFor(x).first().label)
     }
 
@@ -168,23 +154,16 @@ class AppsTabStateTest {
         assertEquals("Add to a row…", state.menuFor(x).first().label)
     }
 
-    @Test fun rowTicks_listAppRowsOnly() {
-        val state = withTools()
-        assertEquals(listOf(ROW_APPS to true, "row-1" to false), state.rowTicks(DEFAULT_DOCK[0]).map { it.first.id to it.second })
-        assertFalse(state.rowTicks(x).any { it.first.id == ROW_ON_NOW })
-    }
-
     @Test fun marks_tickForTheRow_houseOtherwise_neverBoth() {
         val state = withTools()
-        state.toggle(x, "row-1")
+        rows.setInRow(x, "row-1", true)
         state.forRow = ROW_APPS
         assertEquals(TileMark.None, state.markFor(x))
         state.forRow = "row-1"
         assertEquals(TileMark.Tick, state.markFor(x))
         state.forRow = null
         assertEquals(TileMark.House, state.markFor(x))
-        assertTrue(state.inAnyAppRow(x))
-        state.toggle(x, "row-1")
+        rows.setInRow(x, "row-1", false)
         assertEquals(TileMark.None, state.markFor(x))
     }
 
@@ -192,25 +171,16 @@ class AppsTabStateTest {
     @Test fun forAGoneRow_isForNoRow() {
         val state = withTools()
         state.forRow = "row-1"
-        favourites.update { rows -> rows.filterNot { it.id == "row-1" } }
+        rows.editRows { list -> list.filterNot { it.id == "row-1" } }
         assertEquals("Manage apps", state.title())
         assertEquals(TileMark.House, state.markFor(DEFAULT_DOCK[0]))
     }
 
     @Test fun inThisRow_isThatRow() {
         val state = withTools()
-        state.toggle(x, "row-1")
+        rows.setInRow(x, "row-1", true)
         state.forRow = "row-1"
         assertEquals(listOf(x), state.shown(AppFilter.InRow).map { it.packageName })
         assertEquals("In this row · 1", state.pillLabel(AppFilter.InRow))
-    }
-
-    @Test fun showing_bringsItBackToTheRow() {
-        val state = AppsTabState(favourites, hidden, catalog)
-        val second = DEFAULT_DOCK[1]
-        state.toggleHidden(second)
-        assertFalse(second in onHome())
-        state.toggleHidden(second)
-        assertEquals(DEFAULT_DOCK, onHome())
     }
 }

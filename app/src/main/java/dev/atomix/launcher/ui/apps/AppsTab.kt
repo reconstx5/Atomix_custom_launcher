@@ -25,6 +25,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import coil.ImageLoader
 import dev.atomix.launcher.apps.AppEntry
+import dev.atomix.launcher.rows.RowsAndApps
 import dev.atomix.launcher.shell.FocusMemory
 import dev.atomix.launcher.shell.FocusTarget
 import dev.atomix.launcher.shell.LocalTopBarFocus
@@ -53,16 +54,16 @@ private const val ROWS_SHOWN = 4
  */
 @Composable
 fun AppsTab(
-    state: AppsTabState,
+    rowsAndApps: RowsAndApps,
     loader: ImageLoader,
     memory: FocusMemory,
     restoreTick: Int,
     onLaunch: (AppEntry) -> Unit,
     onEdit: () -> Unit,
 ) {
-    val installed by state.apps.collectAsState()
-    // Hidden apps are left out. Hiding happens in manage apps, so coming back here (a new restoreTick) re-reads it.
-    val apps = remember(installed, restoreTick) { state.visibleApps() }
+    val view by rowsAndApps.view.collectAsState()
+    // Hidden apps are left out; Rows and apps' view is always current, so a hide or an install shows here at once.
+    val apps = remember(view) { view.visibleApps }
     val rows = remember(apps) { apps.chunked(APP_COLUMNS) }
     val window = remember { WindowState() }
     val tileFocus = remember { HashMap<String, FocusRequester>() }
@@ -138,7 +139,7 @@ fun AppsTab(
                                     if (column == 0) left = FocusRequester.Cancel
                                     if (column == row.lastIndex) right = FocusRequester.Cancel
                                 },
-                            onHome = state.inAnyAppRow(app.packageName),
+                            onHome = view.inAnyAppRow(app.packageName),
                             onFocused = {
                                 focusedPkg = app.packageName
                                 memory.remember(FocusTarget(ROW_ALL_APPS, app.packageName, rowIndex * APP_COLUMNS + column))

@@ -14,6 +14,16 @@ val DEFAULT_DOCK = listOf(
 )
 
 /**
+ * The TV's system entries hidden until the owner hides or shows anything: the Netflix observer, Disclaimer
+ * Customization and the factory menu. None is an app anyone opens, and the factory menu must not be opened by mistake.
+ */
+val DEFAULT_HIDDEN = listOf(
+    "com.mediatek.tv.service",
+    "com.mstar.android.tv.disclaimercustomization",
+    "mediatek.factorymenu.ui",
+)
+
+/**
  * Launcher-only settings (not secret, so plain prefs): Home's rows, hidden apps, reduced effects, remembered focus.
  * Phase 2's "Your apps" ([favouriteApps]) and row order ([legacyRowOrder]) are only read, to build the rows once.
  */
@@ -30,12 +40,12 @@ class LauncherPrefs(private val prefs: SharedPreferences, private val legacyDock
     /** Phase 2's row order; never written. */
     val legacyRowOrder: RowOrder get() = enumOr(prefs.getString(K_ROW_ORDER, null), RowOrder.AppsFirst)
 
-    /** Home's rows as saved by [RowStore]; null until the first start of phase 3. */
+    /** Home's rows as saved by [dev.atomix.launcher.rows.RowsAndApps]; null until the first start of phase 3. */
     var homeRows: String?
         get() = prefs.getString(K_ROWS, null)
         set(v) { prefs.edit().putString(K_ROWS, v).apply() }
 
-    /** Apps hidden from Atomix TV ([HiddenApps]). Until anything is saved, [DEFAULT_HIDDEN]; a saved "" is none. */
+    /** Apps hidden from Atomix TV ([dev.atomix.launcher.rows.RowsAndApps]). Until anything is saved, [DEFAULT_HIDDEN]; a saved "" is none. */
     var hiddenApps: List<String>
         get() {
             val saved = prefs.getString(K_HIDDEN, null) ?: return DEFAULT_HIDDEN

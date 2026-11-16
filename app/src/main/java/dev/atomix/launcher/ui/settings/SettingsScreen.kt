@@ -97,6 +97,8 @@ class SettingsActions(
     val setLayout: (HomeLayout) -> Unit,
     /** Changes Home's rows: saved, and shown on Home at once. */
     val editRows: ((List<HomeRowSpec>) -> List<HomeRowSpec>) -> Unit = {},
+    /** Adds an empty app row with this name at the end: the new row's id, or null when there is no room for one. */
+    val addRow: (name: String) -> String? = { null },
     /** Opens manage apps; for one row's apps when [rowId] is given. */
     val chooseApps: (rowId: String?) -> Unit = {},
 )
@@ -376,6 +378,7 @@ fun SettingsScreen(
                     SettingsItem.HomeRows -> RowsPane(
                         rows, rowSummary, hiddenApps, rowsFirst,
                         edit = actions.editRows,
+                        addRow = actions.addRow,
                         chooseApps = actions.chooseApps,
                         onHint = { paneHint = it; focusedItem = item },
                         startOn = rowsFocus,

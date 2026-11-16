@@ -21,9 +21,8 @@ import dev.atomix.launcher.data.OkHttpServerProbe
 import dev.atomix.launcher.data.ServerLocator
 import dev.atomix.launcher.data.SessionStore
 import dev.atomix.launcher.data.subnetHostsOf
-import dev.atomix.launcher.prefs.HiddenApps
 import dev.atomix.launcher.prefs.LauncherPrefs
-import dev.atomix.launcher.prefs.RowStore
+import dev.atomix.launcher.rows.RowsAndApps
 import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import kotlinx.coroutines.CoroutineScope
@@ -45,9 +44,10 @@ class AppGraph private constructor(private val context: Context) {
     val prefs = LauncherPrefs(context.getSharedPreferences("launcher_prefs", Context.MODE_PRIVATE)) { store.dock }
     /** Lives as long as the process; for loads that outlast any one screen. */
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val apps = AppCatalog(installedApps::list, scope)
-    val hiddenApps = HiddenApps(prefs)
-    val rows = RowStore(prefs)
+    /** Installed apps; read through [rowsAndApps], which every screen follows. */
+    private val apps = AppCatalog(installedApps::list, scope)
+    /** Home's rows, which apps are in them, the hidden apps and the installed apps: one for the whole launcher. */
+    val rowsAndApps = RowsAndApps(prefs, apps, scope)
 
     init {
         val filter = IntentFilter().apply {
