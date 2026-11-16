@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +28,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import dev.atomix.launcher.apps.AppEntry
-import dev.atomix.launcher.ui.kit.AppArt
 import dev.atomix.launcher.ui.kit.FocusGlow
 import dev.atomix.launcher.ui.kit.Icon
 import dev.atomix.launcher.ui.kit.LineIcon
@@ -64,13 +62,12 @@ fun HomeAppTile(app: AppEntry, loader: ImageLoader, m: HomeMetrics, onClick: () 
                 .background(if (focused) AtomixColors.Raised else AtomixColors.Tile, shape)
                 .clickable(interaction, indication = null, onClick = onClick),
         ) {
-            Column(
-                Modifier.fillMaxSize().padding(horizontal = px(12)),
-                verticalArrangement = Arrangement.spacedBy(px(m.nameGap), Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                AppArt(app, loader, m.bannerW, m.bannerH, 10)
-                if (m.showNames) BasicText(app.label, style = nameStyle(m), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // 10 above, the artwork's slot, the name's gap and line, 10 below: every tile's art and name line up.
+            Column(Modifier.fillMaxSize().padding(horizontal = px(12), vertical = px(10)), horizontalAlignment = Alignment.CenterHorizontally) {
+                HomeAppArt(app, loader, m.artSlot)
+                if (m.showNames) BasicText(
+                    app.label, Modifier.padding(top = px(m.nameGap)).fillMaxWidth(), style = nameStyle(m), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     } else {
@@ -107,21 +104,20 @@ fun HomeAllAppsTile(m: HomeMetrics, onClick: () -> Unit, modifier: Modifier = Mo
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(px(20))
-    // The line is 2 taller than an app's name, as on the Home board ("All apps" is drawn as a row label).
-    val words = AtomixType.rowLabel().copy(fontSize = pxSp(m.namePx), lineHeight = pxSp(m.nameLine + 2))
     val icon = minOf(56, m.tileH - 32)
     if (!m.nameUnder) {
+        // The apps' frame: the grid in the artwork's slot, "All apps" on the names' line.
         Column(
             modifier
                 .tvFocus(focused, cornerPx = 20f, glow = FocusGlow.Card)
                 .height(px(m.tileH))
                 .background(if (focused) AtomixColors.Raised else AtomixColors.Tile, shape)
-                .clickable(interaction, indication = null, onClick = onClick),
-            verticalArrangement = Arrangement.spacedBy(px(12), Alignment.CenterVertically),
+                .clickable(interaction, indication = null, onClick = onClick)
+                .padding(horizontal = px(12), vertical = px(10)),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Icon(LineIcon.Grid, AtomixColors.Text, icon)
-            if (m.showNames) BasicText("All apps", style = words, maxLines = 1)
+            Box(Modifier.fillMaxWidth().height(px(m.artSlot)), contentAlignment = Alignment.Center) { Icon(LineIcon.Grid, AtomixColors.Text, minOf(56, m.artSlot)) }
+            if (m.showNames) BasicText("All apps", Modifier.padding(top = px(m.nameGap)).fillMaxWidth(), style = nameStyle(m), maxLines = 1)
         }
     } else {
         Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {

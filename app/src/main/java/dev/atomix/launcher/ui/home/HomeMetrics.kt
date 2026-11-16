@@ -31,7 +31,8 @@ private const val MORE_BAND = 64
  * Where everything on Home goes and how big it is, px at 1920: Home and the preview in Settings both draw from this,
  * so they cannot disagree. Positions depend on the layout alone, never on how many apps or channels there are.
  *
- * [tileH] is the focusable tile; [rowH] also holds a name drawn under it ([nameUnder]). [largeW] is 0 when the layout
+ * [tileH] is the focusable tile; [rowH] also holds a name drawn under it ([nameUnder]). [artSlot] is how high a wide
+ * tile's artwork may be: the tile less 10 above, 10 below and the name's line and gap. [largeW] is 0 when the layout
  * has no large card. [smallX] is from the left edge of the cards area. [moreY] is where the "more channels" line goes.
  */
 data class HomeMetrics(
@@ -57,6 +58,7 @@ data class HomeMetrics(
     val smallW: Int,
     val smallH: Int,
     val columns: Int,
+    val artSlot: Int,
 )
 
 /**
@@ -107,6 +109,7 @@ fun homeMetrics(layout: HomeLayout, onNowFirst: Boolean = false): HomeMetrics {
         moreY = cardsY + cardsH + 16,
         largeW = largeW, smallX = smallX, smallW = smallW, smallH = (cardsH - CARD_GAP) / 2,
         columns = layout.onNow.columns,
+        artSlot = size.bannerH + size.pad - 20,
     )
 }
 

@@ -158,4 +158,19 @@ class HomeMetricsTest {
         val p = rowPlaces(HomeLayout(), rows)
         assertEquals(p[2].moreY!! + 30 - 1040, scrollFor(0, p, 2))
     }
+
+    @Test fun artSlot_perSize() {
+        assertEquals(68, homeMetrics(HomeLayout(tileSize = TileSize.Small)).artSlot)
+        assertEquals(77, homeMetrics(HomeLayout()).artSlot)
+        assertEquals(124, homeMetrics(HomeLayout(tileSize = TileSize.Large)).artSlot)
+        assertEquals(77, homeMetrics(HomeLayout(appNames = false)).artSlot)
+    }
+
+    @Test fun artSlot_fillsTheWideCardWithTenEachSide() = TileSize.entries.forEach { s ->
+        listOf(true, false).forEach { names ->
+            val m = homeMetrics(HomeLayout(tileSize = s, appNames = names))
+            val text = if (names) m.nameGap + m.nameLine else 0
+            assertEquals("$s $names", m.tileH, 10 + m.artSlot + text + 10)
+        }
+    }
 }
